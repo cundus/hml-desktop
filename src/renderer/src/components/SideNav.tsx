@@ -49,18 +49,18 @@ const menus: MenuItem[] = [
             roles: ['admin']
           },
           {
-            key: 'master-pet',
-            label: 'Master Pet',
-            icon: <SettingsIcon />,
-            path: '/master-pet',
-            roles: ['admin']
-          },
-          {
             key: 'master-user',
             label: 'Master User',
             icon: <UserIcon />,
             path: '/master-user',
             roles: ['admin']
+          },
+          {
+            key: 'master-customer',
+            label: 'Master Customer',
+            icon: <UserIcon />,
+            path: '/master-customer',
+            roles: ['admin', 'cashier']
           }
         ]
       }

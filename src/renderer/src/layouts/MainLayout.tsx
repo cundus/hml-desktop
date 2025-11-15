@@ -9,12 +9,16 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
 import MenuIcon from '@mui/icons-material/Menu'
+import Brightness4Icon from '@mui/icons-material/Brightness4'
+import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SideNav from '../components/SideNav'
+import useThemeMode from '../hooks/useThemeMode'
 
 const drawerWidth = 240
 
 export default function MainLayout(): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { mode, toggleTheme } = useThemeMode()
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen)
@@ -42,9 +46,12 @@ export default function MainLayout(): React.JSX.Element {
           >
             <MenuIcon />
           </IconButton>
-          <Typography variant="h6" noWrap component="div">
+          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Petshop Management
           </Typography>
+          <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
+            {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Box component="nav" sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}>
@@ -73,7 +80,13 @@ export default function MainLayout(): React.JSX.Element {
       </Box>
       <Box
         component="main"
-        sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - ${drawerWidth}px)` } }}
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          minHeight: 'calc(100vh - 64px)'
+          // overflow: 'hidden'
+        }}
       >
         <Toolbar />
         <Outlet />

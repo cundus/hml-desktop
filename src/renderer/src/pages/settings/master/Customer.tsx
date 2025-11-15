@@ -24,45 +24,52 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import api from '../../../lib/api'
 
-const branchSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
+const customerSchema = z.object({
   name: z.string().min(1, 'Name is required'),
-  address: z.string().min(1, 'Address is required'),
-  phone: z.string().min(6, 'Phone is too short')
+  phone: z.string().optional(),
+  tier: z.string().optional()
 })
 
-export type BranchFormValues = z.infer<typeof branchSchema>
+export type CustomerFormValues = z.infer<typeof customerSchema>
 
-export type Branch = BranchFormValues & {
+export type Customer = CustomerFormValues & {
   id: string
 }
 
-export default function BranchPage(): React.JSX.Element {
-  const [items, setItems] = useState<Branch[]>([])
+export default function CustomerPage(): React.JSX.Element {
+  const [items, setItems] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<Branch | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(() =>
+    typeof window !== 'undefined' ? window.location.hash.includes('add-customer') : false
+  )
+  const [editing, setEditing] = useState<Customer | null>(null)
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting }
-  } = useForm<BranchFormValues>({
-    resolver: zodResolver(branchSchema),
-    defaultValues: { code: '', name: '', address: '', phone: '' }
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(customerSchema),
+    defaultValues: { name: '', phone: '', tier: '' }
   })
+
+  useEffect(() => {
+    if (dialogOpen && !editing) {
+      reset({ name: '', phone: '', tier: '' })
+    }
+  }, [dialogOpen, editing, reset])
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
         setLoading(true)
         setError(null)
-        const res = await api.get<Branch[]>('/master/branches')
+        const res = await api.get<Customer[]>('/master/customers')
         setItems(res.data ?? [])
       } catch {
-        setError('Failed to load branches')
+        setError('Failed to load customers')
       } finally {
         setLoading(false)
       }
@@ -72,13 +79,13 @@ export default function BranchPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', address: '', phone: '' })
+    reset({ name: '', phone: '', tier: '' })
     setDialogOpen(true)
   }
 
-  const openEdit = (branch: Branch): void => {
-    setEditing(branch)
-    reset({ code: branch.code, name: branch.name, address: branch.address, phone: branch.phone })
+  const openEdit = (customer: Customer): void => {
+    setEditing(customer)
+    reset({ name: customer.name, phone: customer.phone ?? '', tier: customer.tier ?? '' })
     setDialogOpen(true)
   }
 
@@ -86,14 +93,14 @@ export default function BranchPage(): React.JSX.Element {
     setDialogOpen(false)
   }
 
-  const onSubmit = async (values: BranchFormValues): Promise<void> => {
+  const onSubmit = async (values: CustomerFormValues): Promise<void> => {
     try {
       if (editing) {
-        const res = await api.put<Branch>(`/master/branches/${editing.id}`, values)
+        const res = await api.put<Customer>(`/master/customers/${editing.id}`, values)
         const updated = res.data ?? { ...editing, ...values }
-        setItems((prev) => prev.map((b) => (b.id === editing.id ? updated : b)))
+        setItems((prev) => prev.map((c) => (c.id === editing.id ? updated : c)))
       } else {
-        const res = await api.post<Branch>('/master/branches', values)
+        const res = await api.post<Customer>('/master/customers', values)
         const created = res.data ?? {
           id: Date.now().toString(),
           ...values
@@ -102,25 +109,25 @@ export default function BranchPage(): React.JSX.Element {
       }
       setDialogOpen(false)
     } catch {
-      setError('Failed to save branch')
+      setError('Failed to save customer')
     }
   }
 
-  const handleDelete = async (branch: Branch): Promise<void> => {
+  const handleDelete = async (customer: Customer): Promise<void> => {
     try {
-      await api.delete(`/master/branches/${branch.id}`)
+      await api.delete(`/master/customers/${customer.id}`)
     } catch {
-      setError('Failed to delete branch')
+      setError('Failed to delete customer')
     }
-    setItems((prev) => prev.filter((b) => b.id !== branch.id))
+    setItems((prev) => prev.filter((c) => c.id !== customer.id))
   }
 
   return (
     <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Master Branch</Typography>
+        <Typography variant="h5">Master Customer</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Add Branch
+          Add Customer
         </Button>
       </Stack>
 
@@ -139,41 +146,39 @@ export default function BranchPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Code</TableCell>
                 <TableCell>Name</TableCell>
-                <TableCell>Address</TableCell>
                 <TableCell>Phone</TableCell>
+                <TableCell>Tier</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={4} align="center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
-                    No branches found
+                  <TableCell colSpan={4} align="center">
+                    No customers found
                   </TableCell>
                 </TableRow>
               ) : (
-                items?.map((branch) => (
-                  <TableRow key={branch.id} hover>
-                    <TableCell>{branch.code}</TableCell>
-                    <TableCell>{branch.name}</TableCell>
-                    <TableCell>{branch.address}</TableCell>
-                    <TableCell>{branch.phone}</TableCell>
+                items?.map((customer) => (
+                  <TableRow key={customer.id} hover>
+                    <TableCell>{customer.name}</TableCell>
+                    <TableCell>{customer.phone}</TableCell>
+                    <TableCell>{customer.tier}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(branch)}>
+                      <IconButton size="small" onClick={() => openEdit(customer)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => void handleDelete(branch)}
+                        onClick={() => void handleDelete(customer)}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -187,17 +192,9 @@ export default function BranchPage(): React.JSX.Element {
       )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editing ? 'Edit Branch' : 'Add Branch'}</DialogTitle>
+        <DialogTitle>{editing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
         <DialogContent>
-          <Box component="form" id="branch-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              label="Code"
-              fullWidth
-              {...register('code')}
-              error={!!errors.code}
-              helperText={errors.code?.message}
-            />
+          <Box component="form" id="customer-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
               label="Name"
@@ -208,19 +205,19 @@ export default function BranchPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Address"
-              fullWidth
-              {...register('address')}
-              error={!!errors.address}
-              helperText={errors.address?.message}
-            />
-            <TextField
-              margin="normal"
               label="Phone"
               fullWidth
               {...register('phone')}
               error={!!errors.phone}
               helperText={errors.phone?.message}
+            />
+            <TextField
+              margin="normal"
+              label="Tier"
+              fullWidth
+              {...register('tier')}
+              error={!!errors.tier}
+              helperText={errors.tier?.message}
             />
           </Box>
         </DialogContent>
@@ -228,7 +225,7 @@ export default function BranchPage(): React.JSX.Element {
           <Button onClick={closeDialog} color="inherit" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" form="branch-form" variant="contained" disabled={isSubmitting}>
+          <Button type="submit" form="customer-form" variant="contained" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>

@@ -35,6 +35,29 @@ function createWindow(): void {
   }
 }
 
+function createMasterCustomerWindow(): void {
+  console.log('createMasterCustomerWindow')
+  const win = new BrowserWindow({
+    width: 800,
+    height: 600,
+    show: true,
+    autoHideMenuBar: true,
+    ...(process.platform === 'linux' ? { icon } : {}),
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    win.loadURL(`${process.env['ELECTRON_RENDERER_URL']}#/master-customer?add-customer=1`)
+  } else {
+    win.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: 'master-customer?add-customer=1'
+    })
+  }
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
@@ -51,6 +74,10 @@ app.whenReady().then(() => {
 
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
+
+  ipcMain.handle('open-master-customer-window', () => {
+    createMasterCustomerWindow()
+  })
 
   createWindow()
 

@@ -24,34 +24,34 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import api from '../../../lib/api'
 
-const branchSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
-  name: z.string().min(1, 'Name is required'),
-  address: z.string().min(1, 'Address is required'),
-  phone: z.string().min(6, 'Phone is too short')
+const userSchema = z.object({
+  username: z.string().min(1, 'Username is required'),
+  fullName: z.string().min(1, 'Full name is required'),
+  email: z.string().email('Invalid email address'),
+  role: z.string().min(1, 'Role is required')
 })
 
-export type BranchFormValues = z.infer<typeof branchSchema>
+export type UserFormValues = z.infer<typeof userSchema>
 
-export type Branch = BranchFormValues & {
+export type User = UserFormValues & {
   id: string
 }
 
-export default function BranchPage(): React.JSX.Element {
-  const [items, setItems] = useState<Branch[]>([])
+export default function UserPage(): React.JSX.Element {
+  const [items, setItems] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [editing, setEditing] = useState<Branch | null>(null)
+  const [editing, setEditing] = useState<User | null>(null)
 
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting }
-  } = useForm<BranchFormValues>({
-    resolver: zodResolver(branchSchema),
-    defaultValues: { code: '', name: '', address: '', phone: '' }
+  } = useForm<UserFormValues>({
+    resolver: zodResolver(userSchema),
+    defaultValues: { username: '', fullName: '', email: '', role: '' }
   })
 
   useEffect(() => {
@@ -59,10 +59,10 @@ export default function BranchPage(): React.JSX.Element {
       try {
         setLoading(true)
         setError(null)
-        const res = await api.get<Branch[]>('/master/branches')
+        const res = await api.get<User[]>('/master/users')
         setItems(res.data ?? [])
       } catch {
-        setError('Failed to load branches')
+        setError('Failed to load users')
       } finally {
         setLoading(false)
       }
@@ -72,13 +72,13 @@ export default function BranchPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', address: '', phone: '' })
+    reset({ username: '', fullName: '', email: '', role: '' })
     setDialogOpen(true)
   }
 
-  const openEdit = (branch: Branch): void => {
-    setEditing(branch)
-    reset({ code: branch.code, name: branch.name, address: branch.address, phone: branch.phone })
+  const openEdit = (user: User): void => {
+    setEditing(user)
+    reset({ username: user.username, fullName: user.fullName, email: user.email, role: user.role })
     setDialogOpen(true)
   }
 
@@ -86,14 +86,14 @@ export default function BranchPage(): React.JSX.Element {
     setDialogOpen(false)
   }
 
-  const onSubmit = async (values: BranchFormValues): Promise<void> => {
+  const onSubmit = async (values: UserFormValues): Promise<void> => {
     try {
       if (editing) {
-        const res = await api.put<Branch>(`/master/branches/${editing.id}`, values)
+        const res = await api.put<User>(`/master/users/${editing.id}`, values)
         const updated = res.data ?? { ...editing, ...values }
-        setItems((prev) => prev.map((b) => (b.id === editing.id ? updated : b)))
+        setItems((prev) => prev.map((u) => (u.id === editing.id ? updated : u)))
       } else {
-        const res = await api.post<Branch>('/master/branches', values)
+        const res = await api.post<User>('/master/users', values)
         const created = res.data ?? {
           id: Date.now().toString(),
           ...values
@@ -102,25 +102,25 @@ export default function BranchPage(): React.JSX.Element {
       }
       setDialogOpen(false)
     } catch {
-      setError('Failed to save branch')
+      setError('Failed to save user')
     }
   }
 
-  const handleDelete = async (branch: Branch): Promise<void> => {
+  const handleDelete = async (user: User): Promise<void> => {
     try {
-      await api.delete(`/master/branches/${branch.id}`)
+      await api.delete(`/master/users/${user.id}`)
     } catch {
-      setError('Failed to delete branch')
+      setError('Failed to delete user')
     }
-    setItems((prev) => prev.filter((b) => b.id !== branch.id))
+    setItems((prev) => prev.filter((u) => u.id !== user.id))
   }
 
   return (
     <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Master Branch</Typography>
+        <Typography variant="h5">Master User</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Add Branch
+          Add User
         </Button>
       </Stack>
 
@@ -139,10 +139,10 @@ export default function BranchPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Code</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Address</TableCell>
-                <TableCell>Phone</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Full Name</TableCell>
+                <TableCell>Email</TableCell>
+                <TableCell>Role</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -156,24 +156,24 @@ export default function BranchPage(): React.JSX.Element {
               ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
-                    No branches found
+                    No users found
                   </TableCell>
                 </TableRow>
               ) : (
-                items?.map((branch) => (
-                  <TableRow key={branch.id} hover>
-                    <TableCell>{branch.code}</TableCell>
-                    <TableCell>{branch.name}</TableCell>
-                    <TableCell>{branch.address}</TableCell>
-                    <TableCell>{branch.phone}</TableCell>
+                items?.map((user) => (
+                  <TableRow key={user.id} hover>
+                    <TableCell>{user.username}</TableCell>
+                    <TableCell>{user.fullName}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>{user.role}</TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(branch)}>
+                      <IconButton size="small" onClick={() => openEdit(user)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => void handleDelete(branch)}
+                        onClick={() => void handleDelete(user)}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -187,40 +187,40 @@ export default function BranchPage(): React.JSX.Element {
       )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editing ? 'Edit Branch' : 'Add Branch'}</DialogTitle>
+        <DialogTitle>{editing ? 'Edit User' : 'Add User'}</DialogTitle>
         <DialogContent>
-          <Box component="form" id="branch-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          <Box component="form" id="user-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
-              label="Code"
+              label="Username"
               fullWidth
-              {...register('code')}
-              error={!!errors.code}
-              helperText={errors.code?.message}
+              {...register('username')}
+              error={!!errors.username}
+              helperText={errors.username?.message}
             />
             <TextField
               margin="normal"
-              label="Name"
+              label="Full Name"
               fullWidth
-              {...register('name')}
-              error={!!errors.name}
-              helperText={errors.name?.message}
+              {...register('fullName')}
+              error={!!errors.fullName}
+              helperText={errors.fullName?.message}
             />
             <TextField
               margin="normal"
-              label="Address"
+              label="Email"
               fullWidth
-              {...register('address')}
-              error={!!errors.address}
-              helperText={errors.address?.message}
+              {...register('email')}
+              error={!!errors.email}
+              helperText={errors.email?.message}
             />
             <TextField
               margin="normal"
-              label="Phone"
+              label="Role"
               fullWidth
-              {...register('phone')}
-              error={!!errors.phone}
-              helperText={errors.phone?.message}
+              {...register('role')}
+              error={!!errors.role}
+              helperText={errors.role?.message}
             />
           </Box>
         </DialogContent>
@@ -228,7 +228,7 @@ export default function BranchPage(): React.JSX.Element {
           <Button onClick={closeDialog} color="inherit" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" form="branch-form" variant="contained" disabled={isSubmitting}>
+          <Button type="submit" form="user-form" variant="contained" disabled={isSubmitting}>
             {isSubmitting ? 'Saving...' : 'Save'}
           </Button>
         </DialogActions>

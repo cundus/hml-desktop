@@ -1,6 +1,6 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import MainLayout from './layouts/MainLayout'
-import Home from './pages/Home'
+import Home from './pages/home/Home'
 import Pets from './pages/Pets'
 import Settings from './pages/Settings'
 import BranchPage from './pages/settings/master/Branch'

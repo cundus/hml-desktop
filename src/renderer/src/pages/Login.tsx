@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
@@ -6,22 +5,32 @@ import Paper from '@mui/material/Paper'
 import Box from '@mui/material/Box'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import Typography from '@mui/material/Typography'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+import { zodResolver } from '@hookform/resolvers/zod'
 import useAuth from '../hooks/useAuth'
+
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters')
+})
+
+type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function Login(): React.JSX.Element {
   const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      await login({ email, password })
-    } finally {
-      setSubmitting(false)
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting }
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' }
+  })
+
+  const onSubmit = async (values: LoginFormValues): Promise<void> => {
+    await login(values)
   }
 
   return (
@@ -29,7 +38,7 @@ export default function Login(): React.JSX.Element {
       component="main"
       sx={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
-      <Paper elevation={6} square sx={{ p: 4, width: '100%', maxWidth: 360 }}>
+      <Paper elevation={6} square sx={{ p: 4, width: '100%', maxWidth: 360, borderRadius: 2 }}>
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 2 }}>
           <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
             <LockOutlinedIcon />
@@ -38,7 +47,7 @@ export default function Login(): React.JSX.Element {
             Sign in
           </Typography>
         </Box>
-        <Box component="form" noValidate onSubmit={handleSubmit}>
+        <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)}>
           <TextField
             margin="normal"
             required
@@ -47,8 +56,9 @@ export default function Login(): React.JSX.Element {
             label="Email Address"
             autoComplete="email"
             autoFocus
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...register('email')}
+            error={!!errors.email}
+            helperText={errors.email?.message}
           />
           <TextField
             margin="normal"
@@ -58,11 +68,18 @@ export default function Login(): React.JSX.Element {
             type="password"
             id="password"
             autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            {...register('password')}
+            error={!!errors.password}
+            helperText={errors.password?.message}
           />
-          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3 }} disabled={submitting}>
-            {submitting ? 'Signing in...' : 'Sign In'}
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            sx={{ mt: 3 }}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Signing in...' : 'Sign In'}
           </Button>
         </Box>
       </Paper>

@@ -9,6 +9,9 @@ import HomeIcon from '@mui/icons-material/Home'
 import PetsIcon from '@mui/icons-material/Pets'
 import SettingsIcon from '@mui/icons-material/Settings'
 import LogoutIcon from '@mui/icons-material/Logout'
+import StoreIcon from '@mui/icons-material/Store'
+import UserIcon from '@mui/icons-material/Person'
+import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
 import { ExpandLess, ExpandMore } from '@mui/icons-material'
 import useAuth from '../hooks/useAuth'
 
@@ -25,6 +28,7 @@ export type MenuItem = {
 const menus: MenuItem[] = [
   { key: 'home', label: 'Home', icon: <HomeIcon />, path: '/', roles: [] },
   { key: 'pets', label: 'Pets', icon: <PetsIcon />, path: '/pets', roles: [] },
+  { key: 'sales', label: 'Sales', icon: <ShoppingBasketIcon />, path: '/sales', roles: [] },
   {
     key: 'settings-group',
     label: 'Settings',
@@ -33,10 +37,17 @@ const menus: MenuItem[] = [
     children: [
       {
         key: 'master',
-        label: 'Master',
+        label: 'Master Data',
         icon: <SettingsIcon />,
         roles: ['admin'],
         children: [
+          {
+            key: 'master-branch',
+            label: 'Master Branch',
+            icon: <StoreIcon />,
+            path: '/master-branch',
+            roles: ['admin']
+          },
           {
             key: 'master-pet',
             label: 'Master Pet',
@@ -47,7 +58,7 @@ const menus: MenuItem[] = [
           {
             key: 'master-user',
             label: 'Master User',
-            icon: <SettingsIcon />,
+            icon: <UserIcon />,
             path: '/master-user',
             roles: ['admin']
           }

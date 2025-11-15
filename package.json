@@ -25,11 +25,14 @@
     "@electron-toolkit/utils": "^4.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
+    "@hookform/resolvers": "^5.2.2",
     "@mui/icons-material": "^7.3.5",
     "@mui/material": "^7.3.5",
     "axios": "^1.13.2",
     "electron-updater": "^6.3.9",
-    "react-router-dom": "^7.9.6"
+    "react-hook-form": "^7.66.0",
+    "react-router-dom": "^7.9.6",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@electron-toolkit/eslint-config-prettier": "^3.0.0",

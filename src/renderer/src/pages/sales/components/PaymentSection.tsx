@@ -1,3 +1,4 @@
+import type React from 'react'
 import {
   Box,
   FormControlLabel,
@@ -16,6 +17,7 @@ export type PaymentSectionProps = {
   paidAmount: number
   onMethodChange: (method: PaymentMethod) => void
   onPaidAmountChange: (amount: number) => void
+  paidInputRef?: React.Ref<HTMLInputElement>
 }
 
 export default function PaymentSection({
@@ -23,7 +25,8 @@ export default function PaymentSection({
   method,
   paidAmount,
   onMethodChange,
-  onPaidAmountChange
+  onPaidAmountChange,
+  paidInputRef
 }: PaymentSectionProps): React.JSX.Element {
   const change = method === 'cash' ? Math.max(0, paidAmount - total) : 0
 
@@ -52,6 +55,7 @@ export default function PaymentSection({
             onChange={(e) => onPaidAmountChange(Number(e.target.value) || 0)}
             sx={{ maxWidth: 180 }}
             inputProps={{ min: 0 }}
+            inputRef={paidInputRef}
           />
           <Typography variant="body2" color="text.secondary">
             Change:{' '}

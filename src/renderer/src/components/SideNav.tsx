@@ -1,18 +1,17 @@
-import { Fragment, useState, type ReactNode } from 'react'
-import { NavLink } from 'react-router-dom'
+import { ExpandLess, ExpandMore } from '@mui/icons-material'
+import HomeIcon from '@mui/icons-material/Home'
+import LogoutIcon from '@mui/icons-material/Logout'
+import UserIcon from '@mui/icons-material/Person'
+import SettingsIcon from '@mui/icons-material/Settings'
+import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
+import StoreIcon from '@mui/icons-material/Store'
+import Collapse from '@mui/material/Collapse'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
 import ListItemIcon from '@mui/material/ListItemIcon'
 import ListItemText from '@mui/material/ListItemText'
-import Collapse from '@mui/material/Collapse'
-import HomeIcon from '@mui/icons-material/Home'
-import PetsIcon from '@mui/icons-material/Pets'
-import SettingsIcon from '@mui/icons-material/Settings'
-import LogoutIcon from '@mui/icons-material/Logout'
-import StoreIcon from '@mui/icons-material/Store'
-import UserIcon from '@mui/icons-material/Person'
-import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
-import { ExpandLess, ExpandMore } from '@mui/icons-material'
+import { Fragment, useState, type ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
 
 export type MenuItem = {
@@ -27,7 +26,6 @@ export type MenuItem = {
 
 const menus: MenuItem[] = [
   { key: 'home', label: 'Home', icon: <HomeIcon />, path: '/', roles: [] },
-  { key: 'pets', label: 'Pets', icon: <PetsIcon />, path: '/pets', roles: [] },
   { key: 'sales', label: 'Sales', icon: <ShoppingBasketIcon />, path: '/sales', roles: [] },
   {
     key: 'settings-group',

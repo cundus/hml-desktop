@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Box, Grid } from '@mui/material'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Box, Grid, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
 import Button from '@mui/material/Button'
 import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
@@ -26,6 +26,11 @@ export default function SalesPage(): React.JSX.Element {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paidAmount, setPaidAmount] = useState(0)
+  const [productDialogOpen, setProductDialogOpen] = useState(false)
+
+  const customerInputRef = useRef<HTMLInputElement | null>(null)
+  const discountInputRef = useRef<HTMLInputElement | null>(null)
+  const paidInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const loadCustomers = async (): Promise<void> => {
@@ -44,7 +49,11 @@ export default function SalesPage(): React.JSX.Element {
     [cartItems]
   )
 
-  const total = useMemo(() => Math.max(0, subtotal - discount), [subtotal, discount])
+  const total = useMemo(() => {
+    const safePercent = Math.max(0, Math.min(100, discount))
+    const discountAmount = (subtotal * safePercent) / 100
+    return Math.max(0, subtotal - discountAmount)
+  }, [subtotal, discount])
 
   const handleAddToCart = (product: Product): void => {
     setCartItems((prev) => {
@@ -67,16 +76,64 @@ export default function SalesPage(): React.JSX.Element {
   }
 
   const handleChangeDiscount = (value: number): void => {
-    setDiscount(Math.max(0, value))
+    setDiscount(Math.max(0, Math.min(100, value)))
   }
 
-  const handleCheckout = (): void => {
-    // Placeholder for actual checkout logic / dialog
+  const handleCheckout = useCallback((): void => {
     alert('Sale completed (mock).')
     setCartItems([])
     setDiscount(0)
     setPaidAmount(0)
-  }
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent): void => {
+      const target = event.target as HTMLElement | null
+      const tagName = target?.tagName
+      const isInputLike =
+        tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.getAttribute('role') === 'textbox'
+
+      // Allow Ctrl+Enter / F9 to work even when typing, but avoid intercepting other keys
+      if (isInputLike && !(event.ctrlKey && event.key === 'Enter') && event.key !== 'F9') {
+        return
+      }
+
+      if (event.key === 'F2' || (event.ctrlKey && event.key.toLowerCase() === 'b')) {
+        event.preventDefault()
+        setProductDialogOpen(true)
+        return
+      }
+
+      if (event.key === 'F3' || (event.ctrlKey && event.key.toLowerCase() === 'u')) {
+        event.preventDefault()
+        customerInputRef.current?.focus()
+        return
+      }
+
+      if (event.key === 'F4' || (event.ctrlKey && event.key.toLowerCase() === 'd')) {
+        event.preventDefault()
+        discountInputRef.current?.focus()
+        return
+      }
+
+      if (event.key === 'F5' || (event.ctrlKey && event.key.toLowerCase() === 'p')) {
+        event.preventDefault()
+        paidInputRef.current?.focus()
+        return
+      }
+
+      if (event.key === 'F9' || (event.ctrlKey && event.key === 'Enter')) {
+        if (cartItems.length === 0) return
+        event.preventDefault()
+        handleCheckout()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [cartItems.length, handleCheckout])
 
   return (
     <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
@@ -95,12 +152,59 @@ export default function SalesPage(): React.JSX.Element {
 
         <Divider sx={{ mb: 2 }} />
 
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            bgcolor: 'background.default',
+            border: '1px solid',
+            borderColor: 'divider'
+          }}
+        >
+          <Box>
+            <Typography variant="subtitle2" color="text.secondary">
+              Total to Pay
+            </Typography>
+            <Typography variant="h3" fontWeight={700} color="primary.main">
+              {total.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+            </Typography>
+          </Box>
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography variant="body2" color="text.secondary">
+              Items: {cartItems.length}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Subtotal:{' '}
+              {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Discount: {discount}%
+            </Typography>
+          </Box>
+        </Box>
+
         <Grid container spacing={2} sx={{ flexGrow: 1, minHeight: 0 }}>
           <Grid
             size={{ xs: 12, md: 7 }}
             sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
           >
-            <ProductBrowser products={products} onAdd={handleAddToCart} />
+            <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+              <CartPanel
+                items={cartItems}
+                subtotal={subtotal}
+                discount={discount}
+                total={total}
+                onQuantityChange={handleQuantityChange}
+                onRemove={handleRemoveItem}
+                onChangeDiscount={handleChangeDiscount}
+                onCheckout={handleCheckout}
+                discountInputRef={discountInputRef}
+              />
+            </Box>
           </Grid>
           <Grid
             size={{ xs: 12, md: 5 }}
@@ -113,6 +217,7 @@ export default function SalesPage(): React.JSX.Element {
                     customers={customers}
                     selectedCustomerId={selectedCustomerId}
                     onChange={setSelectedCustomerId}
+                    inputRef={customerInputRef}
                   />
                 </Box>
                 <Button
@@ -129,22 +234,34 @@ export default function SalesPage(): React.JSX.Element {
                 paidAmount={paidAmount}
                 onMethodChange={setPaymentMethod}
                 onPaidAmountChange={setPaidAmount}
+                paidInputRef={paidInputRef}
               />
-              <Box sx={{ flexGrow: 1, minHeight: 0 }}>
-                <CartPanel
-                  items={cartItems}
-                  subtotal={subtotal}
-                  discount={discount}
-                  total={total}
-                  onQuantityChange={handleQuantityChange}
-                  onRemove={handleRemoveItem}
-                  onChangeDiscount={handleChangeDiscount}
-                  onCheckout={handleCheckout}
-                />
-              </Box>
+              <Button
+                variant="contained"
+                color="secondary"
+                sx={{ mt: 1 }}
+                onClick={() => setProductDialogOpen(true)}
+              >
+                Browse products (F2)
+              </Button>
             </Box>
           </Grid>
         </Grid>
+
+        <Dialog
+          open={productDialogOpen}
+          onClose={() => setProductDialogOpen(false)}
+          fullWidth
+          maxWidth="md"
+        >
+          <DialogTitle>Browse products</DialogTitle>
+          <DialogContent dividers sx={{ height: 420 }}>
+            <ProductBrowser products={products} onAdd={handleAddToCart} />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setProductDialogOpen(false)}>Close</Button>
+          </DialogActions>
+        </Dialog>
       </Paper>
     </Box>
   )

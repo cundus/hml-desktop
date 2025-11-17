@@ -1,3 +1,4 @@
+import type React from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -29,6 +30,7 @@ export type CartPanelProps = {
   onChangeDiscount: (value: number) => void
   onCheckout: () => void
   disabled?: boolean
+  discountInputRef?: React.Ref<HTMLInputElement>
 }
 
 export default function CartPanel({
@@ -40,7 +42,8 @@ export default function CartPanel({
   onRemove,
   onChangeDiscount,
   onCheckout,
-  disabled
+  disabled,
+  discountInputRef
 }: CartPanelProps): React.JSX.Element {
   const handleQtyDelta = (id: string, delta: number): void => {
     const item = items.find((i) => i.id === id)
@@ -148,7 +151,7 @@ export default function CartPanel({
 
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            Discount (IDR)
+            Discount (%)
           </Typography>
           <TextField
             size="small"
@@ -156,7 +159,8 @@ export default function CartPanel({
             value={discount}
             onChange={(e) => onChangeDiscount(Number(e.target.value) || 0)}
             sx={{ width: 140 }}
-            inputProps={{ min: 0 }}
+            inputProps={{ min: 0, max: 100 }}
+            inputRef={discountInputRef}
           />
         </Stack>
 

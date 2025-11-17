@@ -41,7 +41,6 @@
 
 // export default api
 
-
 type ApiResponse<T> = { data: T }
 
 interface ApiClient {
@@ -252,9 +251,7 @@ async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T
     }
     const perms = Array.from(
       new Set(
-        groupIds.flatMap((id) =>
-          permissionGroups.find((g) => g.id === id)?.permissions ?? []
-        )
+        groupIds.flatMap((id) => permissionGroups.find((g) => g.id === id)?.permissions ?? [])
       )
     )
 

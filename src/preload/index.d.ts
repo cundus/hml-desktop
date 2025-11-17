@@ -1,8 +1,73 @@
 import { ElectronAPI } from '@electron-toolkit/preload'
 
+type User = {
+  id: string
+  name: string
+  email: string
+  password: string
+  createdAt: Date
+  updatedAt: Date
+  syncedAt: Date | null
+  deletedAt: Date | null
+  deviceId: string | null
+  storeId: string | null
+}
+
+type Product = {
+  id: string
+  sku: string
+  name: string
+  description: string | null
+  unit: string
+  cost: number
+  isActive: boolean
+  categoryId: string | null
+  createdAt: Date
+  updatedAt: Date
+  syncedAt: Date | null
+  deletedAt: Date | null
+}
+
+interface DatabaseAPI {
+  users: {
+    getAll: () => Promise<User[]>
+    getById: (id: string) => Promise<User | null>
+    create: (data: { name: string; email: string; password: string }) => Promise<User>
+    update: (id: string, data: { name?: string; email?: string }) => Promise<User>
+    softDelete: (id: string) => Promise<User>
+  }
+  products: {
+    getAll: () => Promise<Product[]>
+    getById: (id: string) => Promise<Product | null>
+    create: (data: {
+      sku: string
+      name: string
+      description?: string
+      unit: string
+      cost: number
+      categoryId?: string
+    }) => Promise<Product>
+    update: (
+      id: string,
+      data: {
+        name?: string
+        description?: string
+        cost?: number
+        isActive?: boolean
+      }
+    ) => Promise<Product>
+    softDelete: (id: string) => Promise<Product>
+  }
+}
+
+interface API {
+  openMasterCustomerWindow: () => void
+  db: DatabaseAPI
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
-    api: unknown
+    api: API
   }
 }

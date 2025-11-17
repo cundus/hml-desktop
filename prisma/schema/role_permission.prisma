@@ -1,0 +1,510 @@
+// FULL PRISMA SCHEMA — VERSION B (Cloud Schema)
+// Local (SQLite) will use the exact same schema
+// All tables + columns use snake_case via @@map and @map
+// Compatible with Electron Offline-first + PostgreSQL Cloud
+////////////////////////////////////////////////////
+// RBAC — User, Role, UserRole, Permission, RolePermission
+////////////////////////////////////////////////////
+
+model User {
+  id       String @id @default(uuid()) @map("id")
+  name     String @map("name")
+  email    String @unique @map("email")
+  password String @map("password")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  roles UserRole[]
+
+  stockTransactions StockTransaction[]
+  stockAdjustments  StockAdjustment[]
+  transactions      Transactions[]
+  auditLogs         AuditLog[]
+  store             Store?             @relation(fields: [storeId], references: [id])
+  storeId           String?
+
+  @@map("user")
+}
+
+model Role {
+  id          String  @id @default(uuid()) @map("id")
+  name        String  @unique @map("name")
+  description String? @map("description")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@map("role")
+}
+
+model Permission {
+  id          String  @id @default(uuid()) @map("id")
+  name        String  @unique @map("name")
+  description String? @map("description")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  roles RolePermission[]
+
+  @@map("permission")
+}
+
+model UserRole {
+  id     String @id @default(uuid()) @map("id")
+  userId String @map("user_id")
+  roleId String @map("role_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  user User @relation(fields: [userId], references: [id])
+  role Role @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_role")
+}
+
+model RolePermission {
+  id           String @id @default(uuid()) @map("id")
+  roleId       String @map("role_id")
+  permissionId String @map("permission_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permission")
+}
+
+////////////////////////////////////////////////////
+// STORE
+////////////////////////////////////////////////////
+
+model Store {
+  id          String  @id @default(uuid()) @map("id")
+  code        String  @unique @map("code")
+  name        String  @map("name")
+  address     String? @map("address")
+  warehouseId String  @map("warehouse_id")
+
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
+  users         User[]
+  transactions  Transactions[]
+  productPrices ProductPrice[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("store")
+}
+
+////////////////////////////////////////////////////
+// WAREHOUSE
+////////////////////////////////////////////////////
+
+model Warehouse {
+  id      String  @id @default(uuid()) @map("id")
+  code    String  @unique @map("code")
+  name    String  @map("name")
+  address String? @map("address")
+  type    String  @map("type")
+
+  productLocations  ProductLocation[]
+  purchaseOrders    PurchaseOrder[]
+  stockTransactions StockTransaction[]
+  transactions      Transactions[]
+
+  transferRequestsSource      TransferRequest[] @relation("TransferSource")
+  transferRequestsDestination TransferRequest[] @relation("TransferDestination")
+
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  syncedAt         DateTime?         @map("synced_at")
+  deletedAt        DateTime?         @map("deleted_at")
+  stores           Store[]
+  stockAdjustments StockAdjustment[]
+
+  @@map("warehouse")
+}
+
+////////////////////////////////////////////////////
+// PRODUCT
+////////////////////////////////////////////////////
+
+model Product {
+  id          String  @id @default(uuid()) @map("id")
+  sku         String  @unique @map("sku")
+  name        String  @map("name")
+  description String? @map("description")
+  unit        String  @map("unit")
+  cost        Float   @map("cost")
+  isActive    Boolean @default(true) @map("is_active")
+
+  categoryId String?   @map("category_id")
+  category   Category? @relation(fields: [categoryId], references: [id])
+
+  batches            Batch[]
+  stockTransactions  StockTransaction[]
+  stockAdjustments   StockAdjustment[]
+  transactionItems   TransactionItems[]
+  purchaseOrderItems PurchaseOrderItem[]
+  transferItems      TransferItem[]
+  productLocations   ProductLocation[]
+  productPrices      ProductPrice[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("product")
+}
+
+model Category {
+  id   String @id @default(uuid()) @map("id")
+  name String @map("name")
+
+  products Product[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("category")
+}
+
+model Supplier {
+  id      String  @id @default(uuid()) @map("id")
+  name    String  @map("name")
+  phone   String? @map("phone")
+  address String? @map("address")
+
+  purchaseOrders    PurchaseOrder[]
+  stockTransactions StockTransaction[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("supplier")
+}
+
+////////////////////////////////////////////////////
+// PRODUCT PRICE
+////////////////////////////////////////////////////
+
+model ProductPrice {
+  id        String    @id @default(uuid()) @map("id")
+  productId String    @map("product_id")
+  storeId   String    @map("store_id")
+  price     Float     @map("price")
+  startDate DateTime  @map("start_date")
+  endDate   DateTime? @map("end_date")
+
+  product Product @relation(fields: [productId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@unique([productId, storeId, startDate])
+  @@map("product_price")
+}
+
+////////////////////////////////////////////////////
+// PRODUCT LOCATION
+////////////////////////////////////////////////////
+
+model ProductLocation {
+  id               String  @id @default(uuid()) @map("id")
+  productId        String  @map("product_id")
+  warehouseId      String  @map("warehouse_id")
+  location         String? @map("location")
+  quantity         Int     @default(0) @map("quantity")
+  reservedQuantity Int     @default(0) @map("reserved_quantity")
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  @@unique([productId, warehouseId])
+  @@map("product_location")
+}
+
+////////////////////////////////////////////////////
+// BATCH
+////////////////////////////////////////////////////
+
+model Batch {
+  id         String    @id @default(uuid()) @map("id")
+  productId  String    @map("product_id")
+  code       String    @map("code")
+  expiryDate DateTime? @map("expiry_date")
+
+  product           Product            @relation(fields: [productId], references: [id])
+  stockTransactions StockTransaction[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("batch")
+}
+
+////////////////////////////////////////////////////
+// CUSTOMER
+////////////////////////////////////////////////////
+
+model Customer {
+  id    String  @id @default(uuid()) @map("id")
+  name  String  @map("name")
+  phone String? @map("phone")
+
+  stockTransactions StockTransaction[]
+  transactions      Transactions[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("customer")
+}
+
+////////////////////////////////////////////////////
+// STOCK TRANSACTION LEDGER
+////////////////////////////////////////////////////
+
+enum StockTransactionType {
+  INBOUND
+  OUTBOUND
+  TRANSFER_IN
+  TRANSFER_OUT
+  ADJUSTMENT
+  SALE
+}
+
+model StockTransaction {
+  id          String               @id @default(uuid()) @map("id")
+  productId   String               @map("product_id")
+  warehouseId String               @map("warehouse_id")
+  type        StockTransactionType @map("type")
+  quantity    Int                  @map("quantity")
+  reference   String?              @map("reference")
+  batchId     String?              @map("batch_id")
+  supplierId  String?              @map("supplier_id")
+  customerId  String?              @map("customer_id")
+  performedBy String               @map("performed_by")
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  batch     Batch?    @relation(fields: [batchId], references: [id])
+  supplier  Supplier? @relation(fields: [supplierId], references: [id])
+  customer  Customer? @relation(fields: [customerId], references: [id])
+  user      User      @relation(fields: [performedBy], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  @@map("stock_transaction")
+}
+
+////////////////////////////////////////////////////
+// STOCK ADJUSTMENT
+////////////////////////////////////////////////////
+
+model StockAdjustment {
+  id          String  @id @default(uuid()) @map("id")
+  productId   String  @map("product_id")
+  warehouseId String  @map("warehouse_id")
+  difference  Int     @map("difference")
+  note        String? @map("note")
+  performedBy String  @map("performed_by")
+
+  product   Product   @relation(fields: [productId], references: [id])
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
+  user      User      @relation(fields: [performedBy], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  @@map("stock_adjustment")
+}
+
+////////////////////////////////////////////////////
+// PURCHASE ORDER
+////////////////////////////////////////////////////
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid()) @map("id")
+  code        String              @unique @map("code")
+  supplierId  String              @map("supplier_id")
+  warehouseId String              @map("warehouse_id")
+  status      PurchaseOrderStatus @map("status")
+  total       Float               @default(0) @map("total")
+
+  supplier  Supplier            @relation(fields: [supplierId], references: [id])
+  warehouse Warehouse           @relation(fields: [warehouseId], references: [id])
+  items     PurchaseOrderItem[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("purchase_order")
+}
+
+model PurchaseOrderItem {
+  id        String @id @default(uuid()) @map("id")
+  poId      String @map("po_id")
+  productId String @map("product_id")
+  quantity  Int    @map("quantity")
+  cost      Float  @map("cost")
+
+  po      PurchaseOrder @relation(fields: [poId], references: [id])
+  product Product       @relation(fields: [productId], references: [id])
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("purchase_order_item")
+}
+
+////////////////////////////////////////////////////
+// TRANSFER REQUEST (Warehouse → Warehouse)
+////////////////////////////////////////////////////
+
+model TransferRequest {
+  id            String  @id @default(uuid()) @map("id")
+  sourceId      String  @map("source_id")
+  destinationId String  @map("destination_id")
+  reference     String  @unique @map("reference")
+  note          String? @map("note")
+
+  source      Warehouse      @relation("TransferSource", fields: [sourceId], references: [id])
+  destination Warehouse      @relation("TransferDestination", fields: [destinationId], references: [id])
+  items       TransferItem[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  @@map("transfer_request")
+}
+
+model TransferItem {
+  id         String @id @default(uuid()) @map("id")
+  transferId String @map("transfer_id")
+  productId  String @map("product_id")
+  quantity   Int    @map("quantity")
+
+  transfer TransferRequest @relation(fields: [transferId], references: [id])
+  product  Product         @relation(fields: [productId], references: [id])
+
+  deletedAt DateTime? @map("deleted_at")
+
+  @@map("transfer_item")
+}
+
+////////////////////////////////////////////////////
+// POS SALES
+////////////////////////////////////////////////////
+
+model Transactions {
+  id          String  @id @default(uuid()) @map("id")
+  code        String  @unique @map("code")
+  storeId     String  @map("store_id")
+  warehouseId String  @map("warehouse_id")
+  subtotal    Float   @map("subtotal")
+  discount    Float   @map("discount")
+  tax         Float   @map("tax")
+  total       Float   @map("total")
+  customerId  String? @map("customer_id")
+  userId      String  @map("user_id")
+
+  store     Store              @relation(fields: [storeId], references: [id])
+  warehouse Warehouse          @relation(fields: [warehouseId], references: [id])
+  customer  Customer?          @relation(fields: [customerId], references: [id])
+  user      User               @relation(fields: [userId], references: [id])
+  items     TransactionItems[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  @@map("transactions")
+}
+
+model TransactionItems {
+  id            String  @id @default(uuid()) @map("id")
+  transactionId String  @map("transaction_id")
+  productId     String  @map("product_id")
+  quantity      Int     @map("quantity")
+  customerId    String? @map("customer_id")
+
+  transaction Transactions @relation(fields: [transactionId], references: [id])
+  product     Product      @relation(fields: [productId], references: [id])
+
+  deletedAt DateTime? @map("deleted_at")
+}
+
+model AuditLog {
+  id        String    @id @default(uuid()) @map("id")
+  action    String    @map("action")
+  userId    String    @map("user_id")
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_log")
+}

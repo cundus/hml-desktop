@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { disconnectPrisma } from './db'
+import { bootstrap } from './bootstrap'
 
 function createWindow(): void {
   // Create the browser window.
@@ -79,6 +81,9 @@ app.whenReady().then(() => {
     createMasterCustomerWindow()
   })
 
+  // Initialize services and controllers (registers all database IPC handlers)
+  bootstrap()
+
   createWindow()
 
   app.on('activate', function () {
@@ -95,6 +100,11 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+// Clean up Prisma connection before app quits
+app.on('before-quit', async () => {
+  await disconnectPrisma()
 })
 
 // In this file you can include the rest of your app's specific main process

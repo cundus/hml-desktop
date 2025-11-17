@@ -14,7 +14,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SideNav from '../components/SideNav'
 import useThemeMode from '../hooks/useThemeMode'
 
-const drawerWidth = 240
+const drawerWidth = 200
 
 export default function MainLayout(): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false)

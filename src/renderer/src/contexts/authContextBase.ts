@@ -7,6 +7,7 @@ export type AuthContextValue = {
   groups: string[]
   permissions: string[]
   isAuthenticated: boolean
+  isReady: boolean
   login: (creds: Credentials) => Promise<void>
   logout: () => void
   hasPermission: (required: string | string[]) => boolean

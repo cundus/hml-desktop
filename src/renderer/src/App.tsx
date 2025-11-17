@@ -6,6 +6,7 @@ import Settings from './pages/Settings'
 import BranchPage from './pages/settings/master/Branch'
 import UserPage from './pages/settings/master/User'
 import CustomerPage from './pages/settings/master/Customer'
+import ProductPage from './pages/settings/master/Product'
 import AccessControlPage from './pages/settings/AccessControl'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
@@ -13,6 +14,10 @@ import Forbidden from './pages/Forbidden'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import SalesPage from './pages/sales'
+import WarehouseStocksPage from './pages/warehouse/Stocks'
+import WarehousePurchasingPage from './pages/warehouse/Purchasing'
+import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
+import WarehousePricingPage from './pages/warehouse/Pricing'
 
 const router = createHashRouter([
   { path: '/login', element: <Login /> },
@@ -43,8 +48,21 @@ const router = createHashRouter([
             children: [{ path: 'master-customer', element: <CustomerPage /> }]
           },
           {
+            element: <RoleGuard requiredPermissions={['master.product.manage']} />,
+            children: [{ path: 'master-product', element: <ProductPage /> }]
+          },
+          {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
             children: [{ path: 'access-control', element: <AccessControlPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['warehouse.manage']} />,
+            children: [
+              { path: 'warehouse/stocks', element: <WarehouseStocksPage /> },
+              { path: 'warehouse/purchasing', element: <WarehousePurchasingPage /> },
+              { path: 'warehouse/stock-opname', element: <WarehouseStockOpnamePage /> },
+              { path: 'warehouse/pricing', element: <WarehousePricingPage /> }
+            ]
           }
         ]
       }

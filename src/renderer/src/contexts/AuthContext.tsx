@@ -17,6 +17,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const [token, setToken] = useState<string | null>(null)
   const [groups, setGroups] = useState<string[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     const existing = getToken()
@@ -25,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     if (existingGroups.length) setGroups(existingGroups)
     const existingPermissions = getPermissions()
     if (existingPermissions.length) setPermissions(existingPermissions)
+    setIsReady(true)
   }, [])
 
   type LoginResponse = { token: string; groups?: string[]; permissions?: string[] }
@@ -87,8 +89,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   )
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, groups, permissions, isAuthenticated: !!token, login, logout, hasPermission }),
-    [token, groups, permissions, login, logout, hasPermission]
+    () => ({ token, groups, permissions, isAuthenticated: !!token, isReady, login, logout, hasPermission }),
+    [token, groups, permissions, isReady, login, logout, hasPermission]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

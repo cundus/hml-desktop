@@ -76,6 +76,13 @@ type Customer = {
   tier?: string
 }
 
+type Product = {
+  id: string
+  code: string
+  name: string
+  category: string
+}
+
 type PermissionDef = {
   key: string
   label: string
@@ -106,6 +113,21 @@ let branches: Branch[] = [
   }
 ]
 
+let products: Product[] = [
+  {
+    id: 'p1',
+    code: 'PRD-001',
+    name: 'Premium Dog Food 10kg',
+    category: 'Food'
+  },
+  {
+    id: 'p2',
+    code: 'PRD-002',
+    name: 'Cat Kibble Salmon 5kg',
+    category: 'Food'
+  }
+]
+
 const permissionCatalog: PermissionDef[] = [
   { key: 'dashboard.view', label: 'View dashboard' },
   { key: 'sales.view', label: 'Use sales screen' },
@@ -113,7 +135,9 @@ const permissionCatalog: PermissionDef[] = [
   { key: 'master.branch.manage', label: 'Manage branches' },
   { key: 'master.user.manage', label: 'Manage users' },
   { key: 'master.customer.manage', label: 'Manage customers' },
-  { key: 'settings.access-control.manage', label: 'Manage roles & permissions' }
+  { key: 'master.product.manage', label: 'Manage products' },
+  { key: 'settings.access-control.manage', label: 'Manage roles & permissions' },
+  { key: 'warehouse.manage', label: 'Manage warehouse & stocks' }
 ]
 
 let permissionGroups: PermissionGroup[] = [
@@ -193,6 +217,10 @@ async function handleGet<T>(url: string): Promise<ApiResponse<T>> {
 
   if (url === '/master/customers') {
     return { data: customers as unknown as T }
+  }
+
+  if (url === '/master/products') {
+    return { data: products as unknown as T }
   }
 
   if (url === '/auth/permissions') {
@@ -276,6 +304,18 @@ async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T
     return { data: created as unknown as T }
   }
 
+  if (url === '/master/products') {
+    const body = data as Partial<Product>
+    const created: Product = {
+      id: `p${Date.now()}`,
+      code: body.code ?? 'PRD-NEW',
+      name: body.name ?? 'New Product',
+      category: body.category ?? 'Uncategorized'
+    }
+    products = [...products, created]
+    return { data: created as unknown as T }
+  }
+
   if (url === '/auth/groups') {
     const body = data as Partial<PermissionGroup>
     const created: PermissionGroup = {
@@ -330,6 +370,18 @@ async function handlePut<T>(url: string, data?: unknown): Promise<ApiResponse<T>
     return { data: (updated ?? ({} as Customer)) as unknown as T }
   }
 
+  if (url.startsWith('/master/products/')) {
+    const id = url.split('/').at(-1) as string
+    const body = data as Partial<Product>
+    let updated: Product | undefined
+    products = products.map((p) => {
+      if (p.id !== id) return p
+      updated = { ...p, ...body }
+      return updated
+    })
+    return { data: (updated ?? ({} as Product)) as unknown as T }
+  }
+
   if (url.startsWith('/auth/groups/')) {
     const id = url.split('/').at(-1) as string
     const body = data as Partial<PermissionGroup>
@@ -363,6 +415,12 @@ async function handleDelete<T>(url: string): Promise<ApiResponse<T>> {
   if (url.startsWith('/master/customers/')) {
     const id = url.split('/').at(-1) as string
     customers = customers.filter((c) => c.id !== id)
+    return { data: undefined as unknown as T }
+  }
+
+  if (url.startsWith('/master/products/')) {
+    const id = url.split('/').at(-1) as string
+    products = products.filter((p) => p.id !== id)
     return { data: undefined as unknown as T }
   }
 

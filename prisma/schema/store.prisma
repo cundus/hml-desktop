@@ -4,11 +4,11 @@
 ////////////////////////////////////////////////////
 
 model Store {
-  id          String  @id @default(uuid()) @map("id")
-  code        String  @unique @map("code")
-  name        String  @map("name")
-  address     String? @map("address")
-  warehouseId String  @map("warehouse_id")
+  id      String  @id @default(uuid()) @map("id")
+  code    String  @unique @map("code")
+  name    String  @map("name")
+  address String? @map("address")
+  type    String  @default("RETAIL") @map("type") // RETAIL, WAREHOUSE, etc.
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -16,10 +16,15 @@ model Store {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
-  users         User[]
-  transactions  Transactions[]
-  productPrices ProductPrice[]
+  users                       User[]
+  transactions                Transactions[]
+  productPrices               ProductPrice[]
+  productLocations            ProductLocation[]
+  purchaseOrders              PurchaseOrder[]
+  stockTransactions           StockTransaction[]
+  stockAdjustments            StockAdjustment[]
+  transferRequestsSource      TransferRequest[] @relation("TransferSource")
+  transferRequestsDestination TransferRequest[] @relation("TransferDestination")
 
   @@map("store")
 }
@@ -28,6 +33,7 @@ model Customer {
   id    String  @id @default(uuid()) @map("id")
   name  String  @map("name")
   phone String? @map("phone")
+  categoryId String @map("category_id")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -37,6 +43,22 @@ model Customer {
   // Relations
   stockTransactions StockTransaction[]
   transactions      Transactions[]
+  category        CustomerCategory @relation(fields: [categoryId], references: [id])
 
   @@map("customer")
+}
+
+model CustomerCategory {
+  id    String  @id @default(uuid()) @map("id")
+  name  String  @map("name")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  customers Customer[]
+
+  @@map("customer_category")
 }

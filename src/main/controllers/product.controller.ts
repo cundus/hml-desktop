@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { ProductService } from '../services/product.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'

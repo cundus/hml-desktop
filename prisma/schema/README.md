@@ -27,23 +27,24 @@ Core product catalog and related entities:
 - Store-specific pricing
 - Batch/lot tracking
 
-### 🏭 `warehouse.prisma` - Warehouse & Inventory
-**Models:** Warehouse, ProductLocation, StockTransaction, StockAdjustment
+### 📦 `inventory.prisma` - Inventory Management
+**Models:** ProductLocation, StockTransaction, StockAdjustment
 **Enums:** StockTransactionType
 
-Inventory management and warehouse operations:
-- Warehouse definitions
-- Product locations within warehouses
+Store-based inventory management:
+- Product locations within stores
 - Stock transaction ledger (inbound, outbound, transfers)
 - Stock adjustments and corrections
+- **Note:** Each store manages its own inventory (no separate warehouse)
 
 ### 🏪 `store.prisma` - Store & Customer
-**Models:** Store, Customer
+**Models:** Store, Customer, CustomerCategory
 
 Retail store and customer management:
-- Store locations and details
+- Store locations and details (each store has its own inventory)
 - Customer information
-- Store-warehouse relationships
+- Customer categories
+- Store type (RETAIL, WAREHOUSE, etc.)
 
 ### 🛒 `purchasing.prisma` - Purchasing Management
 **Models:** PurchaseOrder, PurchaseOrderItem
@@ -54,11 +55,11 @@ Purchase order management:
 - PO line items
 - PO status tracking (draft, ordered, received, cancelled)
 
-### 🚚 `transfer.prisma` - Warehouse Transfers
+### 🚚 `transfer.prisma` - Store Transfers
 **Models:** TransferRequest, TransferItem
 
-Inter-warehouse transfer operations:
-- Transfer requests between warehouses
+Inter-store transfer operations:
+- Transfer requests between stores
 - Transfer line items
 - Transfer tracking
 
@@ -83,8 +84,8 @@ System audit trail:
 User (auth.prisma)
 ├─ belongs to Store (store.prisma)
 ├─ has many UserRole (auth.prisma)
-├─ performs StockTransaction (warehouse.prisma)
-├─ performs StockAdjustment (warehouse.prisma)
+├─ performs StockTransaction (inventory.prisma)
+├─ performs StockAdjustment (inventory.prisma)
 ├─ creates Transactions (sales.prisma)
 └─ has AuditLog entries (audit.prisma)
 
@@ -92,26 +93,26 @@ Product (product.prisma)
 ├─ belongs to Category (product.prisma)
 ├─ has many Batch (product.prisma)
 ├─ has many ProductPrice (product.prisma)
-├─ has many ProductLocation (warehouse.prisma)
-├─ in StockTransaction (warehouse.prisma)
-├─ in StockAdjustment (warehouse.prisma)
+├─ has many ProductLocation (inventory.prisma)
+├─ in StockTransaction (inventory.prisma)
+├─ in StockAdjustment (inventory.prisma)
 ├─ in PurchaseOrderItem (purchasing.prisma)
 ├─ in TransferItem (transfer.prisma)
 └─ in TransactionItems (sales.prisma)
 
-Warehouse (warehouse.prisma)
-├─ has many Store (store.prisma)
-├─ has many ProductLocation (warehouse.prisma)
-├─ has many StockTransaction (warehouse.prisma)
-├─ has many StockAdjustment (warehouse.prisma)
-├─ has many PurchaseOrder (purchasing.prisma)
-├─ source/destination for TransferRequest (transfer.prisma)
-└─ used in Transactions (sales.prisma)
-
 Store (store.prisma)
-├─ belongs to Warehouse (warehouse.prisma)
 ├─ has many User (auth.prisma)
 ├─ has many ProductPrice (product.prisma)
+├─ has many ProductLocation (inventory.prisma)
+├─ has many StockTransaction (inventory.prisma)
+├─ has many StockAdjustment (inventory.prisma)
+├─ has many PurchaseOrder (purchasing.prisma)
+├─ has many Transactions (sales.prisma)
+└─ source/destination for TransferRequest (transfer.prisma)
+
+Customer (store.prisma)
+├─ belongs to CustomerCategory (store.prisma)
+├─ has many StockTransaction (inventory.prisma)
 └─ has many Transactions (sales.prisma)
 ```
 
@@ -194,8 +195,43 @@ npx prisma studio
 ✅ **Self-Documenting** - File names indicate purpose
 ✅ **Scalable** - Easy to add new features without cluttering
 
+## Architecture Changes
+
+### Warehouse Consolidation
+
+**Previous Architecture:**
+- Separate `Warehouse` and `Store` models
+- Stores belonged to warehouses
+- Inventory tracked at warehouse level
+
+**Current Architecture:**
+- Single `Store` model handles both retail and warehouse functions
+- Each store manages its own inventory
+- Store `type` field distinguishes between RETAIL, WAREHOUSE, etc.
+- Simpler data model with fewer joins
+
+**Benefits:**
+- ✅ Simplified schema - one less model to manage
+- ✅ Easier queries - no warehouse joins needed
+- ✅ Flexible - stores can be retail locations or warehouses
+- ✅ Better for multi-location businesses where each location is independent
+
+**Database Changes Required:**
+```sql
+-- Migration will rename columns:
+-- warehouseId → storeId in:
+--   - product_location
+--   - stock_transaction
+--   - stock_adjustment
+--   - purchase_order
+--   - transfer_request (source_id, destination_id)
+```
+
 ## Migration from Old Structure
 
-Old files (`user.prisma`, `role_permission.prisma`) have been deprecated and cleared. All models are now in their respective feature-based files.
+Old files have been deprecated:
+- `user.prisma` → moved to `auth.prisma`
+- `role_permission.prisma` → split into feature files
+- `warehouse.prisma` → consolidated into `store.prisma` + `inventory.prisma`
 
-If you have existing migrations, they will continue to work. The database schema remains unchanged—only the organization of the Prisma schema files has been improved.
+All models are now in their respective feature-based files for better organization.

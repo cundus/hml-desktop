@@ -1,54 +1,30 @@
 ////////////////////////////////////////////////////
-// WAREHOUSE & INVENTORY MANAGEMENT
-// Warehouse, ProductLocation, StockTransaction, StockAdjustment
+// INVENTORY MANAGEMENT
+// ProductLocation, StockTransaction, StockAdjustment
 ////////////////////////////////////////////////////
 
-model Warehouse {
-  id      String  @id @default(uuid()) @map("id")
-  code    String  @unique @map("code")
-  name    String  @map("name")
-  address String? @map("address")
-  type    String  @map("type")
-
-  productLocations  ProductLocation[]
-  purchaseOrders    PurchaseOrder[]
-  stockTransactions StockTransaction[]
-  transactions      Transactions[]
-
-  transferRequestsSource      TransferRequest[] @relation("TransferSource")
-  transferRequestsDestination TransferRequest[] @relation("TransferDestination")
-
-  createdAt        DateTime          @default(now()) @map("created_at")
-  updatedAt        DateTime          @updatedAt @map("updated_at")
-  syncedAt         DateTime?         @map("synced_at")
-  deletedAt        DateTime?         @map("deleted_at")
-  stores           Store[]
-  stockAdjustments StockAdjustment[]
-
-  @@map("warehouse")
-}
-
 ////////////////////////////////////////////////////
-// PRODUCT LOCATION
+// PRODUCT LOCATION (Store Inventory)
 ////////////////////////////////////////////////////
 
 model ProductLocation {
   id               String  @id @default(uuid()) @map("id")
   productId        String  @map("product_id")
-  warehouseId      String  @map("warehouse_id")
+  storeId          String  @map("store_id")
   location         String? @map("location")
   quantity         Int     @default(0) @map("quantity")
   reservedQuantity Int     @default(0) @map("reserved_quantity")
-
-  product   Product   @relation(fields: [productId], references: [id])
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
 
   updatedAt DateTime  @updatedAt @map("updated_at")
   syncedAt  DateTime? @map("synced_at")
   deletedAt DateTime? @map("deleted_at")
   deviceId  String?   @map("device_id")
 
-  @@unique([productId, warehouseId])
+  // Relations
+  product Product @relation(fields: [productId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+
+  @@unique([productId, storeId])
   @@map("product_location")
 }
 
@@ -68,7 +44,7 @@ enum StockTransactionType {
 model StockTransaction {
   id          String               @id @default(uuid()) @map("id")
   productId   String               @map("product_id")
-  warehouseId String               @map("warehouse_id")
+  storeId     String               @map("store_id")
   type        StockTransactionType @map("type")
   quantity    Int                  @map("quantity")
   reference   String?              @map("reference")
@@ -83,12 +59,12 @@ model StockTransaction {
   deviceId  String?   @map("device_id")
 
   // Relations
-  product   Product   @relation(fields: [productId], references: [id])
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  batch     Batch?    @relation(fields: [batchId], references: [id])
-  supplier  Supplier? @relation(fields: [supplierId], references: [id])
-  customer  Customer? @relation(fields: [customerId], references: [id])
-  user      User      @relation(fields: [performedBy], references: [id])
+  product  Product   @relation(fields: [productId], references: [id])
+  store    Store     @relation(fields: [storeId], references: [id])
+  batch    Batch?    @relation(fields: [batchId], references: [id])
+  supplier Supplier? @relation(fields: [supplierId], references: [id])
+  customer Customer? @relation(fields: [customerId], references: [id])
+  user     User      @relation(fields: [performedBy], references: [id])
 
   @@map("stock_transaction")
 }
@@ -100,7 +76,7 @@ model StockTransaction {
 model StockAdjustment {
   id          String  @id @default(uuid()) @map("id")
   productId   String  @map("product_id")
-  warehouseId String  @map("warehouse_id")
+  storeId     String  @map("store_id")
   difference  Int     @map("difference")
   note        String? @map("note")
   performedBy String  @map("performed_by")
@@ -111,9 +87,9 @@ model StockAdjustment {
   deviceId  String?   @map("device_id")
 
   // Relations
-  product   Product   @relation(fields: [productId], references: [id])
-  warehouse Warehouse @relation(fields: [warehouseId], references: [id])
-  user      User      @relation(fields: [performedBy], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  store   Store   @relation(fields: [storeId], references: [id])
+  user    User    @relation(fields: [performedBy], references: [id])
 
   @@map("stock_adjustment")
 }

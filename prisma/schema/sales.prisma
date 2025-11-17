@@ -4,16 +4,15 @@
 ////////////////////////////////////////////////////
 
 model Transactions {
-  id          String  @id @default(uuid()) @map("id")
-  code        String  @unique @map("code")
-  storeId     String  @map("store_id")
-  warehouseId String  @map("warehouse_id")
-  subtotal    Float   @map("subtotal")
-  discount    Float   @map("discount")
-  tax         Float   @map("tax")
-  total       Float   @map("total")
-  customerId  String? @map("customer_id")
-  userId      String  @map("user_id")
+  id         String  @id @default(uuid()) @map("id")
+  code       String  @unique @map("code")
+  storeId    String  @map("store_id")
+  subtotal   Float   @map("subtotal")
+  discount   Float   @map("discount")
+  tax        Float   @map("tax")
+  total      Float   @map("total")
+  customerId String? @map("customer_id")
+  userId     String  @map("user_id")
 
   createdAt DateTime  @default(now()) @map("created_at")
   syncedAt  DateTime? @map("synced_at")
@@ -21,11 +20,10 @@ model Transactions {
   deviceId  String?   @map("device_id")
 
   // Relations
-  store     Store              @relation(fields: [storeId], references: [id])
-  warehouse Warehouse          @relation(fields: [warehouseId], references: [id])
-  customer  Customer?          @relation(fields: [customerId], references: [id])
-  user      User               @relation(fields: [userId], references: [id])
-  items     TransactionItems[]
+  store    Store              @relation(fields: [storeId], references: [id])
+  customer Customer?          @relation(fields: [customerId], references: [id])
+  user     User               @relation(fields: [userId], references: [id])
+  items    TransactionItems[]
 
   @@map("transactions")
 }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////
-// WAREHOUSE TRANSFER MANAGEMENT
+// STORE TRANSFER MANAGEMENT
 // TransferRequest, TransferItem
 ////////////////////////////////////////////////////
 
@@ -16,8 +16,8 @@ model TransferRequest {
   deviceId  String?   @map("device_id")
 
   // Relations
-  source      Warehouse      @relation("TransferSource", fields: [sourceId], references: [id])
-  destination Warehouse      @relation("TransferDestination", fields: [destinationId], references: [id])
+  source      Store          @relation("TransferSource", fields: [sourceId], references: [id])
+  destination Store          @relation("TransferDestination", fields: [destinationId], references: [id])
   items       TransferItem[]
 
   @@map("transfer_request")

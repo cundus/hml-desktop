@@ -11,12 +11,12 @@ enum PurchaseOrderStatus {
 }
 
 model PurchaseOrder {
-  id          String              @id @default(uuid()) @map("id")
-  code        String              @unique @map("code")
-  supplierId  String              @map("supplier_id")
-  warehouseId String              @map("warehouse_id")
-  status      PurchaseOrderStatus @map("status")
-  total       Float               @default(0) @map("total")
+  id         String              @id @default(uuid()) @map("id")
+  code       String              @unique @map("code")
+  supplierId String              @map("supplier_id")
+  storeId    String              @map("store_id")
+  status     PurchaseOrderStatus @map("status")
+  total      Float               @default(0) @map("total")
 
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -24,9 +24,9 @@ model PurchaseOrder {
   deletedAt DateTime? @map("deleted_at")
 
   // Relations
-  supplier  Supplier            @relation(fields: [supplierId], references: [id])
-  warehouse Warehouse           @relation(fields: [warehouseId], references: [id])
-  items     PurchaseOrderItem[]
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  store    Store               @relation(fields: [storeId], references: [id])
+  items    PurchaseOrderItem[]
 
   @@map("purchase_order")
 }

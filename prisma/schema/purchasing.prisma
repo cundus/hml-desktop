@@ -1,0 +1,48 @@
+////////////////////////////////////////////////////
+// PURCHASING MANAGEMENT
+// PurchaseOrder, PurchaseOrderItem
+////////////////////////////////////////////////////
+
+enum PurchaseOrderStatus {
+  DRAFT
+  ORDERED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid()) @map("id")
+  code        String              @unique @map("code")
+  supplierId  String              @map("supplier_id")
+  warehouseId String              @map("warehouse_id")
+  status      PurchaseOrderStatus @map("status")
+  total       Float               @default(0) @map("total")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  supplier  Supplier            @relation(fields: [supplierId], references: [id])
+  warehouse Warehouse           @relation(fields: [warehouseId], references: [id])
+  items     PurchaseOrderItem[]
+
+  @@map("purchase_order")
+}
+
+model PurchaseOrderItem {
+  id        String @id @default(uuid()) @map("id")
+  poId      String @map("po_id")
+  productId String @map("product_id")
+  quantity  Int    @map("quantity")
+  cost      Float  @map("cost")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  po      PurchaseOrder @relation(fields: [poId], references: [id])
+  product Product       @relation(fields: [productId], references: [id])
+
+  @@map("purchase_order_item")
+}

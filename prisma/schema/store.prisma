@@ -1,0 +1,42 @@
+////////////////////////////////////////////////////
+// STORE & CUSTOMER MANAGEMENT
+// Store, Customer
+////////////////////////////////////////////////////
+
+model Store {
+  id          String  @id @default(uuid()) @map("id")
+  code        String  @unique @map("code")
+  name        String  @map("name")
+  address     String? @map("address")
+  warehouseId String  @map("warehouse_id")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
+  users         User[]
+  transactions  Transactions[]
+  productPrices ProductPrice[]
+
+  @@map("store")
+}
+
+model Customer {
+  id    String  @id @default(uuid()) @map("id")
+  name  String  @map("name")
+  phone String? @map("phone")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  stockTransactions StockTransaction[]
+  transactions      Transactions[]
+
+  @@map("customer")
+}

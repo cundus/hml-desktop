@@ -1,0 +1,39 @@
+////////////////////////////////////////////////////
+// WAREHOUSE TRANSFER MANAGEMENT
+// TransferRequest, TransferItem
+////////////////////////////////////////////////////
+
+model TransferRequest {
+  id            String  @id @default(uuid()) @map("id")
+  sourceId      String  @map("source_id")
+  destinationId String  @map("destination_id")
+  reference     String  @unique @map("reference")
+  note          String? @map("note")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  syncedAt  DateTime? @map("synced_at")
+  deletedAt DateTime? @map("deleted_at")
+  deviceId  String?   @map("device_id")
+
+  // Relations
+  source      Warehouse      @relation("TransferSource", fields: [sourceId], references: [id])
+  destination Warehouse      @relation("TransferDestination", fields: [destinationId], references: [id])
+  items       TransferItem[]
+
+  @@map("transfer_request")
+}
+
+model TransferItem {
+  id         String @id @default(uuid()) @map("id")
+  transferId String @map("transfer_id")
+  productId  String @map("product_id")
+  quantity   Int    @map("quantity")
+
+  deletedAt DateTime? @map("deleted_at")
+
+  // Relations
+  transfer TransferRequest @relation(fields: [transferId], references: [id])
+  product  Product         @relation(fields: [productId], references: [id])
+
+  @@map("transfer_item")
+}

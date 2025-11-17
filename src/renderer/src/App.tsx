@@ -6,6 +6,7 @@ import Settings from './pages/Settings'
 import BranchPage from './pages/settings/master/Branch'
 import UserPage from './pages/settings/master/User'
 import CustomerPage from './pages/settings/master/Customer'
+import AccessControlPage from './pages/settings/AccessControl'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
 import Forbidden from './pages/Forbidden'
@@ -26,13 +27,24 @@ const router = createHashRouter([
           { path: 'pets', element: <Pets /> },
           { path: 'sales', element: <SalesPage /> },
           {
-            element: <RoleGuard allowedRoles={['admin', 'cashier']} />,
-            children: [
-              { path: 'settings', element: <Settings /> },
-              { path: 'master-branch', element: <BranchPage /> },
-              { path: 'master-user', element: <UserPage /> },
-              { path: 'master-customer', element: <CustomerPage /> }
-            ]
+            element: <RoleGuard requiredPermissions={['settings.view']} />,
+            children: [{ path: 'settings', element: <Settings /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.branch.manage']} />,
+            children: [{ path: 'master-branch', element: <BranchPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.user.manage']} />,
+            children: [{ path: 'master-user', element: <UserPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.customer.manage']} />,
+            children: [{ path: 'master-customer', element: <CustomerPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
+            children: [{ path: 'access-control', element: <AccessControlPage /> }]
           }
         ]
       }

@@ -19,61 +19,83 @@ export type MenuItem = {
   label: string
   icon?: ReactNode
   path?: string
-  roles?: string[]
+  permissions?: string[]
   children?: MenuItem[]
   isLogout?: boolean
 }
 
 const menus: MenuItem[] = [
-  { key: 'home', label: 'Home', icon: <HomeIcon />, path: '/', roles: [] },
-  { key: 'sales', label: 'Sales', icon: <ShoppingBasketIcon />, path: '/sales', roles: [] },
+  {
+    key: 'home',
+    label: 'Home',
+    icon: <HomeIcon />,
+    path: '/',
+    permissions: ['dashboard.view']
+  },
+  {
+    key: 'sales',
+    label: 'Sales',
+    icon: <ShoppingBasketIcon />,
+    path: '/sales',
+    permissions: ['sales.view']
+  },
   {
     key: 'settings-group',
     label: 'Settings',
     icon: <SettingsIcon />,
-    roles: ['admin'],
+    permissions: ['settings.view'],
     children: [
       {
         key: 'master',
         label: 'Master Data',
         icon: <SettingsIcon />,
-        roles: ['admin'],
+        permissions: ['settings.view'],
         children: [
           {
             key: 'master-branch',
             label: 'Master Branch',
             icon: <StoreIcon />,
             path: '/master-branch',
-            roles: ['admin']
+            permissions: ['master.branch.manage']
           },
           {
             key: 'master-user',
             label: 'Master User',
             icon: <UserIcon />,
             path: '/master-user',
-            roles: ['admin']
+            permissions: ['master.user.manage']
           },
           {
             key: 'master-customer',
             label: 'Master Customer',
             icon: <UserIcon />,
             path: '/master-customer',
-            roles: ['admin', 'cashier']
+            permissions: ['master.customer.manage']
           }
         ]
+      },
+      {
+        key: 'access-control',
+        label: 'Roles & Permissions',
+        icon: <SettingsIcon />,
+        path: '/access-control',
+        permissions: ['settings.access-control.manage']
       }
     ]
   },
   { key: 'logout', label: 'Logout', icon: <LogoutIcon />, isLogout: true }
 ]
 
-function userHasRole(userRoles: string[], required?: string[]): boolean {
+function userHasPermission(
+  hasPermission: (required: string | string[]) => boolean,
+  required?: string[]
+): boolean {
   if (!required || required.length === 0) return true
-  return required.some((role) => userRoles.includes(role))
+  return hasPermission(required)
 }
 
 export default function SideNav(): React.JSX.Element {
-  const { roles, logout } = useAuth()
+  const { hasPermission, logout } = useAuth()
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({})
 
   const toggle = (key: string): void => {
@@ -93,7 +115,9 @@ export default function SideNav(): React.JSX.Element {
     }
 
     if (item.children && item.children.length > 0) {
-      const visibleChildren = item.children.filter((child) => userHasRole(roles, child.roles))
+      const visibleChildren = item.children.filter((child) =>
+        userHasPermission(hasPermission, child.permissions)
+      )
       if (visibleChildren.length === 0) return null
 
       const open = !!openMap[item.key]
@@ -115,7 +139,7 @@ export default function SideNav(): React.JSX.Element {
       )
     }
 
-    if (!userHasRole(roles, item.roles)) return null
+    if (!userHasPermission(hasPermission, item.permissions)) return null
 
     if (item.path) {
       return (

@@ -1,5 +1,6 @@
 const TOKEN_KEY = 'auth_token'
-const ROLES_KEY = 'auth_roles'
+const GROUPS_KEY = 'auth_groups'
+const PERMISSIONS_KEY = 'auth_permissions'
 
 export function getToken(): string | null {
   try {
@@ -25,9 +26,9 @@ export function clearToken(): void {
   }
 }
 
-export function getRoles(): string[] {
+export function getGroups(): string[] {
   try {
-    const raw = localStorage.getItem(ROLES_KEY)
+    const raw = localStorage.getItem(GROUPS_KEY)
     if (!raw) return []
     const parsed = JSON.parse(raw)
     return Array.isArray(parsed) ? (parsed as string[]) : []
@@ -36,17 +37,44 @@ export function getRoles(): string[] {
   }
 }
 
-export function setRoles(roles: string[]): void {
+export function setGroups(groups: string[]): void {
   try {
-    localStorage.setItem(ROLES_KEY, JSON.stringify(roles))
+    localStorage.setItem(GROUPS_KEY, JSON.stringify(groups))
   } catch {
     return
   }
 }
 
-export function clearRoles(): void {
+export function clearGroups(): void {
   try {
-    localStorage.removeItem(ROLES_KEY)
+    localStorage.removeItem(GROUPS_KEY)
+  } catch {
+    return
+  }
+}
+
+export function getPermissions(): string[] {
+  try {
+    const raw = localStorage.getItem(PERMISSIONS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as string[]) : []
+  } catch {
+    return []
+  }
+}
+
+export function setPermissions(permissions: string[]): void {
+  try {
+    localStorage.setItem(PERMISSIONS_KEY, JSON.stringify(permissions))
+  } catch {
+    return
+  }
+}
+
+export function clearPermissions(): void {
+  try {
+    localStorage.removeItem(PERMISSIONS_KEY)
   } catch {
     return
   }

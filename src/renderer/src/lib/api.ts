@@ -51,7 +51,7 @@ interface ApiClient {
   delete<T = unknown>(url: string): Promise<ApiResponse<T>>
 }
 
-type LoginResponse = { token: string; roles?: string[] }
+type LoginResponse = { token: string; groups?: string[]; permissions?: string[] }
 
 type Branch = {
   id: string
@@ -76,6 +76,19 @@ type Customer = {
   tier?: string
 }
 
+type PermissionDef = {
+  key: string
+  label: string
+  description?: string
+}
+
+type PermissionGroup = {
+  id: string
+  name: string
+  description?: string
+  permissions: string[]
+}
+
 let branches: Branch[] = [
   {
     id: 'b1',
@@ -93,6 +106,37 @@ let branches: Branch[] = [
   }
 ]
 
+const permissionCatalog: PermissionDef[] = [
+  { key: 'dashboard.view', label: 'View dashboard' },
+  { key: 'sales.view', label: 'Use sales screen' },
+  { key: 'settings.view', label: 'View settings' },
+  { key: 'master.branch.manage', label: 'Manage branches' },
+  { key: 'master.user.manage', label: 'Manage users' },
+  { key: 'master.customer.manage', label: 'Manage customers' },
+  { key: 'settings.access-control.manage', label: 'Manage roles & permissions' }
+]
+
+let permissionGroups: PermissionGroup[] = [
+  {
+    id: 'admin',
+    name: 'Admin',
+    description: 'Full system access',
+    permissions: permissionCatalog.map((p) => p.key)
+  },
+  {
+    id: 'cashier',
+    name: 'Cashier',
+    description: 'Sales and customer management',
+    permissions: ['dashboard.view', 'sales.view', 'master.customer.manage']
+  },
+  {
+    id: 'supervisor',
+    name: 'Supervisor',
+    description: 'Can manage customers and view sales but not user/branch admin',
+    permissions: ['dashboard.view', 'sales.view', 'master.customer.manage']
+  }
+]
+
 let users: User[] = [
   {
     id: 'u1',
@@ -107,6 +151,13 @@ let users: User[] = [
     fullName: 'Front Cashier',
     email: 'cashier@example.com',
     role: 'cashier'
+  },
+  {
+    id: 'u3',
+    username: 'supervisor',
+    fullName: 'Store Supervisor',
+    email: 'supervisor@example.com',
+    role: 'supervisor'
   }
 ]
 
@@ -144,6 +195,14 @@ async function handleGet<T>(url: string): Promise<ApiResponse<T>> {
     return { data: customers as unknown as T }
   }
 
+  if (url === '/auth/permissions') {
+    return { data: permissionCatalog as unknown as T }
+  }
+
+  if (url === '/auth/groups') {
+    return { data: permissionGroups as unknown as T }
+  }
+
   // Default empty response for unknown endpoints
   return { data: undefined as unknown as T }
 }
@@ -152,9 +211,29 @@ async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T
   await delay()
 
   if (url === '/auth/login') {
+    const body = (data ?? {}) as { email?: string }
+    const email = (body.email ?? '').toLowerCase()
+
+    let groupIds: string[]
+    if (email.includes('cashier')) {
+      groupIds = ['cashier']
+    } else if (email.includes('supervisor')) {
+      groupIds = ['supervisor']
+    } else {
+      groupIds = ['admin']
+    }
+    const perms = Array.from(
+      new Set(
+        groupIds.flatMap((id) =>
+          permissionGroups.find((g) => g.id === id)?.permissions ?? []
+        )
+      )
+    )
+
     const response: LoginResponse = {
       token: 'mock-token',
-      roles: ['admin']
+      groups: groupIds,
+      permissions: perms
     }
     return { data: response as unknown as T }
   }
@@ -194,6 +273,18 @@ async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T
       tier: body.tier ?? 'regular'
     }
     customers = [...customers, created]
+    return { data: created as unknown as T }
+  }
+
+  if (url === '/auth/groups') {
+    const body = data as Partial<PermissionGroup>
+    const created: PermissionGroup = {
+      id: body.id ?? `g${Date.now()}`,
+      name: body.name ?? 'New Group',
+      description: body.description ?? '',
+      permissions: Array.isArray(body.permissions) ? body.permissions : []
+    }
+    permissionGroups = [...permissionGroups, created]
     return { data: created as unknown as T }
   }
 
@@ -239,6 +330,18 @@ async function handlePut<T>(url: string, data?: unknown): Promise<ApiResponse<T>
     return { data: (updated ?? ({} as Customer)) as unknown as T }
   }
 
+  if (url.startsWith('/auth/groups/')) {
+    const id = url.split('/').at(-1) as string
+    const body = data as Partial<PermissionGroup>
+    let updated: PermissionGroup | undefined
+    permissionGroups = permissionGroups.map((g) => {
+      if (g.id !== id) return g
+      updated = { ...g, ...body, permissions: body.permissions ?? g.permissions }
+      return updated
+    })
+    return { data: (updated ?? ({} as PermissionGroup)) as unknown as T }
+  }
+
   return { data: undefined as unknown as T }
 }
 
@@ -260,6 +363,12 @@ async function handleDelete<T>(url: string): Promise<ApiResponse<T>> {
   if (url.startsWith('/master/customers/')) {
     const id = url.split('/').at(-1) as string
     customers = customers.filter((c) => c.id !== id)
+    return { data: undefined as unknown as T }
+  }
+
+  if (url.startsWith('/auth/groups/')) {
+    const id = url.split('/').at(-1) as string
+    permissionGroups = permissionGroups.filter((g) => g.id !== id)
     return { data: undefined as unknown as T }
   }
 

@@ -1,38 +1,47 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import api from '../lib/api'
 import {
   getToken,
   setToken as saveToken,
   clearToken,
-  getRoles,
-  setRoles as saveRoles,
-  clearRoles
+  getGroups,
+  setGroups as saveGroups,
+  clearGroups,
+  getPermissions,
+  setPermissions as savePermissions,
+  clearPermissions
 } from '../lib/authStorage'
 import { AuthContext, type AuthContextValue, type Credentials } from './authContextBase'
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [token, setToken] = useState<string | null>(null)
-  const [roles, setRoles] = useState<string[]>([])
+  const [groups, setGroups] = useState<string[]>([])
+  const [permissions, setPermissions] = useState<string[]>([])
 
   useEffect(() => {
     const existing = getToken()
     if (existing) setToken(existing)
-    const existingRoles = getRoles()
-    if (existingRoles.length) setRoles(existingRoles)
+    const existingGroups = getGroups()
+    if (existingGroups.length) setGroups(existingGroups)
+    const existingPermissions = getPermissions()
+    if (existingPermissions.length) setPermissions(existingPermissions)
   }, [])
 
-  type LoginResponse = { token: string; roles?: string[] }
+  type LoginResponse = { token: string; groups?: string[]; permissions?: string[] }
 
-  const login = async (creds: Credentials): Promise<void> => {
+  const login = useCallback(async (creds: Credentials): Promise<void> => {
     try {
       const res = await api.post<LoginResponse>('/auth/login', creds)
       const t = res.data?.token
-      const r = res.data?.roles ?? []
+      const g = res.data?.groups ?? []
+      const p = res.data?.permissions ?? []
       if (t) {
         saveToken(t)
-        saveRoles(r)
+        saveGroups(g)
+        savePermissions(p)
         setToken(t)
-        setRoles(r)
+        setGroups(g)
+        setPermissions(p)
         window.location.hash = '#/'
         return
       }
@@ -40,25 +49,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       void e
     }
     const fallbackToken = 'dev-token'
-    const fallbackRoles = ['admin']
+    const fallbackGroups = ['admin']
+    const fallbackPermissions = [
+      'dashboard.view',
+      'sales.view',
+      'settings.view',
+      'master.branch.manage',
+      'master.user.manage',
+      'master.customer.manage'
+    ]
     saveToken(fallbackToken)
-    saveRoles(fallbackRoles)
+    saveGroups(fallbackGroups)
+    savePermissions(fallbackPermissions)
     setToken(fallbackToken)
-    setRoles(fallbackRoles)
+    setGroups(fallbackGroups)
+    setPermissions(fallbackPermissions)
     window.location.hash = '#/'
-  }
+  }, [])
 
-  const logout = (): void => {
+  const logout = useCallback((): void => {
     clearToken()
-    clearRoles()
+    clearGroups()
+    clearPermissions()
     setToken(null)
-    setRoles([])
+    setGroups([])
+    setPermissions([])
     window.location.hash = '#/login'
-  }
+  }, [])
+
+  const hasPermission = useCallback(
+    (required: string | string[]): boolean => {
+      const list = Array.isArray(required) ? required : [required]
+      if (list.length === 0) return true
+      return list.some((perm) => permissions.includes(perm))
+    },
+    [permissions]
+  )
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, roles, isAuthenticated: !!token, login, logout }),
-    [token, roles]
+    () => ({ token, groups, permissions, isAuthenticated: !!token, login, logout, hasPermission }),
+    [token, groups, permissions, login, logout, hasPermission]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,3 +1,4 @@
 // Service exports
-export { UserService } from './user.service'
-export { ProductService } from './product.service'
+export * from './user.service'
+export * from './product.service'
+export * from './sync.service'

@@ -28,6 +28,29 @@ type Product = {
   deletedAt: Date | null
 }
 
+interface SyncStatus {
+  isCloudConnected: boolean
+  lastSyncTime: string
+  unsyncedRecordsCount: number
+  deviceId: string
+}
+
+interface SyncResult {
+  success: boolean
+  pulled: number
+  pushed: number
+  conflicts: number
+  errors: string[]
+  timestamp: string
+}
+
+interface ApiResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
 interface DatabaseAPI {
   users: {
     getAll: () => Promise<User[]>
@@ -57,6 +80,15 @@ interface DatabaseAPI {
       }
     ) => Promise<Product>
     softDelete: (id: string) => Promise<Product>
+  }
+  sync: {
+    connect: (cloudDatabaseUrl: string) => Promise<ApiResponse<boolean>>
+    disconnect: () => Promise<ApiResponse<boolean>>
+    fullSync: () => Promise<ApiResponse<SyncResult>>
+    pull: () => Promise<ApiResponse<SyncResult>>
+    push: () => Promise<ApiResponse<SyncResult>>
+    initialSync: () => Promise<ApiResponse<SyncResult>>
+    getStatus: () => Promise<ApiResponse<SyncStatus>>
   }
 }
 

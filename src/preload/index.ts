@@ -59,6 +59,30 @@ const api = {
       softDelete: async (id: string) => {
         return await ipcRenderer.invoke('db:products:softDelete', id)
       }
+    },
+    // Sync API
+    sync: {
+      connect: async (cloudDatabaseUrl: string) => {
+        return await ipcRenderer.invoke('sync:connect', cloudDatabaseUrl)
+      },
+      disconnect: async () => {
+        return await ipcRenderer.invoke('sync:disconnect')
+      },
+      fullSync: async () => {
+        return await ipcRenderer.invoke('sync:full')
+      },
+      pull: async () => {
+        return await ipcRenderer.invoke('sync:pull')
+      },
+      push: async () => {
+        return await ipcRenderer.invoke('sync:push')
+      },
+      initialSync: async () => {
+        return await ipcRenderer.invoke('sync:initial')
+      },
+      getStatus: async () => {
+        return await ipcRenderer.invoke('sync:status')
+      }
     }
   }
 }

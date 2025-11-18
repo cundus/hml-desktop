@@ -5,4 +5,7 @@ out
 .eslintcache
 *.log*
 
-/src/generated/prisma
+/src/main/prisma
+
+.env
+

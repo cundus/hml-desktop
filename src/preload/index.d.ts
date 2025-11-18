@@ -92,7 +92,7 @@ interface DatabaseAPI {
   }
 }
 
-interface API {
+export interface API {
   openMasterCustomerWindow: () => void
   db: DatabaseAPI
 }

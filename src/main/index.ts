@@ -2,7 +2,7 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { disconnectPrisma } from './db'
+import { disconnectDb } from './db'
 import { bootstrap } from './bootstrap'
 
 function createWindow(): void {
@@ -102,9 +102,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Clean up Prisma connection before app quits
-app.on('before-quit', async () => {
-  await disconnectPrisma()
+// Clean up database connection before app quits
+app.on('before-quit', () => {
+  disconnectDb()
 })
 
 // In this file you can include the rest of your app's specific main process

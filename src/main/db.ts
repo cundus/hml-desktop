@@ -1,19 +1,43 @@
-import { PrismaClient } from '@prisma/client'
+import { drizzle, BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import Database from 'better-sqlite3'
+import * as schema from './db/schema'
+import { app } from 'electron'
+import { join } from 'path'
 
-let prisma: PrismaClient | null = null
+let db: BetterSQLite3Database<typeof schema> | null = null
+let sqlite: Database.Database | null = null
 
-export function getPrisma(): PrismaClient {
-  if (!prisma) {
-    prisma = new PrismaClient({
-      log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
+export function getDb(): BetterSQLite3Database<typeof schema> {
+  if (!db) {
+    // Get database path - store in userData directory
+    const dbPath = process.env.DATABASE_URL?.replace('file:', '') || 
+                   join(app.getPath('userData'), 'petshop.db')
+    
+    // Create better-sqlite3 instance
+    sqlite = new Database(dbPath)
+    
+    // Enable WAL mode for better concurrency
+    sqlite.pragma('journal_mode = WAL')
+    
+    // Create Drizzle instance
+    db = drizzle(sqlite, { 
+      schema,
+      logger: process.env.NODE_ENV === 'development'
     })
+    
+    console.log('✓ Database connected:', dbPath)
   }
-  return prisma
+  return db
 }
 
-export async function disconnectPrisma(): Promise<void> {
-  if (prisma) {
-    await prisma.$disconnect()
-    prisma = null
+export function disconnectDb(): void {
+  if (sqlite) {
+    sqlite.close()
+    sqlite = null
+    db = null
+    console.log('✓ Database disconnected')
   }
 }
+
+// Export schema for use in services
+export { schema }

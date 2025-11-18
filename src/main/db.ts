@@ -10,7 +10,7 @@ let sqlite: Database.Database | null = null
 export function getDb(): BetterSQLite3Database<typeof schema> {
   if (!db) {
     // Get database path - store in userData directory
-    const dbPath = process.env.DATABASE_URL?.replace('file:', '') || 
+    const dbPath = process.env.LOCAL_SQLITE_PATH ||
                    join(app.getPath('userData'), 'petshop.db')
     
     // Create better-sqlite3 instance

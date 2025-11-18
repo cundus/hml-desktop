@@ -1,5 +1,8 @@
 import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres'
 import * as schema from '../db/schema'
+import * as pgSchema from '../db/pg-schema'
+import { Pool } from 'pg'
 import { v4 as uuidv4 } from 'uuid'
 
 /**
@@ -16,7 +19,8 @@ import { v4 as uuidv4 } from 'uuid'
  */
 export class SyncService {
   private db: BetterSQLite3Database<typeof schema>
-  private cloudDb: any | null = null // TODO: Implement Drizzle PostgreSQL connection
+  private cloudDb: NodePgDatabase<typeof pgSchema> | null = null
+  private cloudPool: Pool | null = null
   private deviceId: string
 
   constructor(db: BetterSQLite3Database<typeof schema>, deviceId?: string) {
@@ -26,12 +30,30 @@ export class SyncService {
 
   /**
    * Initialize cloud connection
-   * TODO: Implement with Drizzle PostgreSQL adapter
+   * Uses Drizzle with node-postgres and pg-schema
    */
   async initCloudConnection(cloudDatabaseUrl: string): Promise<void> {
-    console.warn('Cloud sync not yet implemented with Drizzle')
-    // Future: Use drizzle-orm/node-postgres or drizzle-orm/postgres-js
-    throw new Error('Cloud sync not yet implemented')
+    const url = cloudDatabaseUrl || process.env.DATABASE_URL
+    if (!url) {
+      throw new Error('Cloud DATABASE_URL is not set')
+    }
+
+    // Close existing pool if reconnecting
+    if (this.cloudPool) {
+      await this.cloudPool.end()
+      this.cloudPool = null
+      this.cloudDb = null
+    }
+
+    const pool = new Pool({ connectionString: url })
+
+    // Simple connectivity check
+    await pool.query('SELECT 1')
+
+    this.cloudPool = pool
+    this.cloudDb = drizzle(pool, { schema: pgSchema })
+
+    // Cloud DB is now ready for sync methods
   }
 
   /**
@@ -109,10 +131,11 @@ export class SyncService {
    * Disconnect cloud connection
    */
   async disconnect(): Promise<void> {
-    if (this.cloudDb) {
-      // TODO: Implement cloud disconnect
-      this.cloudDb = null
+    if (this.cloudPool) {
+      await this.cloudPool.end()
+      this.cloudPool = null
     }
+    this.cloudDb = null
   }
 }
 

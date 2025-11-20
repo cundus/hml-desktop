@@ -148,6 +148,136 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Product Price table - store-specific pricing
+  database.run(`
+    CREATE TABLE IF NOT EXISTS product_price (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      price TEXT NOT NULL,
+      cost TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Batch table - product batches
+  database.run(`
+    CREATE TABLE IF NOT EXISTS batch (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      code TEXT NOT NULL,
+      expiry_date INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
+    )
+  `)
+
+  // Product Location table - inventory per store
+  database.run(`
+    CREATE TABLE IF NOT EXISTS product_location (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 0,
+      reserved_quantity INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Stock Transaction table - inventory movements
+  database.run(`
+    CREATE TABLE IF NOT EXISTS stock_transaction (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      type TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      reference TEXT,
+      batch_id TEXT,
+      supplier_id TEXT,
+      customer_id TEXT,
+      performed_by TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Transactions table - sales/POS
+  database.run(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      store_id TEXT NOT NULL,
+      subtotal TEXT NOT NULL,
+      discount TEXT NOT NULL DEFAULT '0',
+      tax TEXT NOT NULL DEFAULT '0',
+      total TEXT NOT NULL,
+      customer_id TEXT,
+      user_id TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Transaction Items table - sales line items
+  database.run(`
+    CREATE TABLE IF NOT EXISTS transaction_items (
+      id TEXT PRIMARY KEY,
+      transaction_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      price TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+
+  // Purchase Order table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS purchase_order (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      supplier_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'DRAFT',
+      total TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
+    )
+  `)
+
+  // Purchase Order Item table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS purchase_order_item (
+      id TEXT PRIMARY KEY,
+      po_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      cost TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+
   // Sync metadata table - tracks sync state per entity
   database.run(`
     CREATE TABLE IF NOT EXISTS sync_metadata (

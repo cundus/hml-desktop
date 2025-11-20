@@ -140,7 +140,20 @@ const permissionCatalog: PermissionDef[] = [
   { key: 'master.store.manage', label: 'Manage stores' },
   { key: 'master.customer-category.manage', label: 'Manage customer categories' },
   { key: 'settings.access-control.manage', label: 'Manage roles & permissions' },
-  { key: 'warehouse.manage', label: 'Manage warehouse & stocks' }
+  { key: 'warehouse.manage', label: 'Manage warehouse & stocks' },
+  { key: 'inventory.dashboard', label: 'View inventory dashboard' },
+  { key: 'inventory.pricing', label: 'Manage product pricing' },
+  { key: 'inventory.batches', label: 'Manage batches' },
+  { key: 'inventory.transactions', label: 'Manage stock transactions' },
+  { key: 'sales.pos', label: 'Use point of sale' },
+  { key: 'sales.reports', label: 'View sales reports' },
+  { key: 'sales.manage', label: 'Manage sales' },
+  { key: 'warehouse.stock-opname', label: 'Manage stock opname' },
+  { key: 'warehouse.purchasing', label: 'Manage purchasing' },
+  { key: 'warehouse.pricing', label: 'Manage pricing' },
+  { key: 'warehouse.stocks', label: 'View stocks' },
+  { key: 'warehouse.shipping', label: 'Manage shipping' },
+  { key: 'warehouse.transfers', label: 'Manage transfers' }
 ]
 
 let permissionGroups: PermissionGroup[] = [

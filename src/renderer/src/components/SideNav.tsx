@@ -4,6 +4,9 @@ import LogoutIcon from '@mui/icons-material/Logout'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
 import StoreIcon from '@mui/icons-material/Store'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import DashboardIcon from '@mui/icons-material/Dashboard'
+import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import Collapse from '@mui/material/Collapse'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -35,8 +38,21 @@ const menus: MenuItem[] = [
     key: 'sales',
     label: 'Sales',
     icon: <ShoppingBasketIcon fontSize="small" />,
-    path: '/sales',
-    permissions: ['sales.view']
+    permissions: ['sales.view'],
+    children: [
+      {
+        key: 'sales-pos',
+        label: 'Point of Sale',
+        path: '/sales/pos',
+        permissions: ['sales.manage']
+      },
+      {
+        key: 'sales-reports',
+        label: 'Sales Reports',
+        path: '/sales/reports',
+        permissions: ['sales.view']
+      }
+    ]
   },
   {
     key: 'warehouse',
@@ -71,6 +87,59 @@ const menus: MenuItem[] = [
     ]
   },
   {
+    key: 'inventory',
+    label: 'Inventory',
+    icon: <InventoryIcon fontSize="small" />,
+    permissions: ['inventory.manage'],
+    children: [
+      {
+        key: 'inventory-dashboard',
+        label: 'Dashboard',
+        icon: <DashboardIcon fontSize="small" />,
+        path: '/inventory/dashboard',
+        permissions: ['inventory.manage']
+      },
+      {
+        key: 'inventory-pricing',
+        label: 'Product Pricing',
+        path: '/inventory/pricing',
+        permissions: ['inventory.manage']
+      },
+      {
+        key: 'inventory-batches',
+        label: 'Batches',
+        path: '/inventory/batches',
+        permissions: ['inventory.manage']
+      },
+      {
+        key: 'inventory-transactions',
+        label: 'Stock Transactions',
+        path: '/inventory/transactions',
+        permissions: ['inventory.manage']
+      }
+    ]
+  },
+  {
+    key: 'purchasing',
+    label: 'Purchasing',
+    icon: <LocalShippingIcon fontSize="small" />,
+    permissions: ['purchasing.manage'],
+    children: [
+      {
+        key: 'purchasing-orders',
+        label: 'Purchase Orders',
+        path: '/purchasing/orders',
+        permissions: ['purchasing.manage']
+      },
+      {
+        key: 'purchasing-create',
+        label: 'Create PO',
+        path: '/purchasing/order-form',
+        permissions: ['purchasing.manage']
+      }
+    ]
+  },
+  {
     key: 'settings-group',
     label: 'Settings',
     icon: <SettingsIcon fontSize="small" />,
@@ -81,12 +150,6 @@ const menus: MenuItem[] = [
         label: 'Master Data',
         permissions: ['settings.view'],
         children: [
-          {
-            key: 'master-branch',
-            label: 'Master Branch',
-            path: '/master-branch',
-            permissions: ['master.branch.manage']
-          },
           {
             key: 'master-store',
             label: 'Stores',

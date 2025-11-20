@@ -135,6 +135,10 @@ const permissionCatalog: PermissionDef[] = [
   { key: 'master.user.manage', label: 'Manage users' },
   { key: 'master.customer.manage', label: 'Manage customers' },
   { key: 'master.product.manage', label: 'Manage products' },
+  { key: 'master.category.manage', label: 'Manage categories' },
+  { key: 'master.supplier.manage', label: 'Manage suppliers' },
+  { key: 'master.store.manage', label: 'Manage stores' },
+  { key: 'master.customer-category.manage', label: 'Manage customer categories' },
   { key: 'settings.access-control.manage', label: 'Manage roles & permissions' },
   { key: 'warehouse.manage', label: 'Manage warehouse & stocks' }
 ]

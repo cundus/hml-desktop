@@ -82,9 +82,11 @@ app.whenReady().then(() => {
   })
 
   // Initialize services and controllers (registers all database IPC handlers)
-  bootstrap()
-
-  createWindow()
+  bootstrap().then(() => {
+    createWindow()
+  }).catch((err) => {
+    console.error('Failed to bootstrap application:', err)
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the

@@ -7,6 +7,10 @@ import BranchPage from './pages/settings/master/Branch'
 import UserPage from './pages/settings/master/User'
 import CustomerPage from './pages/settings/master/Customer'
 import ProductPage from './pages/settings/master/Product'
+import CategoryPage from './pages/settings/master/Category'
+import SupplierPage from './pages/settings/master/Supplier'
+import StorePage from './pages/settings/master/Store'
+import CustomerCategoryPage from './pages/settings/master/CustomerCategory'
 import AccessControlPage from './pages/settings/AccessControl'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
@@ -50,6 +54,22 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['master.product.manage']} />,
             children: [{ path: 'master-product', element: <ProductPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.category.manage']} />,
+            children: [{ path: 'master-category', element: <CategoryPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.supplier.manage']} />,
+            children: [{ path: 'master-supplier', element: <SupplierPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.store.manage']} />,
+            children: [{ path: 'master-store', element: <StorePage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.customer-category.manage']} />,
+            children: [{ path: 'master-customer-category', element: <CustomerCategoryPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,

@@ -6,6 +6,6 @@ export default {
   dialect: 'sqlite',
   dbCredentials: {
     // Local dev SQLite file used only for Drizzle tooling, not the Electron app
-    url: process.env.PG_DATABASE_URL ?? 'file:./dev.db'
+    url: process.env.DATABASE_URL ?? 'file:./dev.db'
   }
 } satisfies Config

@@ -1,129 +1,185 @@
-import { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
-import { eq, isNull, and, desc } from 'drizzle-orm'
-import * as schema from '../db/schema'
-import { users, User } from '../db/schema'
+import { Database } from 'sql.js'
 import { CreateUserDto, UpdateUserDto } from '../types/dto'
+import { saveDb } from '../localDb'
+import { randomUUID } from 'crypto'
+
+export interface User {
+  id: string
+  name: string
+  email: string
+  password: string
+  storeId: string | null
+  createdAt: Date
+  updatedAt: Date
+  syncedAt: Date | null
+  deletedAt: Date | null
+  deviceId: string | null
+}
 
 export class UserService {
-  constructor(private db: BetterSQLite3Database<typeof schema>) {}
+  constructor(private db: Database) {}
 
   /**
    * Get all active (non-deleted) users
    */
   async findAll(): Promise<User[]> {
-    return await this.db
-      .select()
-      .from(users)
-      .where(isNull(users.deletedAt))
-      .orderBy(desc(users.createdAt))
+    const stmt = this.db.prepare(
+      'SELECT * FROM user WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    )
+    const results: User[] = []
+    
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      results.push(this.mapRowToUser(row))
+    }
+    stmt.free()
+    
+    return results
   }
 
   /**
    * Get user by ID
    */
   async findById(id: string): Promise<User | undefined> {
-    const result = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1)
+    const stmt = this.db.prepare('SELECT * FROM user WHERE id = ?')
+    stmt.bind([id])
     
-    return result[0]
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      stmt.free()
+      return this.mapRowToUser(row)
+    }
+    stmt.free()
+    return undefined
   }
 
   /**
    * Get user by email
    */
   async findByEmail(email: string): Promise<User | undefined> {
-    const result = await this.db
-      .select()
-      .from(users)
-      .where(and(
-        eq(users.email, email),
-        isNull(users.deletedAt)
-      ))
-      .limit(1)
+    const stmt = this.db.prepare('SELECT * FROM user WHERE email = ? AND deleted_at IS NULL')
+    stmt.bind([email])
     
-    return result[0]
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      stmt.free()
+      return this.mapRowToUser(row)
+    }
+    stmt.free()
+    return undefined
   }
 
   /**
    * Create a new user
    */
   async create(data: CreateUserDto): Promise<User> {
-    const result = await this.db
-      .insert(users)
-      .values({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        storeId: data.storeId
-      })
-      .returning()
+    const id = randomUUID()
+    const now = Date.now()
     
-    return result[0]
+    this.db.run(
+      'INSERT INTO user (id, name, email, password, store_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, data.name, data.email, data.password, data.storeId ?? null, now, now]
+    )
+    
+    saveDb(this.db)
+    
+    return {
+      id,
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      storeId: data.storeId ?? null,
+      createdAt: new Date(now),
+      updatedAt: new Date(now),
+      syncedAt: null,
+      deletedAt: null,
+      deviceId: null
+    }
   }
 
   /**
    * Update user
    */
   async update(id: string, data: UpdateUserDto): Promise<User> {
-    const result = await this.db
-      .update(users)
-      .set({
-        name: data.name,
-        email: data.email,
-        password: data.password,
-        storeId: data.storeId,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, id))
-      .returning()
+    const now = Date.now()
     
-    return result[0]
+    this.db.run(
+      'UPDATE user SET name = ?, email = ?, password = ?, store_id = ?, updated_at = ? WHERE id = ?',
+      [data.name, data.email, data.password, data.storeId ?? null, now, id]
+    )
+    
+    saveDb(this.db)
+    
+    const updated = await this.findById(id)
+    if (!updated) {
+      throw new Error('User not found after update')
+    }
+    return updated
   }
 
   /**
    * Soft delete user
    */
   async softDelete(id: string): Promise<User> {
-    const result = await this.db
-      .update(users)
-      .set({ 
-        deletedAt: new Date(),
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, id))
-      .returning()
+    const now = Date.now()
     
-    return result[0]
+    this.db.run(
+      'UPDATE user SET deleted_at = ?, updated_at = ? WHERE id = ?',
+      [now, now, id]
+    )
+    
+    saveDb(this.db)
+    
+    const deleted = await this.findById(id)
+    if (!deleted) {
+      throw new Error('User not found after delete')
+    }
+    return deleted
   }
 
   /**
    * Permanently delete user
    */
-  async hardDelete(id: string): Promise<User> {
-    const result = await this.db
-      .delete(users)
-      .where(eq(users.id, id))
-      .returning()
-    
-    return result[0]
+  async hardDelete(id: string): Promise<void> {
+    this.db.run('DELETE FROM user WHERE id = ?', [id])
+    saveDb(this.db)
   }
 
   /**
    * Restore soft-deleted user
    */
   async restore(id: string): Promise<User> {
-    const result = await this.db
-      .update(users)
-      .set({ 
-        deletedAt: null,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, id))
-      .returning()
+    const now = Date.now()
     
-    return result[0]
+    this.db.run(
+      'UPDATE user SET deleted_at = NULL, updated_at = ? WHERE id = ?',
+      [now, id]
+    )
+    
+    saveDb(this.db)
+    
+    const restored = await this.findById(id)
+    if (!restored) {
+      throw new Error('User not found after restore')
+    }
+    return restored
+  }
+
+  /**
+   * Map database row to User object
+   */
+  private mapRowToUser(row: any): User {
+    return {
+      id: row.id as string,
+      name: row.name as string,
+      email: row.email as string,
+      password: row.password as string,
+      storeId: row.store_id as string | null,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
+      syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
+      deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
+      deviceId: row.device_id as string | null
+    }
   }
 }

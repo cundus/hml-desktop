@@ -88,6 +88,12 @@ const menus: MenuItem[] = [
             permissions: ['master.branch.manage']
           },
           {
+            key: 'master-store',
+            label: 'Stores',
+            path: '/master-store',
+            permissions: ['master.store.manage']
+          },
+          {
             key: 'master-user',
             label: 'Master User',
             path: '/master-user',
@@ -95,15 +101,33 @@ const menus: MenuItem[] = [
           },
           {
             key: 'master-product',
-            label: 'Master Product',
+            label: 'Products',
             path: '/master-product',
             permissions: ['master.product.manage']
           },
           {
+            key: 'master-category',
+            label: 'Categories',
+            path: '/master-category',
+            permissions: ['master.category.manage']
+          },
+          {
+            key: 'master-supplier',
+            label: 'Suppliers',
+            path: '/master-supplier',
+            permissions: ['master.supplier.manage']
+          },
+          {
             key: 'master-customer',
-            label: 'Master Customer',
+            label: 'Customers',
             path: '/master-customer',
             permissions: ['master.customer.manage']
+          },
+          {
+            key: 'master-customer-category',
+            label: 'Customer Categories',
+            path: '/master-customer-category',
+            permissions: ['master.customer-category.manage']
           }
         ]
       },

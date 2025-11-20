@@ -50,3 +50,37 @@ export interface UpdateCustomerDto {
   name?: string
   phone?: string
 }
+
+export interface CreateSupplierDto {
+  name: string
+  phone?: string
+  address?: string
+}
+
+export interface UpdateSupplierDto {
+  name?: string
+  phone?: string
+  address?: string
+}
+
+export interface CreateStoreDto {
+  code: string
+  name: string
+  address?: string
+  type: string
+}
+
+export interface UpdateStoreDto {
+  code?: string
+  name?: string
+  address?: string
+  type?: string
+}
+
+export interface CreateCustomerCategoryDto {
+  name: string
+}
+
+export interface UpdateCustomerCategoryDto {
+  name?: string
+}

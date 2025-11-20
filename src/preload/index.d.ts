@@ -53,15 +53,15 @@ interface ApiResponse<T = any> {
 
 interface DatabaseAPI {
   users: {
-    getAll: () => Promise<User[]>
-    getById: (id: string) => Promise<User | null>
-    create: (data: { name: string; email: string; password: string }) => Promise<User>
-    update: (id: string, data: { name?: string; email?: string }) => Promise<User>
-    softDelete: (id: string) => Promise<User>
+    getAll: () => Promise<ApiResponse<User[]>>
+    getById: (id: string) => Promise<ApiResponse<User>>
+    create: (data: { name: string; email: string; password: string }) => Promise<ApiResponse<User>>
+    update: (id: string, data: { name?: string; email?: string }) => Promise<ApiResponse<User>>
+    softDelete: (id: string) => Promise<ApiResponse<User>>
   }
   products: {
-    getAll: () => Promise<Product[]>
-    getById: (id: string) => Promise<Product | null>
+    getAll: () => Promise<ApiResponse<Product[]>>
+    getById: (id: string) => Promise<ApiResponse<Product>>
     create: (data: {
       sku: string
       name: string
@@ -69,7 +69,7 @@ interface DatabaseAPI {
       unit: string
       cost: number
       categoryId?: string
-    }) => Promise<Product>
+    }) => Promise<ApiResponse<Product>>
     update: (
       id: string,
       data: {
@@ -78,8 +78,41 @@ interface DatabaseAPI {
         cost?: number
         isActive?: boolean
       }
-    ) => Promise<Product>
-    softDelete: (id: string) => Promise<Product>
+    ) => Promise<ApiResponse<Product>>
+    softDelete: (id: string) => Promise<ApiResponse<Product>>
+  }
+  categories: {
+    getAll: () => Promise<ApiResponse<any[]>>
+    getById: (id: string) => Promise<ApiResponse<any>>
+    create: (data: { name: string }) => Promise<ApiResponse<any>>
+    update: (id: string, data: { name?: string }) => Promise<ApiResponse<any>>
+    softDelete: (id: string) => Promise<ApiResponse<any>>
+    restore: (id: string) => Promise<ApiResponse<any>>
+  }
+  suppliers: {
+    getAll: () => Promise<ApiResponse<any[]>>
+    getById: (id: string) => Promise<ApiResponse<any>>
+    create: (data: { name: string; phone?: string; address?: string }) => Promise<ApiResponse<any>>
+    update: (id: string, data: { name?: string; phone?: string; address?: string }) => Promise<ApiResponse<any>>
+    softDelete: (id: string) => Promise<ApiResponse<any>>
+    restore: (id: string) => Promise<ApiResponse<any>>
+  }
+  stores: {
+    getAll: () => Promise<ApiResponse<any[]>>
+    getById: (id: string) => Promise<ApiResponse<any>>
+    getByCode: (code: string) => Promise<ApiResponse<any>>
+    create: (data: { code: string; name: string; address?: string; type: string }) => Promise<ApiResponse<any>>
+    update: (id: string, data: { code?: string; name?: string; address?: string; type?: string }) => Promise<ApiResponse<any>>
+    softDelete: (id: string) => Promise<ApiResponse<any>>
+    restore: (id: string) => Promise<ApiResponse<any>>
+  }
+  customerCategories: {
+    getAll: () => Promise<ApiResponse<any[]>>
+    getById: (id: string) => Promise<ApiResponse<any>>
+    create: (data: { name: string }) => Promise<ApiResponse<any>>
+    update: (id: string, data: { name?: string }) => Promise<ApiResponse<any>>
+    softDelete: (id: string) => Promise<ApiResponse<any>>
+    restore: (id: string) => Promise<ApiResponse<any>>
   }
   sync: {
     connect: (cloudDatabaseUrl: string) => Promise<ApiResponse<boolean>>

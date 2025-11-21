@@ -26,10 +26,10 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const priceSchema = z.object({
-  productId: z.string().min(1, 'Product is required'),
-  storeId: z.string().min(1, 'Store is required'),
-  price: z.string().min(1, 'Price is required'),
-  cost: z.string().min(1, 'Cost is required'),
+  productId: z.string().min(1, 'Produk wajib diisi'),
+  storeId: z.string().min(1, 'Toko wajib diisi'),
+  price: z.string().min(1, 'Harga wajib diisi'),
+  cost: z.string().min(1, 'Biaya wajib diisi'),
   isActive: z.boolean().optional()
 })
 
@@ -108,10 +108,10 @@ export default function PricingPage(): React.JSX.Element {
         setProducts(productsRes.data ?? [])
         setStores(storesRes.data ?? [])
       } else {
-        setError('Failed to load data')
+        setError('Gagal memuat data')
       }
     } catch (err) {
-      setError('Failed to load data')
+      setError('Gagal memuat data')
     } finally {
       setLoading(false)
     }
@@ -168,12 +168,12 @@ export default function PricingPage(): React.JSX.Element {
       }
       closeDialog()
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this price?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus harga ini?')) return
     try {
       const response = await window.api.db.productPrices.delete(id)
       if (response.success) {
@@ -182,7 +182,7 @@ export default function PricingPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -205,9 +205,9 @@ export default function PricingPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Product Pricing</Typography>
+        <Typography variant="h4">Harga Produk</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add Price
+          Tambah Harga
         </Button>
       </Stack>
 
@@ -215,12 +215,12 @@ export default function PricingPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell>Store</TableCell>
-              <TableCell align="right">Cost</TableCell>
-              <TableCell align="right">Price</TableCell>
+              <TableCell>Produk</TableCell>
+              <TableCell>Toko</TableCell>
+              <TableCell align="right">Harga Beli</TableCell>
+              <TableCell align="right">Harga Jual</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -232,7 +232,7 @@ export default function PricingPage(): React.JSX.Element {
                 <TableCell align="right">${price.price}</TableCell>
                 <TableCell>
                   <Chip
-                    label={price.isActive ? 'Active' : 'Inactive'}
+                    label={price.isActive ? 'Aktif' : 'Tidak Aktif'}
                     color={price.isActive ? 'success' : 'default'}
                     size="small"
                   />
@@ -250,7 +250,7 @@ export default function PricingPage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
-                  No prices found
+                  Tidak ada harga
                 </TableCell>
               </TableRow>
             )}
@@ -260,7 +260,7 @@ export default function PricingPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Edit Price' : 'Add Price'}</DialogTitle>
+          <DialogTitle>{editing ? 'Ubah Harga' : 'Tambah Harga'}</DialogTitle>
           <DialogContent>
             <Controller
               name="productId"
@@ -269,7 +269,7 @@ export default function PricingPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Product"
+                  label="Produk"
                   fullWidth
                   margin="normal"
                   error={!!errors.productId}
@@ -292,7 +292,7 @@ export default function PricingPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Store"
+                  label="Toko"
                   fullWidth
                   margin="normal"
                   error={!!errors.storeId}
@@ -310,7 +310,7 @@ export default function PricingPage(): React.JSX.Element {
 
             <TextField
               {...register('cost')}
-              label="Cost"
+              label="Harga Beli"
               type="number"
               fullWidth
               margin="normal"
@@ -321,7 +321,7 @@ export default function PricingPage(): React.JSX.Element {
 
             <TextField
               {...register('price')}
-              label="Selling Price"
+              label="Harga Jual"
               type="number"
               fullWidth
               margin="normal"
@@ -343,16 +343,16 @@ export default function PricingPage(): React.JSX.Element {
                   value={field.value ? 'true' : 'false'}
                   onChange={(e) => field.onChange(e.target.value === 'true')}
                 >
-                  <MenuItem value="true">Active</MenuItem>
-                  <MenuItem value="false">Inactive</MenuItem>
+                  <MenuItem value="true">Aktif</MenuItem>
+                  <MenuItem value="false">Tidak Aktif</MenuItem>
                 </TextField>
               )}
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

@@ -29,26 +29,26 @@ export type MenuItem = {
 const menus: MenuItem[] = [
   {
     key: 'home',
-    label: 'Home',
+    label: 'Beranda',
     icon: <HomeIcon fontSize="small" />,
     path: '/',
     permissions: ['dashboard.view']
   },
   {
     key: 'sales',
-    label: 'Sales',
+    label: 'Penjualan',
     icon: <ShoppingBasketIcon fontSize="small" />,
     permissions: ['sales.view'],
     children: [
       {
         key: 'sales-pos',
-        label: 'Point of Sale',
+        label: 'Kasir',
         path: '/sales/pos',
         permissions: ['sales.manage']
       },
       {
         key: 'sales-reports',
-        label: 'Sales Reports',
+        label: 'Laporan Penjualan',
         path: '/sales/reports',
         permissions: ['sales.view']
       }
@@ -56,31 +56,31 @@ const menus: MenuItem[] = [
   },
   {
     key: 'warehouse',
-    label: 'Warehouse',
+    label: 'Gudang',
     icon: <StoreIcon fontSize="small" />,
     permissions: ['warehouse.manage'],
     children: [
       {
         key: 'warehouse-stocks',
-        label: 'Stocks',
+        label: 'Stok',
         path: '/warehouse/stocks',
         permissions: ['warehouse.manage']
       },
       {
         key: 'warehouse-purchasing',
-        label: 'Purchasing',
+        label: 'Pembelian',
         path: '/warehouse/purchasing',
         permissions: ['warehouse.manage']
       },
       {
         key: 'warehouse-stock-opname',
-        label: 'Stock Opname',
+        label: 'Stok Opname',
         path: '/warehouse/stock-opname',
         permissions: ['warehouse.manage']
       },
       {
         key: 'warehouse-pricing',
-        label: 'Pricing',
+        label: 'Harga',
         path: '/warehouse/pricing',
         permissions: ['warehouse.manage']
       }
@@ -88,7 +88,7 @@ const menus: MenuItem[] = [
   },
   {
     key: 'inventory',
-    label: 'Inventory',
+    label: 'Inventori',
     icon: <InventoryIcon fontSize="small" />,
     permissions: ['inventory.manage'],
     children: [
@@ -101,19 +101,19 @@ const menus: MenuItem[] = [
       },
       {
         key: 'inventory-pricing',
-        label: 'Product Pricing',
+        label: 'Harga Produk',
         path: '/inventory/pricing',
         permissions: ['inventory.manage']
       },
       {
         key: 'inventory-batches',
-        label: 'Batches',
+        label: 'Batch',
         path: '/inventory/batches',
         permissions: ['inventory.manage']
       },
       {
         key: 'inventory-transactions',
-        label: 'Stock Transactions',
+        label: 'Transaksi Stok',
         path: '/inventory/transactions',
         permissions: ['inventory.manage']
       }
@@ -121,19 +121,19 @@ const menus: MenuItem[] = [
   },
   {
     key: 'purchasing',
-    label: 'Purchasing',
+    label: 'Pembelian',
     icon: <LocalShippingIcon fontSize="small" />,
     permissions: ['purchasing.manage'],
     children: [
       {
         key: 'purchasing-orders',
-        label: 'Purchase Orders',
+        label: 'Pesanan Pembelian',
         path: '/purchasing/orders',
         permissions: ['purchasing.manage']
       },
       {
         key: 'purchasing-create',
-        label: 'Create PO',
+        label: 'Buat PO',
         path: '/purchasing/order-form',
         permissions: ['purchasing.manage']
       }
@@ -141,54 +141,60 @@ const menus: MenuItem[] = [
   },
   {
     key: 'settings-group',
-    label: 'Settings',
+    label: 'Pengaturan',
     icon: <SettingsIcon fontSize="small" />,
     permissions: ['settings.view'],
     children: [
       {
         key: 'master',
-        label: 'Master Data',
+        label: 'Data Master',
         permissions: ['settings.view'],
         children: [
           {
+            key: 'master-branch',
+            label: 'Master Cabang',
+            path: '/master-branch',
+            permissions: ['master.branch.manage']
+          },
+          {
             key: 'master-store',
-            label: 'Stores',
+            label: 'Toko',
             path: '/master-store',
             permissions: ['master.store.manage']
           },
           {
             key: 'master-user',
-            label: 'Master User',
+            label: 'Master Pengguna',
             path: '/master-user',
             permissions: ['master.user.manage']
           },
           {
             key: 'master-product',
-            label: 'Products',
+            label: 'Produk',
             path: '/master-product',
             permissions: ['master.product.manage']
           },
           {
             key: 'master-category',
-            label: 'Categories',
+            label: 'Kategori',
             path: '/master-category',
             permissions: ['master.category.manage']
           },
           {
             key: 'master-supplier',
-            label: 'Suppliers',
+            label: 'Pemasok',
             path: '/master-supplier',
             permissions: ['master.supplier.manage']
           },
           {
             key: 'master-customer',
-            label: 'Customers',
+            label: 'Pelanggan',
             path: '/master-customer',
             permissions: ['master.customer.manage']
           },
           {
             key: 'master-customer-category',
-            label: 'Customer Categories',
+            label: 'Kategori Pelanggan',
             path: '/master-customer-category',
             permissions: ['master.customer-category.manage']
           }
@@ -196,13 +202,13 @@ const menus: MenuItem[] = [
       },
       {
         key: 'access-control',
-        label: 'Roles & Permissions',
+        label: 'Peran & Izin',
         path: '/access-control',
         permissions: ['settings.access-control.manage']
       }
     ]
   },
-  { key: 'logout', label: 'Logout', icon: <LogoutIcon />, isLogout: true }
+  { key: 'logout', label: 'Keluar', icon: <LogoutIcon />, isLogout: true }
 ]
 
 function userHasPermission(

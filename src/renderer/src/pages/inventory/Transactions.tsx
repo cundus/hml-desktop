@@ -25,10 +25,10 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const transactionSchema = z.object({
-  productId: z.string().min(1, 'Product is required'),
-  storeId: z.string().min(1, 'Store is required'),
+  productId: z.string().min(1, 'Produk wajib diisi'),
+  storeId: z.string().min(1, 'Toko wajib diisi'),
   type: z.enum(['INBOUND', 'OUTBOUND', 'TRANSFER_IN', 'TRANSFER_OUT', 'ADJUSTMENT', 'SALE']),
-  quantity: z.number().min(1, 'Quantity must be at least 1'),
+  quantity: z.number().min(1, 'Jumlah minimal 1'),
   reference: z.string().optional(),
   batchId: z.string().optional(),
   supplierId: z.string().optional(),
@@ -136,10 +136,10 @@ export default function TransactionsPage(): React.JSX.Element {
         setProducts(productsRes.data ?? [])
         setStores(storesRes.data ?? [])
       } else {
-        setError('Failed to load data')
+        setError('Gagal memuat data')
       }
     } catch (err) {
-      setError('Failed to load data')
+      setError('Gagal memuat data')
     } finally {
       setLoading(false)
     }
@@ -202,7 +202,7 @@ export default function TransactionsPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
@@ -255,17 +255,17 @@ export default function TransactionsPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Stock Transactions</Typography>
+        <Typography variant="h4">Transaksi Stok</Typography>
         <Stack direction="row" spacing={2}>
           <Button
             variant="outlined"
             startIcon={<FilterListIcon />}
             onClick={() => setFilterOpen(!filterOpen)}
           >
-            Filters
+            Filter
           </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-            Add Transaction
+            Tambah Transaksi
           </Button>
         </Stack>
       </Stack>
@@ -273,18 +273,18 @@ export default function TransactionsPage(): React.JSX.Element {
       {filterOpen && (
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" mb={2}>
-            Filters
+            Filter
           </Typography>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
                 select
-                label="Product"
+                label="Produk"
                 fullWidth
                 value={filters.productId}
                 onChange={(e) => setFilters({ ...filters, productId: e.target.value })}
               >
-                <MenuItem value="">All Products</MenuItem>
+                <MenuItem value="">Semua Produk</MenuItem>
                 {products.map((product) => (
                   <MenuItem key={product.id} value={product.id}>
                     {product.name}
@@ -295,12 +295,12 @@ export default function TransactionsPage(): React.JSX.Element {
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
                 select
-                label="Store"
+                label="Toko"
                 fullWidth
                 value={filters.storeId}
                 onChange={(e) => setFilters({ ...filters, storeId: e.target.value })}
               >
-                <MenuItem value="">All Stores</MenuItem>
+                <MenuItem value="">Semua Toko</MenuItem>
                 {stores.map((store) => (
                   <MenuItem key={store.id} value={store.id}>
                     {store.name}
@@ -311,28 +311,28 @@ export default function TransactionsPage(): React.JSX.Element {
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
                 select
-                label="Type"
+                label="Tipe"
                 fullWidth
                 value={filters.type}
                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
               >
-                <MenuItem value="">All Types</MenuItem>
-                <MenuItem value="INBOUND">Inbound</MenuItem>
-                <MenuItem value="OUTBOUND">Outbound</MenuItem>
-                <MenuItem value="TRANSFER_IN">Transfer In</MenuItem>
-                <MenuItem value="TRANSFER_OUT">Transfer Out</MenuItem>
-                <MenuItem value="ADJUSTMENT">Adjustment</MenuItem>
-                <MenuItem value="SALE">Sale</MenuItem>
+                <MenuItem value="">Semua Tipe</MenuItem>
+                <MenuItem value="INBOUND">Masuk</MenuItem>
+                <MenuItem value="OUTBOUND">Keluar</MenuItem>
+                <MenuItem value="TRANSFER_IN">Transfer Masuk</MenuItem>
+                <MenuItem value="TRANSFER_OUT">Transfer Keluar</MenuItem>
+                <MenuItem value="ADJUSTMENT">Penyesuaian</MenuItem>
+                <MenuItem value="SALE">Penjualan</MenuItem>
               </TextField>
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Button variant="outlined" fullWidth onClick={clearFilters}>
-                Clear Filters
+                Hapus Filter
               </Button>
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
-                label="Start Date"
+                label="Tanggal Mulai"
                 type="date"
                 fullWidth
                 value={filters.startDate}
@@ -341,7 +341,7 @@ export default function TransactionsPage(): React.JSX.Element {
             </Grid>
             <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <TextField
-                label="End Date"
+                label="Tanggal Akhir"
                 type="date"
                 fullWidth
                 value={filters.endDate}
@@ -356,12 +356,12 @@ export default function TransactionsPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Date/Time</TableCell>
-              <TableCell>Product</TableCell>
-              <TableCell>Store</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell align="right">Quantity</TableCell>
-              <TableCell>Reference</TableCell>
+              <TableCell>Tanggal</TableCell>
+              <TableCell>Produk</TableCell>
+              <TableCell>Toko</TableCell>
+              <TableCell>Tipe</TableCell>
+              <TableCell align="right">Jumlah</TableCell>
+              <TableCell>Referensi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -380,7 +380,7 @@ export default function TransactionsPage(): React.JSX.Element {
             {filteredItems.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} align="center">
-                  No transactions found
+                  Tidak ada transaksi
                 </TableCell>
               </TableRow>
             )}
@@ -390,7 +390,7 @@ export default function TransactionsPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>Add Stock Transaction</DialogTitle>
+          <DialogTitle>Tambah Transaksi</DialogTitle>
           <DialogContent>
             <Controller
               name="productId"
@@ -399,7 +399,7 @@ export default function TransactionsPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Product"
+                  label="Produk"
                   fullWidth
                   margin="normal"
                   error={!!errors.productId}
@@ -421,7 +421,7 @@ export default function TransactionsPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Store"
+                  label="Toko"
                   fullWidth
                   margin="normal"
                   error={!!errors.storeId}
@@ -443,18 +443,18 @@ export default function TransactionsPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Transaction Type"
+                  label="Tipe Transaksi"
                   fullWidth
                   margin="normal"
                   error={!!errors.type}
                   helperText={errors.type?.message}
                 >
-                  <MenuItem value="INBOUND">Inbound</MenuItem>
-                  <MenuItem value="OUTBOUND">Outbound</MenuItem>
-                  <MenuItem value="TRANSFER_IN">Transfer In</MenuItem>
-                  <MenuItem value="TRANSFER_OUT">Transfer Out</MenuItem>
-                  <MenuItem value="ADJUSTMENT">Adjustment</MenuItem>
-                  <MenuItem value="SALE">Sale</MenuItem>
+                  <MenuItem value="INBOUND">Masuk</MenuItem>
+                  <MenuItem value="OUTBOUND">Keluar</MenuItem>
+                  <MenuItem value="TRANSFER_IN">Transfer Masuk</MenuItem>
+                  <MenuItem value="TRANSFER_OUT">Transfer Keluar</MenuItem>
+                  <MenuItem value="ADJUSTMENT">Penyesuaian</MenuItem>
+                  <MenuItem value="SALE">Penjualan</MenuItem>
                 </TextField>
               )}
             />
@@ -465,7 +465,7 @@ export default function TransactionsPage(): React.JSX.Element {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  label="Quantity"
+                  label="Jumlah"
                   type="number"
                   fullWidth
                   margin="normal"
@@ -479,7 +479,7 @@ export default function TransactionsPage(): React.JSX.Element {
 
             <TextField
               {...register('reference')}
-              label="Reference (Optional)"
+              label="Referensi (Opsional)"
               fullWidth
               margin="normal"
               error={!!errors.reference}
@@ -487,9 +487,9 @@ export default function TransactionsPage(): React.JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

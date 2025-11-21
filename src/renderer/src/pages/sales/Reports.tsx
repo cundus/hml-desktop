@@ -94,10 +94,10 @@ export default function SalesReportsPage(): React.JSX.Element {
         setTransactions(enrichedTransactions)
         setStores(storesRes.data ?? [])
       } else {
-        setError('Failed to load data')
+        setError('Gagal memuat data')
       }
     } catch (err) {
-      setError('Failed to load data')
+      setError('Gagal memuat data')
     } finally {
       setLoading(false)
     }
@@ -192,14 +192,14 @@ export default function SalesReportsPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Sales Reports</Typography>
+        <Typography variant="h4">Laporan Penjualan</Typography>
         <Button
           variant="outlined"
           startIcon={<DownloadIcon />}
           onClick={exportToCSV}
           disabled={filteredTransactions.length === 0}
         >
-          Export CSV
+          Ekspor CSV
         </Button>
       </Stack>
 
@@ -212,7 +212,7 @@ export default function SalesReportsPage(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">{summary.totalTransactions}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Transactions
+                  Total Transaksi
                 </Typography>
               </Box>
             </Stack>
@@ -226,7 +226,7 @@ export default function SalesReportsPage(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">${summary.totalRevenue}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Revenue
+                  Total Pendapatan
                 </Typography>
               </Box>
             </Stack>
@@ -240,7 +240,7 @@ export default function SalesReportsPage(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">${summary.totalDiscount}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Discounts
+                  Total Diskon
                 </Typography>
               </Box>
             </Stack>
@@ -254,7 +254,7 @@ export default function SalesReportsPage(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">${summary.totalTax}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Tax
+                  Total Pajak
                 </Typography>
               </Box>
             </Stack>
@@ -270,12 +270,12 @@ export default function SalesReportsPage(): React.JSX.Element {
         <Stack direction="row" spacing={2} flexWrap="wrap">
           <TextField
             select
-            label="Store"
+            label="Toko"
             value={selectedStore}
             onChange={(e) => setSelectedStore(e.target.value)}
             sx={{ minWidth: 200 }}
           >
-            <MenuItem value="">All Stores</MenuItem>
+            <MenuItem value="">Semua Toko</MenuItem>
             {stores.map((store) => (
               <MenuItem key={store.id} value={store.id}>
                 {store.name}
@@ -284,7 +284,7 @@ export default function SalesReportsPage(): React.JSX.Element {
           </TextField>
 
           <TextField
-            label="Start Date"
+            label="Tanggal Mulai"
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -293,7 +293,7 @@ export default function SalesReportsPage(): React.JSX.Element {
           />
 
           <TextField
-            label="End Date"
+            label="Tanggal Akhir"
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
@@ -302,7 +302,7 @@ export default function SalesReportsPage(): React.JSX.Element {
           />
 
           <Button variant="outlined" onClick={clearFilters}>
-            Clear Filters
+            Hapus Filter
           </Button>
         </Stack>
       </Paper>
@@ -312,13 +312,13 @@ export default function SalesReportsPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Date/Time</TableCell>
-              <TableCell>Transaction Code</TableCell>
-              <TableCell>Store</TableCell>
-              <TableCell align="right">Subtotal</TableCell>
-              <TableCell align="right">Discount</TableCell>
-              <TableCell align="right">Tax</TableCell>
+              <TableCell>Tanggal/Waktu</TableCell>
+              <TableCell>Kode Transaksi</TableCell>
+              <TableCell>Toko</TableCell>
+              <TableCell>Pelanggan</TableCell>
               <TableCell align="right">Total</TableCell>
+              <TableCell align="right">Diskon</TableCell>
+              <TableCell align="right">Pajak</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -327,20 +327,20 @@ export default function SalesReportsPage(): React.JSX.Element {
                 <TableCell>{formatDate(txn.createdAt)}</TableCell>
                 <TableCell>{txn.code}</TableCell>
                 <TableCell>{txn.storeName || txn.storeId}</TableCell>
-                <TableCell align="right">
-                  ${(parseFloat(txn.total) - parseFloat(txn.tax) + parseFloat(txn.discount)).toFixed(2)}
+                <TableCell>
+                  {(parseFloat(txn.total) - parseFloat(txn.tax) + parseFloat(txn.discount)).toFixed(2)}
                 </TableCell>
-                <TableCell align="right">${txn.discount}</TableCell>
-                <TableCell align="right">${txn.tax}</TableCell>
+                <TableCell align="right">{txn.discount}</TableCell>
+                <TableCell align="right">{txn.tax}</TableCell>
                 <TableCell align="right">
-                  <Typography fontWeight="bold">${txn.total}</Typography>
+                  <Typography fontWeight="bold">{txn.total}</Typography>
                 </TableCell>
               </TableRow>
             ))}
             {filteredTransactions.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center">
-                  No transactions found
+                  Tidak ada transaksi
                 </TableCell>
               </TableRow>
             )}

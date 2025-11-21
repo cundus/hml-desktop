@@ -96,7 +96,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         }
       }
     } catch (err) {
-      console.error('Failed to load data', err)
+      console.error('Gagal memuat data', err)
     } finally {
       setLoading(false)
     }
@@ -137,7 +137,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
   const addItem = (): void => {
     if (!selectedProduct) {
-      alert('Please select a product')
+      alert('Silakan pilih produk')
       return
     }
 
@@ -196,13 +196,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   }
 
   const handleSave = async (saveStatus: PurchaseOrderStatus): Promise<void> => {
-    if (!code || !supplierId || !storeId) {
-      alert('Please fill in all required fields')
+    if (!supplierId || !storeId) {
+      alert('Silakan isi semua field yang diperlukan')
       return
     }
 
     if (items.length === 0) {
-      alert('Please add at least one item')
+      alert('Silakan tambahkan minimal satu item')
       return
     }
 
@@ -234,13 +234,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       }
 
       if (response.success) {
-        alert(`Purchase order ${saveStatus === 'DRAFT' ? 'saved as draft' : 'submitted'} successfully!`)
+        alert('Pesanan pembelian disimpan sebagai draft!')
         navigate('/purchasing/orders')
       } else {
-        alert(response.error || 'Failed to save purchase order')
+        alert(response.error || 'Gagal menyimpan pesanan pembelian')
       }
     } catch (err) {
-      alert('Failed to save purchase order')
+      alert('Gagal menyimpan pesanan pembelian')
       console.error(err)
     } finally {
       setSaving(false)
@@ -248,7 +248,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   }
 
   const handleReceive = async (): Promise<void> => {
-    if (!confirm('Mark this purchase order as received? This will update inventory.')) return
+    if (!confirm('Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.')) return
 
     try {
       setSaving(true)
@@ -271,10 +271,10 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         await window.api.db.productLocations.adjustQuantity(item.productId, storeId, item.quantity)
       }
 
-      alert('Purchase order received! Inventory updated.')
+      alert('Pesanan pembelian diterima! Inventori diperbarui.')
       navigate('/purchasing/orders')
     } catch (err) {
-      alert('Failed to receive purchase order')
+      alert('Gagal menerima pesanan pembelian')
       console.error(err)
     } finally {
       setSaving(false)
@@ -295,17 +295,17 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         <IconButton onClick={() => navigate('/purchasing/orders')}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h4">{poId ? 'Edit' : 'Create'} Purchase Order</Typography>
+        <Typography variant="h4">{poId ? 'Ubah' : 'Buat'} Pesanan Pembelian</Typography>
       </Stack>
 
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" mb={2}>
-          PO Details
+        <Typography variant="h6" gutterBottom>
+          Detail PO
         </Typography>
 
         <Stack spacing={2}>
           <TextField
-            label="PO Code"
+            label="Kode PO"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             fullWidth
@@ -315,7 +315,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
           <TextField
             select
-            label="Supplier"
+            label="Pemasok"
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
             fullWidth
@@ -331,7 +331,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
           <TextField
             select
-            label="Store"
+            label="Toko"
             value={storeId}
             onChange={(e) => setStoreId(e.target.value)}
             fullWidth
@@ -363,8 +363,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       </Paper>
 
       <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" mb={2}>
-          Items
+        <Typography variant="h6" gutterBottom>
+          Item
         </Typography>
 
         <Stack direction="row" spacing={2} mb={3}>
@@ -374,7 +374,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             value={selectedProduct}
             onChange={(_, newValue) => setSelectedProduct(newValue)}
             renderInput={(params) => (
-              <TextField {...params} label="Search Product" placeholder="Type to search..." />
+              <TextField {...params} label="Cari Produk..." />
             )}
             sx={{ flex: 1 }}
             disabled={status === 'RECEIVED'}
@@ -385,18 +385,18 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             onClick={addItem}
             disabled={!selectedProduct || status === 'RECEIVED'}
           >
-            Add Item
+            Tambah Item
           </Button>
         </Stack>
 
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell align="center">Quantity</TableCell>
-              <TableCell align="right">Cost</TableCell>
+              <TableCell>Produk</TableCell>
+              <TableCell align="right">Jumlah</TableCell>
+              <TableCell align="right">Biaya</TableCell>
               <TableCell align="right">Subtotal</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -408,7 +408,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     {item.sku}
                   </Typography>
                 </TableCell>
-                <TableCell align="center">
+                <TableCell align="right">
                   <TextField
                     type="number"
                     value={item.quantity}
@@ -430,8 +430,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     disabled={status === 'RECEIVED'}
                   />
                 </TableCell>
-                <TableCell align="right">${item.subtotal.toFixed(2)}</TableCell>
-                <TableCell align="center">
+                <TableCell align="right">{item.subtotal.toFixed(2)}</TableCell>
+                <TableCell align="right">
                   <IconButton
                     size="small"
                     color="error"
@@ -446,7 +446,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  <Typography color="text.secondary">No items added</Typography>
+                  Belum ada item
                 </TableCell>
               </TableRow>
             )}
@@ -458,13 +458,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         <Stack direction="row" justifyContent="flex-end" spacing={2}>
           <Typography variant="h6">Total:</Typography>
           <Typography variant="h6" color="primary">
-            ${calculateTotal().toFixed(2)}
+            {calculateTotal().toFixed(2)}
           </Typography>
         </Stack>
 
         <Stack direction="row" spacing={2} mt={3} justifyContent="flex-end">
           <Button variant="outlined" onClick={() => navigate('/purchasing/orders')}>
-            Cancel
+            Batal
           </Button>
           {status !== 'RECEIVED' && (
             <>
@@ -474,7 +474,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                 onClick={() => handleSave('DRAFT')}
                 disabled={saving}
               >
-                Save as Draft
+                Simpan sebagai Draft
               </Button>
               <Button
                 variant="contained"
@@ -482,13 +482,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                 onClick={() => handleSave('ORDERED')}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Submit Order'}
+                {saving ? 'Menyimpan...' : 'Kirim Pesanan'}
               </Button>
             </>
           )}
           {status === 'ORDERED' && (
             <Button variant="contained" color="success" onClick={handleReceive} disabled={saving}>
-              {saving ? 'Processing...' : 'Receive Goods'}
+              {saving ? 'Memproses...' : 'Terima Barang'}
             </Button>
           )}
         </Stack>

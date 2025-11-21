@@ -26,9 +26,9 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import api from '../../../lib/api'
 
 const productSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
-  name: z.string().min(1, 'Name is required'),
-  category: z.string().min(1, 'Category is required')
+  code: z.string().min(1, 'Kode wajib diisi'),
+  name: z.string().min(1, 'Nama wajib diisi'),
+  category: z.string().min(1, 'Kategori wajib diisi')
 })
 
 export type ProductFormValues = z.infer<typeof productSchema>
@@ -64,9 +64,9 @@ export default function ProductPage(): React.JSX.Element {
         const res = await api.get<Product[]>('/master/products')
         setItems(res.data ?? [])
       } catch {
-        setError('Failed to load products')
+        setError('Gagal memuat produk')
       } finally {
-        setLoading(false)
+        alert('Operasi gagal')
       }
     }
     void load()
@@ -108,15 +108,16 @@ export default function ProductPage(): React.JSX.Element {
       }
       setDialogOpen(false)
     } catch {
-      setError('Failed to save product')
+      setError('Gagal menyimpan produk')
     }
   }
 
   const handleDelete = async (product: Product): Promise<void> => {
     try {
+      if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
       await api.delete(`/master/products/${product.id}`)
     } catch {
-      setError('Failed to delete product')
+      setError('Gagal menghapus produk')
     }
     setItems((prev) => prev.filter((p) => p.id !== product.id))
   }
@@ -124,9 +125,9 @@ export default function ProductPage(): React.JSX.Element {
   return (
     <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Master Product</Typography>
+        <Typography variant="h5">Master Produk</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Add Product
+          Tambah Produk
         </Button>
       </Stack>
 
@@ -145,10 +146,10 @@ export default function ProductPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Code</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Category</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>Kode</TableCell>
+                <TableCell>Nama</TableCell>
+                <TableCell>Kategori</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -161,7 +162,7 @@ export default function ProductPage(): React.JSX.Element {
               ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} align="center">
-                    No products found
+                    Tidak ada produk
                   </TableCell>
                 </TableRow>
               ) : (
@@ -191,12 +192,12 @@ export default function ProductPage(): React.JSX.Element {
       )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
+        <DialogTitle>{editing ? 'Ubah Produk' : 'Buat Produk'}</DialogTitle>
         <DialogContent>
           <Box component="form" id="product-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
-              label="Code"
+              label="Kode"
               fullWidth
               {...register('code')}
               error={!!errors.code}
@@ -204,7 +205,7 @@ export default function ProductPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Name"
+              label="Nama"
               fullWidth
               {...register('name')}
               error={!!errors.name}
@@ -212,7 +213,7 @@ export default function ProductPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Category"
+              label="Kategori"
               fullWidth
               select
               {...register('category')}
@@ -228,11 +229,9 @@ export default function ProductPage(): React.JSX.Element {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDialog} color="inherit" disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" form="product-form" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save'}
+          <Button onClick={closeDialog}>Batal</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
           </Button>
         </DialogActions>
       </Dialog>

@@ -102,10 +102,10 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         setSuppliers(suppliersRes.data ?? [])
         setStores(storesRes.data ?? [])
       } else {
-        setError('Failed to load data')
+        setError('Gagal memuat data')
       }
     } catch (err) {
-      setError('Failed to load data')
+      setError('Gagal memuat data')
     } finally {
       setLoading(false)
     }
@@ -163,12 +163,12 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Failed to update status')
+      alert('Gagal memperbarui status')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this purchase order?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus pesanan pembelian ini?')) return
 
     try {
       const response = await window.api.db.purchaseOrders.delete(id)
@@ -178,7 +178,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -222,21 +222,21 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Purchase Orders</Typography>
+        <Typography variant="h4">Pesanan Pembelian</Typography>
         <Stack direction="row" spacing={2}>
           <Button
             variant="outlined"
             startIcon={<FilterListIcon />}
             onClick={() => setFilterOpen(!filterOpen)}
           >
-            Filters
+            Filter
           </Button>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => navigate('/purchasing/order-form')}
           >
-            Create PO
+            Buat PO
           </Button>
         </Stack>
       </Stack>
@@ -244,17 +244,17 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
       {filterOpen && (
         <Paper sx={{ p: 2, mb: 3 }}>
           <Typography variant="h6" mb={2}>
-            Filters
+            Filter
           </Typography>
           <Stack direction="row" spacing={2} flexWrap="wrap">
             <TextField
               select
-              label="Supplier"
+              label="Pemasok"
               value={filters.supplierId}
               onChange={(e) => setFilters({ ...filters, supplierId: e.target.value })}
               sx={{ minWidth: 200 }}
             >
-              <MenuItem value="">All Suppliers</MenuItem>
+              <MenuItem value="">Semua Pemasok</MenuItem>
               {suppliers.map((supplier) => (
                 <MenuItem key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -264,12 +264,12 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
 
             <TextField
               select
-              label="Store"
+              label="Toko"
               value={filters.storeId}
               onChange={(e) => setFilters({ ...filters, storeId: e.target.value })}
               sx={{ minWidth: 200 }}
             >
-              <MenuItem value="">All Stores</MenuItem>
+              <MenuItem value="">Semua Toko</MenuItem>
               {stores.map((store) => (
                 <MenuItem key={store.id} value={store.id}>
                   {store.name}
@@ -284,15 +284,15 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
               onChange={(e) => setFilters({ ...filters, status: e.target.value })}
               sx={{ minWidth: 200 }}
             >
-              <MenuItem value="">All Status</MenuItem>
+              <MenuItem value="">Semua Status</MenuItem>
               <MenuItem value="DRAFT">Draft</MenuItem>
-              <MenuItem value="ORDERED">Ordered</MenuItem>
-              <MenuItem value="RECEIVED">Received</MenuItem>
-              <MenuItem value="CANCELLED">Cancelled</MenuItem>
+              <MenuItem value="ORDERED">Dipesan</MenuItem>
+              <MenuItem value="RECEIVED">Diterima</MenuItem>
+              <MenuItem value="CANCELLED">Dibatalkan</MenuItem>
             </TextField>
 
             <Button variant="outlined" onClick={clearFilters}>
-              Clear Filters
+              Hapus Filter
             </Button>
           </Stack>
         </Paper>
@@ -302,13 +302,13 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>PO Code</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Supplier</TableCell>
-              <TableCell>Store</TableCell>
+              <TableCell>Kode PO</TableCell>
+              <TableCell>Tanggal</TableCell>
+              <TableCell>Pemasok</TableCell>
+              <TableCell>Toko</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Total</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell align="center">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -321,7 +321,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
                 <TableCell>
                   <Chip label={po.status} color={getStatusColor(po.status)} size="small" />
                 </TableCell>
-                <TableCell align="right">${po.total}</TableCell>
+                <TableCell align="right">{po.total}</TableCell>
                 <TableCell align="center">
                   <IconButton
                     size="small"
@@ -346,7 +346,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
             {filteredItems.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} align="center">
-                  No purchase orders found
+                  Tidak ada pesanan pembelian
                 </TableCell>
               </TableRow>
             )}
@@ -356,10 +356,10 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
 
       {/* Status Change Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
-        <MenuItem onClick={() => handleStatusChange('DRAFT')}>Mark as Draft</MenuItem>
-        <MenuItem onClick={() => handleStatusChange('ORDERED')}>Mark as Ordered</MenuItem>
-        <MenuItem onClick={() => handleStatusChange('RECEIVED')}>Mark as Received</MenuItem>
-        <MenuItem onClick={() => handleStatusChange('CANCELLED')}>Mark as Cancelled</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('DRAFT')}>Tandai sebagai Draft</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('ORDERED')}>Tandai sebagai Dipesan</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('RECEIVED')}>Tandai sebagai Diterima</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('CANCELLED')}>Tandai sebagai Dibatalkan</MenuItem>
       </Menu>
     </Box>
   )

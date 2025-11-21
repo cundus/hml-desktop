@@ -24,7 +24,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const supplierSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Nama wajib diisi'),
   phone: z.string().optional(),
   address: z.string().optional()
 })
@@ -64,10 +64,10 @@ export default function SupplierPage(): React.JSX.Element {
       if (response.success) {
         setItems(response.data ?? [])
       } else {
-        setError(response.error ?? 'Failed to load suppliers')
+        setError(response.error ?? 'Gagal memuat pemasok')
       }
     } catch (err) {
-      setError('Failed to load suppliers')
+      setError('Gagal memuat pemasok')
     } finally {
       setLoading(false)
     }
@@ -112,12 +112,12 @@ export default function SupplierPage(): React.JSX.Element {
       }
       closeDialog()
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this supplier?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus pemasok ini?')) return
     try {
       const response = await window.api.db.suppliers.softDelete(id)
       if (response.success) {
@@ -126,7 +126,7 @@ export default function SupplierPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -149,9 +149,11 @@ export default function SupplierPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Suppliers</Typography>
+        <Typography variant="h4" mb={3}>
+          Pemasok
+        </Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add Supplier
+          Tambah Pemasok
         </Button>
       </Stack>
 
@@ -159,10 +161,10 @@ export default function SupplierPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Phone</TableCell>
-              <TableCell>Address</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>Nama</TableCell>
+              <TableCell>Telepon</TableCell>
+              <TableCell>Alamat</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -184,7 +186,7 @@ export default function SupplierPage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} align="center">
-                  No suppliers found
+                  Tidak ada pemasok
                 </TableCell>
               </TableRow>
             )}
@@ -194,11 +196,11 @@ export default function SupplierPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Edit Supplier' : 'Add Supplier'}</DialogTitle>
+          <DialogTitle>{editing ? 'Ubah Pemasok' : 'Buat Pemasok'}</DialogTitle>
           <DialogContent>
             <TextField
               {...register('name')}
-              label="Supplier Name"
+              label="Nama"
               fullWidth
               margin="normal"
               error={!!errors.name}
@@ -206,15 +208,13 @@ export default function SupplierPage(): React.JSX.Element {
             />
             <TextField
               {...register('phone')}
-              label="Phone"
+              label="Telepon"
               fullWidth
               margin="normal"
-              error={!!errors.phone}
-              helperText={errors.phone?.message}
             />
             <TextField
               {...register('address')}
-              label="Address"
+              label="Alamat"
               fullWidth
               margin="normal"
               multiline
@@ -224,9 +224,9 @@ export default function SupplierPage(): React.JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

@@ -25,10 +25,10 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const storeSchema = z.object({
-  code: z.string().min(1, 'Code is required'),
-  name: z.string().min(1, 'Name is required'),
+  code: z.string().min(1, 'Kode wajib diisi'),
+  name: z.string().min(1, 'Nama wajib diisi'),
   address: z.string().optional(),
-  type: z.string().min(1, 'Type is required')
+  type: z.string().min(1, 'Tipe wajib diisi')
 })
 
 type StoreFormValues = z.infer<typeof storeSchema>
@@ -68,10 +68,10 @@ export default function StorePage(): React.JSX.Element {
       if (response.success) {
         setItems(response.data ?? [])
       } else {
-        setError(response.error ?? 'Failed to load stores')
+        setError(response.error ?? 'Gagal memuat toko')
       }
     } catch (err) {
-      setError('Failed to load stores')
+      setError('Gagal memuat toko')
     } finally {
       setLoading(false)
     }
@@ -117,12 +117,12 @@ export default function StorePage(): React.JSX.Element {
       }
       closeDialog()
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this store?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return
     try {
       const response = await window.api.db.stores.softDelete(id)
       if (response.success) {
@@ -131,7 +131,7 @@ export default function StorePage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -154,9 +154,11 @@ export default function StorePage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Stores / Branches</Typography>
+        <Typography variant="h4" mb={3}>
+          Toko
+        </Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add Store
+          Tambah Toko
         </Button>
       </Stack>
 
@@ -164,11 +166,11 @@ export default function StorePage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Address</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>Kode</TableCell>
+              <TableCell>Nama</TableCell>
+              <TableCell>Tipe</TableCell>
+              <TableCell>Alamat</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -191,7 +193,7 @@ export default function StorePage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  No stores found
+                  Tidak ada toko
                 </TableCell>
               </TableRow>
             )}
@@ -201,11 +203,11 @@ export default function StorePage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Edit Store' : 'Add Store'}</DialogTitle>
+          <DialogTitle>{editing ? 'Ubah Toko' : 'Buat Toko'}</DialogTitle>
           <DialogContent>
             <TextField
               {...register('code')}
-              label="Store Code"
+              label="Kode"
               fullWidth
               margin="normal"
               error={!!errors.code}
@@ -213,7 +215,7 @@ export default function StorePage(): React.JSX.Element {
             />
             <TextField
               {...register('name')}
-              label="Store Name"
+              label="Nama"
               fullWidth
               margin="normal"
               error={!!errors.name}
@@ -221,7 +223,7 @@ export default function StorePage(): React.JSX.Element {
             />
             <TextField
               {...register('type')}
-              label="Type"
+              label="Tipe"
               fullWidth
               margin="normal"
               select
@@ -236,7 +238,7 @@ export default function StorePage(): React.JSX.Element {
             </TextField>
             <TextField
               {...register('address')}
-              label="Address"
+              label="Alamat"
               fullWidth
               margin="normal"
               multiline
@@ -246,9 +248,9 @@ export default function StorePage(): React.JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

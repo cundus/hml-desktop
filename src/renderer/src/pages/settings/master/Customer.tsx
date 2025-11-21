@@ -25,7 +25,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import api from '../../../lib/api'
 
 const customerSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
+  name: z.string().min(1, 'Nama wajib diisi'),
   phone: z.string().optional(),
   tier: z.string().optional()
 })
@@ -69,9 +69,9 @@ export default function CustomerPage(): React.JSX.Element {
         const res = await api.get<Customer[]>('/master/customers')
         setItems(res.data ?? [])
       } catch {
-        setError('Failed to load customers')
+        setError('Gagal memuat pelanggan')
       } finally {
-        setLoading(false)
+        alert('Operasi gagal')
       }
     }
     void load()
@@ -109,15 +109,16 @@ export default function CustomerPage(): React.JSX.Element {
       }
       setDialogOpen(false)
     } catch {
-      setError('Failed to save customer')
+      setError('Gagal menyimpan pelanggan')
     }
   }
 
   const handleDelete = async (customer: Customer): Promise<void> => {
     try {
+      if (!confirm('Apakah Anda yakin ingin menghapus pelanggan ini?')) return
       await api.delete(`/master/customers/${customer.id}`)
     } catch {
-      setError('Failed to delete customer')
+      setError('Gagal menghapus pelanggan')
     }
     setItems((prev) => prev.filter((c) => c.id !== customer.id))
   }
@@ -125,9 +126,9 @@ export default function CustomerPage(): React.JSX.Element {
   return (
     <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Master Customer</Typography>
+        <Typography variant="h5">Master Pelanggan</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Add Customer
+          Tambah Pelanggan
         </Button>
       </Stack>
 
@@ -146,10 +147,10 @@ export default function CustomerPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Phone</TableCell>
-                <TableCell>Tier</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>Nama</TableCell>
+                <TableCell>Telepon</TableCell>
+                <TableCell>Kategori</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -162,7 +163,7 @@ export default function CustomerPage(): React.JSX.Element {
               ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} align="center">
-                    No customers found
+                    Tidak ada pelanggan
                   </TableCell>
                 </TableRow>
               ) : (
@@ -192,12 +193,12 @@ export default function CustomerPage(): React.JSX.Element {
       )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editing ? 'Edit Customer' : 'Add Customer'}</DialogTitle>
+        <DialogTitle>{editing ? 'Ubah Pelanggan' : 'Buat Pelanggan'}</DialogTitle>
         <DialogContent>
           <Box component="form" id="customer-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
-              label="Name"
+              label="Nama"
               fullWidth
               {...register('name')}
               error={!!errors.name}
@@ -205,7 +206,7 @@ export default function CustomerPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Phone"
+              label="Telepon"
               fullWidth
               {...register('phone')}
               error={!!errors.phone}
@@ -213,7 +214,7 @@ export default function CustomerPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Tier"
+              label="Kategori"
               fullWidth
               {...register('tier')}
               error={!!errors.tier}
@@ -222,11 +223,9 @@ export default function CustomerPage(): React.JSX.Element {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDialog} color="inherit" disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" form="customer-form" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save'}
+          <Button onClick={closeDialog}>Batal</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
           </Button>
         </DialogActions>
       </Dialog>

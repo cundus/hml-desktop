@@ -24,7 +24,7 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const customerCategorySchema = z.object({
-  name: z.string().min(1, 'Name is required')
+  name: z.string().min(1, 'Nama wajib diisi')
 })
 
 type CustomerCategoryFormValues = z.infer<typeof customerCategorySchema>
@@ -62,10 +62,10 @@ export default function CustomerCategoryPage(): React.JSX.Element {
       if (response.success) {
         setItems(response.data ?? [])
       } else {
-        setError(response.error ?? 'Failed to load customer categories')
+        setError(response.error ?? 'Gagal memuat kategori pelanggan')
       }
     } catch (err) {
-      setError('Failed to load customer categories')
+      setError('Gagal memuat kategori pelanggan')
     } finally {
       setLoading(false)
     }
@@ -106,12 +106,12 @@ export default function CustomerCategoryPage(): React.JSX.Element {
       }
       closeDialog()
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this customer category?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus kategori pelanggan ini?')) return
     try {
       const response = await window.api.db.customerCategories.softDelete(id)
       if (response.success) {
@@ -120,7 +120,7 @@ export default function CustomerCategoryPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -143,9 +143,9 @@ export default function CustomerCategoryPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Customer Categories</Typography>
+        <Typography variant="h4">Kategori Pelanggan</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add Category
+          Tambah Kategori Pelanggan
         </Button>
       </Stack>
 
@@ -153,8 +153,8 @@ export default function CustomerCategoryPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell>Nama</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -174,7 +174,7 @@ export default function CustomerCategoryPage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={2} align="center">
-                  No customer categories found
+                  Tidak ada kategori pelanggan
                 </TableCell>
               </TableRow>
             )}
@@ -184,11 +184,11 @@ export default function CustomerCategoryPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Edit Customer Category' : 'Add Customer Category'}</DialogTitle>
+          <DialogTitle>{editing ? 'Ubah Kategori Pelanggan' : 'Buat Kategori Pelanggan'}</DialogTitle>
           <DialogContent>
             <TextField
               {...register('name')}
-              label="Category Name"
+              label="Nama Kategori"
               fullWidth
               margin="normal"
               error={!!errors.name}
@@ -196,9 +196,9 @@ export default function CustomerCategoryPage(): React.JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

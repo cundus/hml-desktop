@@ -28,8 +28,8 @@ import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
 const batchSchema = z.object({
-  productId: z.string().min(1, 'Product is required'),
-  code: z.string().min(1, 'Batch code is required'),
+  productId: z.string().min(1, 'Produk wajib diisi'),
+  code: z.string().min(1, 'Kode batch wajib diisi'),
   expiryDate: z.string().optional()
 })
 
@@ -105,10 +105,10 @@ export default function BatchesPage(): React.JSX.Element {
           setExpiringBatches(enrichedExpiring)
         }
       } else {
-        setError('Failed to load data')
+        setError('Gagal memuat data')
       }
     } catch (err) {
-      setError('Failed to load data')
+      setError('Gagal memuat data')
     } finally {
       setLoading(false)
     }
@@ -165,12 +165,12 @@ export default function BatchesPage(): React.JSX.Element {
       }
       closeDialog()
     } catch (err) {
-      alert('Operation failed')
+      alert('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Are you sure you want to delete this batch?')) return
+    if (!confirm('Apakah Anda yakin ingin menghapus batch ini?')) return
     try {
       const response = await window.api.db.batches.delete(id)
       if (response.success) {
@@ -179,7 +179,7 @@ export default function BatchesPage(): React.JSX.Element {
         alert(response.error)
       }
     } catch (err) {
-      alert('Delete failed')
+      alert('Gagal menghapus')
     }
   }
 
@@ -218,20 +218,20 @@ export default function BatchesPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Batch Management</Typography>
+        <Typography variant="h4">Manajemen Batch</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Add Batch
+          Tambah Batch
         </Button>
       </Stack>
 
       {expiringBatches.length > 0 && (
         <Alert severity="warning" icon={<WarningIcon />} sx={{ mb: 3 }}>
           <Typography variant="subtitle2" fontWeight="bold">
-            {expiringBatches.length} batch(es) expiring within 30 days
+            {expiringBatches.length} batch akan kadaluarsa dalam 30 hari
           </Typography>
           {expiringBatches.slice(0, 3).map((batch) => (
             <Typography key={batch.id} variant="body2">
-              • {batch.productName} - {batch.code} (Expires: {formatDate(batch.expiryDate)})
+              • {batch.productName} - {batch.code} (Kadaluarsa: {formatDate(batch.expiryDate)})
             </Typography>
           ))}
         </Alert>
@@ -241,11 +241,11 @@ export default function BatchesPage(): React.JSX.Element {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell>Batch Code</TableCell>
-              <TableCell>Expiry Date</TableCell>
+              <TableCell>Produk</TableCell>
+              <TableCell>Kode Batch</TableCell>
+              <TableCell>Tanggal Kadaluarsa</TableCell>
               <TableCell>Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell align="right">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -256,9 +256,9 @@ export default function BatchesPage(): React.JSX.Element {
                 <TableCell>{formatDate(batch.expiryDate)}</TableCell>
                 <TableCell>
                   {isExpired(batch.expiryDate) ? (
-                    <Chip label="Expired" color="error" size="small" />
+                    <Chip label="Kadaluarsa" color="error" size="small" />
                   ) : isExpiringSoon(batch.expiryDate) ? (
-                    <Chip label="Expiring Soon" color="warning" size="small" />
+                    <Chip label="Segera Kadaluarsa" color="warning" size="small" />
                   ) : (
                     <Chip label="Valid" color="success" size="small" />
                   )}
@@ -276,7 +276,7 @@ export default function BatchesPage(): React.JSX.Element {
             {items.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} align="center">
-                  No batches found
+                  Tidak ada batch
                 </TableCell>
               </TableRow>
             )}
@@ -286,7 +286,7 @@ export default function BatchesPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Edit Batch' : 'Add Batch'}</DialogTitle>
+          <DialogTitle>{editing ? 'Ubah Batch' : 'Tambah Batch'}</DialogTitle>
           <DialogContent>
             <Controller
               name="productId"
@@ -295,7 +295,7 @@ export default function BatchesPage(): React.JSX.Element {
                 <TextField
                   {...field}
                   select
-                  label="Product"
+                  label="Produk"
                   fullWidth
                   margin="normal"
                   error={!!errors.productId}
@@ -313,7 +313,7 @@ export default function BatchesPage(): React.JSX.Element {
 
             <TextField
               {...register('code')}
-              label="Batch Code"
+              label="Kode Batch"
               fullWidth
               margin="normal"
               error={!!errors.code}
@@ -322,7 +322,7 @@ export default function BatchesPage(): React.JSX.Element {
 
             <TextField
               {...register('expiryDate')}
-              label="Expiry Date"
+              label="Tanggal Kadaluarsa"
               type="date"
               fullWidth
               margin="normal"
@@ -332,9 +332,9 @@ export default function BatchesPage(): React.JSX.Element {
             />
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeDialog}>Cancel</Button>
+            <Button onClick={closeDialog}>Batal</Button>
             <Button type="submit" variant="contained" disabled={isSubmitting}>
-              {isSubmitting ? 'Saving...' : 'Save'}
+              {isSubmitting ? 'Menyimpan...' : 'Simpan'}
             </Button>
           </DialogActions>
         </form>

@@ -25,10 +25,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import api from '../../../lib/api'
 
 const userSchema = z.object({
-  username: z.string().min(1, 'Username is required'),
-  fullName: z.string().min(1, 'Full name is required'),
-  email: z.string().email('Invalid email address'),
-  role: z.string().min(1, 'Role is required')
+  username: z.string().min(1, 'Nama pengguna wajib diisi'),
+  fullName: z.string().min(1, 'Nama lengkap wajib diisi'),
+  email: z.string().email('Alamat email tidak valid'),
+  role: z.string().min(1, 'Peran wajib diisi')
 })
 
 export type UserFormValues = z.infer<typeof userSchema>
@@ -62,9 +62,9 @@ export default function UserPage(): React.JSX.Element {
         const res = await api.get<User[]>('/master/users')
         setItems(res.data ?? [])
       } catch {
-        setError('Failed to load users')
+        setError('Gagal memuat pengguna')
       } finally {
-        setLoading(false)
+        alert('Operasi gagal')
       }
     }
     void load()
@@ -102,15 +102,16 @@ export default function UserPage(): React.JSX.Element {
       }
       setDialogOpen(false)
     } catch {
-      setError('Failed to save user')
+      setError('Gagal menyimpan pengguna')
     }
   }
 
   const handleDelete = async (user: User): Promise<void> => {
     try {
+      if (!confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) return
       await api.delete(`/master/users/${user.id}`)
     } catch {
-      setError('Failed to delete user')
+      setError('Gagal menghapus pengguna')
     }
     setItems((prev) => prev.filter((u) => u.id !== user.id))
   }
@@ -118,9 +119,9 @@ export default function UserPage(): React.JSX.Element {
   return (
     <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-        <Typography variant="h5">Master User</Typography>
+        <Typography variant="h5">Master Pengguna</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Add User
+          Tambah Pengguna
         </Button>
       </Stack>
 
@@ -139,24 +140,24 @@ export default function UserPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Username</TableCell>
-                <TableCell>Full Name</TableCell>
+                <TableCell>Nama Pengguna</TableCell>
+                <TableCell>Nama Lengkap</TableCell>
                 <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell align="right">Actions</TableCell>
+                <TableCell>Peran</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
-                    Loading...
+                    Sedang memuat...
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
-                    No users found
+                    Tidak ada pengguna
                   </TableCell>
                 </TableRow>
               ) : (
@@ -187,12 +188,12 @@ export default function UserPage(): React.JSX.Element {
       )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editing ? 'Edit User' : 'Add User'}</DialogTitle>
+        <DialogTitle>{editing ? 'Ubah Pengguna' : 'Buat Pengguna'}</DialogTitle>
         <DialogContent>
           <Box component="form" id="user-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
-              label="Username"
+              label="Nama Pengguna"
               fullWidth
               {...register('username')}
               error={!!errors.username}
@@ -200,7 +201,7 @@ export default function UserPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Full Name"
+              label="Nama Lengkap"
               fullWidth
               {...register('fullName')}
               error={!!errors.fullName}
@@ -216,7 +217,7 @@ export default function UserPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Role"
+              label="Peran"
               fullWidth
               {...register('role')}
               error={!!errors.role}
@@ -225,11 +226,9 @@ export default function UserPage(): React.JSX.Element {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeDialog} color="inherit" disabled={isSubmitting}>
-            Cancel
-          </Button>
-          <Button type="submit" form="user-form" variant="contained" disabled={isSubmitting}>
-            {isSubmitting ? 'Saving...' : 'Save'}
+          <Button onClick={closeDialog}>Batal</Button>
+          <Button type="submit" variant="contained" disabled={isSubmitting}>
+            {isSubmitting ? 'Menyimpan...' : 'Simpan'}
           </Button>
         </DialogActions>
       </Dialog>

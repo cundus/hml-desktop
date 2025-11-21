@@ -91,7 +91,7 @@ export default function InventoryDashboard(): React.JSX.Element {
         !batchesRes.success ||
         !transactionsRes.success
       ) {
-        setError('Failed to load dashboard data')
+        setError('Gagal memuat data dashboard')
         return
       }
 
@@ -164,7 +164,7 @@ export default function InventoryDashboard(): React.JSX.Element {
       setExpiringBatches(expiring)
       setRecentTransactions(recent)
     } catch (err) {
-      setError('Failed to load dashboard data')
+      setError('Gagal memuat data dashboard')
     } finally {
       setLoading(false)
     }
@@ -213,7 +213,7 @@ export default function InventoryDashboard(): React.JSX.Element {
   return (
     <Box p={3}>
       <Typography variant="h4" mb={3}>
-        Inventory Dashboard
+        Dashboard Inventori
       </Typography>
 
       {/* Metrics Cards */}
@@ -225,7 +225,7 @@ export default function InventoryDashboard(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">{metrics.totalProducts}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Products
+                  Total Produk
                 </Typography>
               </Box>
             </Stack>
@@ -239,7 +239,7 @@ export default function InventoryDashboard(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">{metrics.totalStores}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Total Stores
+                  Total Toko
                 </Typography>
               </Box>
             </Stack>
@@ -253,7 +253,7 @@ export default function InventoryDashboard(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">{metrics.lowStockItems}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Low Stock Items
+                  Stok Rendah
                 </Typography>
               </Box>
             </Stack>
@@ -267,7 +267,7 @@ export default function InventoryDashboard(): React.JSX.Element {
               <Box>
                 <Typography variant="h4">{metrics.expiringBatches}</Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Expiring Soon
+                  Batch Kadaluarsa
                 </Typography>
               </Box>
             </Stack>
@@ -281,14 +281,14 @@ export default function InventoryDashboard(): React.JSX.Element {
           {metrics.lowStockItems > 0 && (
             <Alert severity="warning" icon={<WarningIcon />}>
               <Typography variant="subtitle2" fontWeight="bold">
-                {metrics.lowStockItems} item(s) have low stock levels
+                {metrics.lowStockItems} item(s) memiliki stok rendah
               </Typography>
             </Alert>
           )}
           {metrics.expiringBatches > 0 && (
             <Alert severity="error" icon={<WarningIcon />}>
               <Typography variant="subtitle2" fontWeight="bold">
-                {metrics.expiringBatches} batch(es) expiring within 30 days
+                {metrics.expiringBatches} batch akan kadaluarsa dalam 30 hari
               </Typography>
             </Alert>
           )}
@@ -299,16 +299,19 @@ export default function InventoryDashboard(): React.JSX.Element {
       {lowStockItems.length > 0 && (
         <Paper sx={{ mb: 3 }}>
           <Box p={2}>
-            <Typography variant="h6" mb={2}>
-              Low Stock Items
+            <Typography variant="h6" gutterBottom>
+              Peringatan Stok Rendah
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Produk berikut memiliki stok di bawah 10 unit:
             </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Product</TableCell>
-                  <TableCell>Store</TableCell>
-                  <TableCell align="right">Available</TableCell>
-                  <TableCell align="right">Reserved</TableCell>
+                  <TableCell>Produk</TableCell>
+                  <TableCell>Toko</TableCell>
+                  <TableCell align="right">Tersedia</TableCell>
+                  <TableCell align="right">Dipesan</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -332,16 +335,19 @@ export default function InventoryDashboard(): React.JSX.Element {
       {expiringBatches.length > 0 && (
         <Paper sx={{ mb: 3 }}>
           <Box p={2}>
-            <Typography variant="h6" mb={2}>
-              Expiring Batches (Next 30 Days)
+            <Typography variant="h6" gutterBottom>
+              Peringatan Batch Kadaluarsa
+            </Typography>
+            <Typography variant="body2" color="text.secondary" mb={2}>
+              Batch berikut akan kadaluarsa dalam 30 hari:
             </Typography>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Product</TableCell>
-                  <TableCell>Batch Code</TableCell>
-                  <TableCell>Expiry Date</TableCell>
-                  <TableCell>Days Until Expiry</TableCell>
+                  <TableCell>Produk</TableCell>
+                  <TableCell>Batch</TableCell>
+                  <TableCell>Tanggal Kadaluarsa</TableCell>
+                  <TableCell align="right">Hari Hingga Kadaluarsa</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -352,7 +358,7 @@ export default function InventoryDashboard(): React.JSX.Element {
                     <TableCell>{formatDate(batch.expiryDate)}</TableCell>
                     <TableCell>
                       <Chip
-                        label={`${batch.daysUntilExpiry} days`}
+                        label={`${batch.daysUntilExpiry} hari`}
                         color={batch.daysUntilExpiry <= 7 ? 'error' : 'warning'}
                         size="small"
                       />
@@ -369,16 +375,16 @@ export default function InventoryDashboard(): React.JSX.Element {
       <Paper>
         <Box p={2}>
           <Typography variant="h6" mb={2}>
-            Recent Stock Transactions
+            Transaksi Terbaru
           </Typography>
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Date/Time</TableCell>
-                <TableCell>Product</TableCell>
-                <TableCell>Store</TableCell>
-                <TableCell>Type</TableCell>
-                <TableCell align="right">Quantity</TableCell>
+                <TableCell>Tanggal</TableCell>
+                <TableCell>Produk</TableCell>
+                <TableCell>Toko</TableCell>
+                <TableCell>Tipe</TableCell>
+                <TableCell align="right">Jumlah</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -396,7 +402,7 @@ export default function InventoryDashboard(): React.JSX.Element {
               {recentTransactions.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} align="center">
-                    No recent transactions
+                    Tidak ada transaksi terbaru
                   </TableCell>
                 </TableRow>
               )}

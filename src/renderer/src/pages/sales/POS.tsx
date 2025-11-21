@@ -92,7 +92,7 @@ export default function POSPage(): React.JSX.Element {
         }
       }
     } catch (err) {
-      console.error('Failed to load data', err)
+      console.error('Gagal memuat data', err)
     } finally {
       setLoading(false)
     }
@@ -100,7 +100,7 @@ export default function POSPage(): React.JSX.Element {
 
   const addToCart = async (): Promise<void> => {
     if (!selectedProduct || !selectedStore) {
-      alert('Please select a product and store')
+      alert('Silakan pilih produk dan toko')
       return
     }
 
@@ -172,11 +172,11 @@ export default function POSPage(): React.JSX.Element {
 
   const handleCheckout = (): void => {
     if (cart.length === 0) {
-      alert('Cart is empty')
+      alert('Keranjang kosong')
       return
     }
     if (!selectedStore) {
-      alert('Please select a store')
+      alert('Silakan pilih toko')
       return
     }
     setPaymentDialogOpen(true)
@@ -229,14 +229,14 @@ export default function POSPage(): React.JSX.Element {
           )
         }
 
-        alert(`Transaction ${code} completed successfully!`)
+        alert(`Transaksi ${code} berhasil!`)
         clearCart()
         setPaymentDialogOpen(false)
       } else {
-        alert(response.error || 'Transaction failed')
+        alert(response.error || 'Transaksi gagal')
       }
     } catch (err) {
-      alert('Transaction failed')
+      alert('Transaksi gagal')
       console.error(err)
     } finally {
       setProcessing(false)
@@ -254,7 +254,7 @@ export default function POSPage(): React.JSX.Element {
   return (
     <Box p={3}>
       <Typography variant="h4" mb={3}>
-        Point of Sale
+        Kasir
       </Typography>
 
       <Stack direction="row" spacing={3}>
@@ -262,14 +262,14 @@ export default function POSPage(): React.JSX.Element {
         <Box flex={1}>
           <Card>
             <CardContent>
-              <Typography variant="h6" mb={2}>
-                Add Products
+              <Typography variant="h6" gutterBottom>
+                Tambah Produk
               </Typography>
 
               <Stack spacing={2}>
                 <TextField
                   select
-                  label="Store"
+                  label="Toko"
                   value={selectedStore}
                   onChange={(e) => setSelectedStore(e.target.value)}
                   fullWidth
@@ -284,12 +284,12 @@ export default function POSPage(): React.JSX.Element {
 
                 <TextField
                   select
-                  label="Customer (Optional)"
+                  label="Pelanggan (Opsional)"
                   value={selectedCustomer}
                   onChange={(e) => setSelectedCustomer(e.target.value)}
                   fullWidth
                 >
-                  <MenuItem value="">Walk-in Customer</MenuItem>
+                  <MenuItem value="">Pelanggan Umum</MenuItem>
                   {customers.map((customer) => (
                     <MenuItem key={customer.id} value={customer.id}>
                       {customer.name} {customer.phone ? `(${customer.phone})` : ''}
@@ -303,7 +303,7 @@ export default function POSPage(): React.JSX.Element {
                   value={selectedProduct}
                   onChange={(_, newValue) => setSelectedProduct(newValue)}
                   renderInput={(params) => (
-                    <TextField {...params} label="Search Product" placeholder="Type to search..." />
+                    <TextField {...params} label="Cari Produk..." placeholder="Ketik untuk mencari..." />
                   )}
                 />
 
@@ -314,7 +314,7 @@ export default function POSPage(): React.JSX.Element {
                   disabled={!selectedProduct || !selectedStore}
                   fullWidth
                 >
-                  Add to Cart
+                  Tambah ke Keranjang
                 </Button>
               </Stack>
             </CardContent>
@@ -328,21 +328,21 @@ export default function POSPage(): React.JSX.Element {
               <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
                 <Typography variant="h6">
                   <ShoppingCartIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                  Shopping Cart ({cart.length} items)
+                  Keranjang Belanja ({cart.length} item)
                 </Typography>
                 <Button variant="outlined" size="small" onClick={clearCart} disabled={cart.length === 0}>
-                  Clear Cart
+                  Kosongkan Keranjang
                 </Button>
               </Stack>
 
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Product</TableCell>
-                    <TableCell align="center">Quantity</TableCell>
-                    <TableCell align="right">Price</TableCell>
+                    <TableCell>Produk</TableCell>
+                    <TableCell align="center">Jumlah</TableCell>
+                    <TableCell align="right">Harga</TableCell>
                     <TableCell align="right">Subtotal</TableCell>
-                    <TableCell align="center">Actions</TableCell>
+                    <TableCell align="center">Aksi</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -377,7 +377,7 @@ export default function POSPage(): React.JSX.Element {
                   {cart.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} align="center">
-                        <Typography color="text.secondary">Cart is empty</Typography>
+                        <Typography color="text.secondary">Keranjang kosong</Typography>
                       </TableCell>
                     </TableRow>
                   )}
@@ -394,7 +394,7 @@ export default function POSPage(): React.JSX.Element {
                 </Stack>
 
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography>Discount:</Typography>
+                  <Typography>Diskon:</Typography>
                   <TextField
                     type="number"
                     size="small"
@@ -406,7 +406,7 @@ export default function POSPage(): React.JSX.Element {
                 </Stack>
 
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
-                  <Typography>Tax:</Typography>
+                  <Typography>Pajak:</Typography>
                   <TextField
                     type="number"
                     size="small"
@@ -435,7 +435,7 @@ export default function POSPage(): React.JSX.Element {
                   fullWidth
                   sx={{ mt: 2 }}
                 >
-                  Checkout
+                  Bayar
                 </Button>
               </Stack>
             </Box>
@@ -445,7 +445,7 @@ export default function POSPage(): React.JSX.Element {
 
       {/* Payment Dialog */}
       <Dialog open={paymentDialogOpen} onClose={() => setPaymentDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Complete Payment</DialogTitle>
+        <DialogTitle>Selesaikan Pembayaran</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             <Stack direction="row" justifyContent="space-between">
@@ -453,16 +453,16 @@ export default function POSPage(): React.JSX.Element {
               <Typography>${calculateSubtotal().toFixed(2)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
-              <Typography>Discount:</Typography>
+              <Typography>Diskon:</Typography>
               <Typography>-${discount.toFixed(2)}</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
-              <Typography>Tax:</Typography>
+              <Typography>Pajak:</Typography>
               <Typography>+${tax.toFixed(2)}</Typography>
             </Stack>
             <Divider />
             <Stack direction="row" justifyContent="space-between">
-              <Typography variant="h6">Total Amount:</Typography>
+              <Typography variant="h6">Total Pembayaran:</Typography>
               <Typography variant="h6" color="primary">
                 ${calculateTotal().toFixed(2)}
               </Typography>
@@ -473,11 +473,14 @@ export default function POSPage(): React.JSX.Element {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPaymentDialogOpen(false)} disabled={processing}>
-            Cancel
-          </Button>
-          <Button variant="contained" onClick={processPayment} disabled={processing}>
-            {processing ? 'Processing...' : 'Complete Payment'}
+          <Button onClick={() => setPaymentDialogOpen(false)}>Batal</Button>
+          <Button
+            onClick={processPayment}
+            variant="contained"
+            disabled={processing}
+            startIcon={<PaymentIcon />}
+          >
+            {processing ? 'Memproses...' : 'Selesaikan Pembayaran'}
           </Button>
         </DialogActions>
       </Dialog>

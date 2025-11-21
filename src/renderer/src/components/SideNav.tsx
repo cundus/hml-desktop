@@ -151,14 +151,8 @@ const menus: MenuItem[] = [
         permissions: ['settings.view'],
         children: [
           {
-            key: 'master-branch',
-            label: 'Master Cabang',
-            path: '/master-branch',
-            permissions: ['master.branch.manage']
-          },
-          {
             key: 'master-store',
-            label: 'Toko',
+            label: 'Toko / Cabang',
             path: '/master-store',
             permissions: ['master.store.manage']
           },

@@ -71,7 +71,7 @@ export default function CustomerPage(): React.JSX.Element {
       } catch {
         setError('Gagal memuat pelanggan')
       } finally {
-        alert('Operasi gagal')
+        setLoading(false)
       }
     }
     void load()
@@ -124,7 +124,7 @@ export default function CustomerPage(): React.JSX.Element {
   }
 
   return (
-    <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
+    <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Master Pelanggan</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
@@ -229,6 +229,6 @@ export default function CustomerPage(): React.JSX.Element {
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </>
   )
 }

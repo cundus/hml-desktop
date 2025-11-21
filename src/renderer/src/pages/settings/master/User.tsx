@@ -64,7 +64,7 @@ export default function UserPage(): React.JSX.Element {
       } catch {
         setError('Gagal memuat pengguna')
       } finally {
-        alert('Operasi gagal')
+        setLoading(false)
       }
     }
     void load()
@@ -117,7 +117,7 @@ export default function UserPage(): React.JSX.Element {
   }
 
   return (
-    <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
+    <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Master Pengguna</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
@@ -232,6 +232,6 @@ export default function UserPage(): React.JSX.Element {
           </Button>
         </DialogActions>
       </Dialog>
-    </Paper>
+    </>
   )
 }

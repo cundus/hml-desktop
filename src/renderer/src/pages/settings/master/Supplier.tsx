@@ -129,70 +129,63 @@ export default function SupplierPage(): React.JSX.Element {
       alert('Gagal menghapus')
     }
   }
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    )
-  }
-
-  if (error) {
-    return (
-      <Box p={3}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    )
-  }
-
   return (
-    <Box p={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" mb={3}>
-          Pemasok
-        </Typography>
+    <>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="h5">Pemasok</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
           Tambah Pemasok
         </Button>
       </Stack>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nama</TableCell>
-              <TableCell>Telepon</TableCell>
-              <TableCell>Alamat</TableCell>
-              <TableCell align="right">Aksi</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((supplier) => (
-              <TableRow key={supplier.id}>
-                <TableCell>{supplier.name}</TableCell>
-                <TableCell>{supplier.phone || '-'}</TableCell>
-                <TableCell>{supplier.address || '-'}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => openEdit(supplier)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(supplier.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
+      {error && (
+        <Typography color="error" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+      )}
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Paper>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={4} align="center">
-                  Tidak ada pemasok
-                </TableCell>
+                <TableCell>Nama</TableCell>
+                <TableCell>Telepon</TableCell>
+                <TableCell>Alamat</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
+            <TableBody>
+              {items.map((supplier) => (
+                <TableRow key={supplier.id}>
+                  <TableCell>{supplier.name}</TableCell>
+                  <TableCell>{supplier.phone || '-'}</TableCell>
+                  <TableCell>{supplier.address || '-'}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => openEdit(supplier)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDelete(supplier.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    Tidak ada pemasok
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -231,6 +224,6 @@ export default function SupplierPage(): React.JSX.Element {
           </DialogActions>
         </form>
       </Dialog>
-    </Box>
+    </>
   )
 }

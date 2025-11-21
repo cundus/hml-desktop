@@ -13,6 +13,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SideNav from '../components/SideNav'
 import useThemeMode from '../hooks/useThemeMode'
+import { Paper } from '@mui/material'
 
 const drawerWidth = 200
 
@@ -89,7 +90,9 @@ export default function MainLayout(): React.JSX.Element {
         }}
       >
         <Toolbar />
-        <Outlet />
+        <Paper elevation={6} square sx={{ p: 4, width: '100%', borderRadius: 2, height: '100%' }}>
+          <Outlet />
+        </Paper>
       </Box>
     </Box>
   )

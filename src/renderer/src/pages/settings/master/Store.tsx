@@ -134,72 +134,65 @@ export default function StorePage(): React.JSX.Element {
       alert('Gagal menghapus')
     }
   }
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    )
-  }
-
-  if (error) {
-    return (
-      <Box p={3}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    )
-  }
-
   return (
-    <Box p={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" mb={3}>
-          Toko
-        </Typography>
+    <>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="h5">Toko</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
           Tambah Toko
         </Button>
       </Stack>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Kode</TableCell>
-              <TableCell>Nama</TableCell>
-              <TableCell>Tipe</TableCell>
-              <TableCell>Alamat</TableCell>
-              <TableCell align="right">Aksi</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((store) => (
-              <TableRow key={store.id}>
-                <TableCell>{store.code}</TableCell>
-                <TableCell>{store.name}</TableCell>
-                <TableCell>{store.type}</TableCell>
-                <TableCell>{store.address || '-'}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => openEdit(store)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(store.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
+      {error && (
+        <Typography color="error" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+      )}
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Paper>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={5} align="center">
-                  Tidak ada toko
-                </TableCell>
+                <TableCell>Kode</TableCell>
+                <TableCell>Nama</TableCell>
+                <TableCell>Tipe</TableCell>
+                <TableCell>Alamat</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
+            <TableBody>
+              {items.map((store) => (
+                <TableRow key={store.id}>
+                  <TableCell>{store.code}</TableCell>
+                  <TableCell>{store.name}</TableCell>
+                  <TableCell>{store.type}</TableCell>
+                  <TableCell>{store.address || '-'}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => openEdit(store)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDelete(store.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    Tidak ada toko
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
@@ -255,6 +248,6 @@ export default function StorePage(): React.JSX.Element {
           </DialogActions>
         </form>
       </Dialog>
-    </Box>
+    </>
   )
 }

@@ -123,68 +123,65 @@ export default function CustomerCategoryPage(): React.JSX.Element {
       alert('Gagal menghapus')
     }
   }
-
-  if (loading) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-        <CircularProgress />
-      </Box>
-    )
-  }
-
-  if (error) {
-    return (
-      <Box p={3}>
-        <Typography color="error">{error}</Typography>
-      </Box>
-    )
-  }
-
   return (
-    <Box p={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Kategori Pelanggan</Typography>
+    <>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="h5">Kategori Pelanggan</Typography>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
           Tambah Kategori Pelanggan
         </Button>
       </Stack>
 
-      <Paper>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nama</TableCell>
-              <TableCell align="right">Aksi</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => openEdit(category)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(category.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-            {items.length === 0 && (
+      {error && (
+        <Typography color="error" sx={{ mb: 1 }}>
+          {error}
+        </Typography>
+      )}
+
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <Paper>
+          <Table>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={2} align="center">
-                  Tidak ada kategori pelanggan
-                </TableCell>
+                <TableCell>Nama</TableCell>
+                <TableCell align="right">Aksi</TableCell>
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+            </TableHead>
+            <TableBody>
+              {items.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell>{category.name}</TableCell>
+                  <TableCell align="right">
+                    <IconButton size="small" onClick={() => openEdit(category)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton size="small" onClick={() => handleDelete(category.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {items.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={2} align="center">
+                    Tidak ada kategori pelanggan
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Paper>
+      )}
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Ubah Kategori Pelanggan' : 'Buat Kategori Pelanggan'}</DialogTitle>
+          <DialogTitle>
+            {editing ? 'Ubah Kategori Pelanggan' : 'Buat Kategori Pelanggan'}
+          </DialogTitle>
           <DialogContent>
             <TextField
               {...register('name')}
@@ -203,6 +200,6 @@ export default function CustomerCategoryPage(): React.JSX.Element {
           </DialogActions>
         </form>
       </Dialog>
-    </Box>
+    </>
   )
 }

@@ -109,7 +109,8 @@ export class SyncService {
       pushed: 0,
       conflicts: 0,
       errors: [],
-      timestamp: new Date()
+      timestamp: new Date(),
+      byEntity: {}
     }
 
     try {
@@ -117,11 +118,13 @@ export class SyncService {
       const pullResult = await this.pullFromCloud()
       result.pulled = pullResult.count
       result.conflicts += pullResult.conflicts
+      this.mergeEntityStats(result.byEntity!, pullResult.byEntity)
 
       // Then push local changes
       const pushResult = await this.pushToCloud()
       result.pushed = pushResult.count
       result.conflicts += pushResult.conflicts
+      this.mergeEntityStats(result.byEntity!, pushResult.byEntity)
 
       console.log(`✓ Full sync complete: pulled ${result.pulled}, pushed ${result.pushed}`)
     } catch (error) {
@@ -136,22 +139,39 @@ export class SyncService {
   /**
    * Pull data from cloud to local (only new/updated records)
    */
-  async pullFromCloud(): Promise<{ count: number; conflicts: number }> {
+  async pullFromCloud(): Promise<{ count: number; conflicts: number; byEntity: Record<string, EntitySyncStats> }> {
     if (!this.isCloudConnected() || !this.cloudDb) {
       throw new Error('Cloud not connected')
     }
 
     let totalCount = 0
     let totalConflicts = 0
+    const byEntity: Record<string, EntitySyncStats> = {}
 
-    // Define entities to sync
-    const entities = ['category', 'supplier', 'store', 'customer_category', 'user', 'product']
+    // Define entities to sync (including RBAC tables)
+    const entities = [
+      'category',
+      'supplier',
+      'store',
+      'customer_category',
+      'user',
+      'product',
+      'role',
+      'permission',
+      'user_role',
+      'role_permission'
+    ]
 
     for (const entity of entities) {
       try {
         const { count, conflicts } = await this.pullEntityFromCloud(entity)
         totalCount += count
         totalConflicts += conflicts
+        byEntity[entity] = {
+          pulled: count,
+          pushed: 0,
+          conflicts
+        }
       } catch (error) {
         console.error(`Error pulling ${entity}:`, error)
         throw error
@@ -161,7 +181,7 @@ export class SyncService {
     // Update last pull timestamp
     this.updateSyncMetadata('last_pull_at')
 
-    return { count: totalCount, conflicts: totalConflicts }
+    return { count: totalCount, conflicts: totalConflicts, byEntity }
   }
 
   /**
@@ -220,21 +240,38 @@ export class SyncService {
   /**
    * Push local data to cloud (only new/updated records)
    */
-  async pushToCloud(): Promise<{ count: number; conflicts: number }> {
+  async pushToCloud(): Promise<{ count: number; conflicts: number; byEntity: Record<string, EntitySyncStats> }> {
     if (!this.isCloudConnected() || !this.cloudDb) {
       throw new Error('Cloud not connected')
     }
 
     let totalCount = 0
     let totalConflicts = 0
+    const byEntity: Record<string, EntitySyncStats> = {}
 
-    const entities = ['category', 'supplier', 'store', 'customer_category', 'user', 'product']
+    const entities = [
+      'category',
+      'supplier',
+      'store',
+      'customer_category',
+      'user',
+      'product',
+      'role',
+      'permission',
+      'user_role',
+      'role_permission'
+    ]
 
     for (const entity of entities) {
       try {
         const { count, conflicts } = await this.pushEntityToCloud(entity)
         totalCount += count
         totalConflicts += conflicts
+        byEntity[entity] = {
+          pulled: 0,
+          pushed: count,
+          conflicts
+        }
       } catch (error) {
         console.error(`Error pushing ${entity}:`, error)
         throw error
@@ -244,7 +281,7 @@ export class SyncService {
     // Update last push timestamp
     this.updateSyncMetadata('last_push_at')
 
-    return { count: totalCount, conflicts: totalConflicts }
+    return { count: totalCount, conflicts: totalConflicts, byEntity }
   }
 
   /**
@@ -441,7 +478,18 @@ export class SyncService {
    */
   private updateSyncMetadata(column: 'last_pull_at' | 'last_push_at'): void {
     const now = Date.now()
-    const entities = ['category', 'supplier', 'store', 'customer_category', 'user', 'product']
+    const entities = [
+      'category',
+      'supplier',
+      'store',
+      'customer_category',
+      'user',
+      'product',
+      'role',
+      'permission',
+      'user_role',
+      'role_permission'
+    ]
 
     for (const entity of entities) {
       this.localDb.run(
@@ -479,7 +527,18 @@ export class SyncService {
    * Get count of unsynced records
    */
   private getUnsyncedRecordsCount(): number {
-    const entities = ['category', 'supplier', 'store', 'customer_category', 'user', 'product']
+    const entities = [
+      'category',
+      'supplier',
+      'store',
+      'customer_category',
+      'user',
+      'product',
+      'role',
+      'permission',
+      'user_role',
+      'role_permission'
+    ]
     let total = 0
 
     for (const entity of entities) {
@@ -527,6 +586,12 @@ export class SyncService {
 }
 
 // Types
+export interface EntitySyncStats {
+  pulled: number
+  pushed: number
+  conflicts: number
+}
+
 export interface SyncResult {
   success: boolean
   pulled: number
@@ -534,6 +599,7 @@ export interface SyncResult {
   conflicts: number
   errors: string[]
   timestamp: Date
+  byEntity?: Record<string, EntitySyncStats>
 }
 
 export interface SyncStatus {
@@ -541,4 +607,24 @@ export interface SyncStatus {
   lastSyncTime: Date | null
   unsyncedRecordsCount: number
   deviceId: string
+}
+
+// Helpers
+type EntityStatsMap = Record<string, EntitySyncStats>
+
+declare module './sync.service' {
+  interface SyncService {
+    mergeEntityStats(target: EntityStatsMap, source: EntityStatsMap): void
+  }
+}
+
+SyncService.prototype.mergeEntityStats = function (this: SyncService, target: EntityStatsMap, source: EntityStatsMap): void {
+  for (const [entity, stats] of Object.entries(source)) {
+    const existing = target[entity] || { pulled: 0, pushed: 0, conflicts: 0 }
+    target[entity] = {
+      pulled: existing.pulled + stats.pulled,
+      pushed: existing.pushed + stats.pushed,
+      conflicts: existing.conflicts + stats.conflicts
+    }
+  }
 }

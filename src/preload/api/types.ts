@@ -17,6 +17,12 @@ export interface BaseEntity {
 }
 
 // Sync types
+export interface EntitySyncStats {
+  pulled: number
+  pushed: number
+  conflicts: number
+}
+
 export interface SyncStatus {
   isCloudConnected: boolean
   lastSyncTime: Date | null
@@ -31,4 +37,5 @@ export interface SyncResult {
   conflicts: number
   errors: string[]
   timestamp: Date
+  byEntity?: Record<string, EntitySyncStats>
 }

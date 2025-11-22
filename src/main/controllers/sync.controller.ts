@@ -95,7 +95,8 @@ export class SyncController {
         pushed: 0,
         conflicts: pullResult.conflicts,
         errors: [],
-        timestamp: new Date()
+        timestamp: new Date(),
+        byEntity: pullResult.byEntity
       }
       return {
         success: true,
@@ -122,7 +123,8 @@ export class SyncController {
         pushed: pushResult.count,
         conflicts: pushResult.conflicts,
         errors: [],
-        timestamp: new Date()
+        timestamp: new Date(),
+        byEntity: pushResult.byEntity
       }
       return {
         success: true,

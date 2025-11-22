@@ -10,6 +10,36 @@ export interface User extends BaseEntity {
   deviceId: string | null
 }
 
+export interface Role extends BaseEntity {
+  name: string
+  description: string | null
+  deviceId: string | null
+}
+
+export interface UserRole extends BaseEntity {
+  userId: string
+  roleId: string
+  deviceId: string | null
+}
+
+export interface Permission extends BaseEntity {
+  name: string
+  description: string | null
+  deviceId: string | null
+}
+
+export interface RolePermission extends BaseEntity {
+  roleId: string
+  permissionId: string
+  deviceId: string | null
+}
+
+export interface LoginResult {
+  token: string
+  groups: string[]
+  permissions: string[]
+}
+
 export interface Product extends BaseEntity {
   sku: string
   name: string
@@ -27,19 +57,74 @@ export const userApi = {
   
   getById: (id: string) => ipcRenderer.invoke('db:users:getById', id) as Promise<ApiResponse<User>>,
   
-  getByEmail: (email: string) => ipcRenderer.invoke('db:users:getByEmail', email) as Promise<ApiResponse<User>>,
+  getByEmail: (email: string) =>
+    ipcRenderer.invoke('db:users:getByEmail', email) as Promise<ApiResponse<User>>,
   
-  create: (data: { name: string; email: string; password: string; storeId?: string }) => 
+  create: (data: { name: string; email: string; password: string; storeId?: string }) =>
     ipcRenderer.invoke('db:users:create', data) as Promise<ApiResponse<User>>,
   
-  update: (id: string, data: { name: string; email: string; password: string; storeId?: string }) => 
-    ipcRenderer.invoke('db:users:update', id, data) as Promise<ApiResponse<User>>,
+  update: (
+    id: string,
+    data: { name?: string; email?: string; password?: string; storeId?: string }
+  ) => ipcRenderer.invoke('db:users:update', id, data) as Promise<ApiResponse<User>>,
   
   delete: (id: string) => ipcRenderer.invoke('db:users:delete', id) as Promise<ApiResponse<User>>,
   
   hardDelete: (id: string) => ipcRenderer.invoke('db:users:hardDelete', id) as Promise<ApiResponse<void>>,
   
   restore: (id: string) => ipcRenderer.invoke('db:users:restore', id) as Promise<ApiResponse<User>>
+}
+
+// Role API
+export const roleApi = {
+  getAll: () => ipcRenderer.invoke('db:roles:getAll') as Promise<ApiResponse<Role[]>>,
+  
+  create: (data: { name: string; description?: string }) =>
+    ipcRenderer.invoke('db:roles:create', data) as Promise<ApiResponse<Role>>,
+  
+  update: (id: string, data: { name?: string; description?: string }) =>
+    ipcRenderer.invoke('db:roles:update', id, data) as Promise<ApiResponse<Role>>,
+  
+  delete: (id: string) =>
+    ipcRenderer.invoke('db:roles:softDelete', id) as Promise<ApiResponse<Role>>,
+  
+  restore: (id: string) =>
+    ipcRenderer.invoke('db:roles:restore', id) as Promise<ApiResponse<Role>>
+}
+
+// UserRole API
+export const userRoleApi = {
+  getAll: () => ipcRenderer.invoke('db:userRoles:getAll') as Promise<ApiResponse<UserRole[]>>,
+  
+  getByUserId: (userId: string) =>
+    ipcRenderer.invoke('db:userRoles:getByUserId', userId) as Promise<ApiResponse<UserRole[]>>,
+  
+  setForUser: (userId: string, roleIds: string[]) =>
+    ipcRenderer.invoke('db:userRoles:setForUser', userId, roleIds) as Promise<ApiResponse<UserRole[]>>
+}
+
+// Permission API
+export const permissionApi = {
+  getAll: () =>
+    ipcRenderer.invoke('db:permissions:getAll') as Promise<ApiResponse<Permission[]>>
+}
+
+// RolePermission API
+export const rolePermissionApi = {
+  getAll: () =>
+    ipcRenderer.invoke('db:rolePermissions:getAll') as Promise<ApiResponse<RolePermission[]>>,
+
+  getByRoleId: (roleId: string) =>
+    ipcRenderer.invoke('db:rolePermissions:getByRoleId', roleId) as Promise<ApiResponse<RolePermission[]>>,
+
+  setForRole: (roleId: string, permissionIds: string[]) =>
+    ipcRenderer.invoke('db:rolePermissions:setForRole', roleId, permissionIds) as Promise<ApiResponse<RolePermission[]>>
+}
+
+// Auth API
+export const authApi = {
+  login: (email: string, password: string) =>
+    ipcRenderer.invoke('auth:login', email, password) as Promise<ApiResponse<LoginResult>>
 }
 
 // Product API

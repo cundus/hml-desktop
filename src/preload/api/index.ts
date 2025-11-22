@@ -9,7 +9,15 @@ export * from './sync'
 
 // Re-export for convenience
 import { categoryApi, supplierApi, storeApi, customerCategoryApi, customerApi } from './master-data'
-import { userApi, productApi } from './core'
+import {
+  userApi,
+  productApi,
+  roleApi,
+  userRoleApi,
+  permissionApi,
+  rolePermissionApi,
+  authApi
+} from './core'
 import { productPriceApi, productLocationApi, batchApi, stockTransactionApi } from './inventory'
 import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
@@ -26,6 +34,11 @@ export const db = {
   // Core
   users: userApi,
   products: productApi,
+  roles: roleApi,
+  userRoles: userRoleApi,
+   permissions: permissionApi,
+   rolePermissions: rolePermissionApi,
+   auth: authApi,
   
   // Inventory
   productPrices: productPriceApi,

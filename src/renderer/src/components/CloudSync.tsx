@@ -18,6 +18,12 @@ interface SyncStatus {
   deviceId: string
 }
 
+interface EntitySyncStats {
+  pulled: number
+  pushed: number
+  conflicts: number
+}
+
 interface SyncResult {
   success: boolean
   pulled: number
@@ -25,6 +31,7 @@ interface SyncResult {
   conflicts: number
   errors: string[]
   timestamp: string
+  byEntity?: Record<string, EntitySyncStats>
 }
 
 export function CloudSync(): React.JSX.Element {
@@ -33,24 +40,29 @@ export function CloudSync(): React.JSX.Element {
   const [lastResult, setLastResult] = useState<SyncResult | null>(null)
   const [cloudUrl, setCloudUrl] = useState('')
   const [showConnectDialog, setShowConnectDialog] = useState(false)
+  const [lastProgressPercent, setLastProgressPercent] = useState<number | null>(null)
 
   // Load sync status on mount
   useEffect(() => {
-    loadStatus()
+    void loadStatus()
     // Refresh status every 30 seconds
-    const interval = setInterval(loadStatus, 30000)
+    const interval = setInterval(() => {
+      void loadStatus()
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
-  const loadStatus = async (): Promise<void> => {
+  const loadStatus = async (): Promise<SyncStatus | null> => {
     try {
       const response = await window.api.db.sync.getStatus()
       if (response.success && response.data) {
         setStatus(response.data)
+        return response.data
       }
     } catch (error) {
       console.error('Failed to load sync status:', error)
     }
+    return null
   }
 
   const handleConnect = async (): Promise<void> => {
@@ -78,6 +90,27 @@ export function CloudSync(): React.JSX.Element {
     }
   }
 
+  const updateProgress = (before: SyncStatus, after: SyncStatus): void => {
+    const beforeCount = before.unsyncedRecordsCount
+    const afterCount = after.unsyncedRecordsCount
+
+    if (beforeCount <= 0 && afterCount <= 0) {
+      setLastProgressPercent(100)
+      return
+    }
+
+    const processed = Math.max(0, beforeCount - afterCount)
+    const total = Math.max(beforeCount, processed)
+
+    if (total === 0) {
+      setLastProgressPercent(null)
+      return
+    }
+
+    const percent = Math.round((processed / total) * 100)
+    setLastProgressPercent(Math.min(100, Math.max(0, percent)))
+  }
+
   const handleDisconnect = async (): Promise<void> => {
     setSyncing(true)
     try {
@@ -96,10 +129,16 @@ export function CloudSync(): React.JSX.Element {
   const handleFullSync = async (): Promise<void> => {
     setSyncing(true)
     try {
+      const beforeStatus = await loadStatus()
       const response = await window.api.db.sync.fullSync()
       if (response.success && response.data) {
         setLastResult(response.data)
-        await loadStatus()
+        const afterStatus = await loadStatus()
+        if (beforeStatus && afterStatus) {
+          updateProgress(beforeStatus, afterStatus)
+        } else {
+          setLastProgressPercent(null)
+        }
       } else {
         alert(`Sync failed: ${response.error}`)
       }
@@ -113,10 +152,16 @@ export function CloudSync(): React.JSX.Element {
   const handlePull = async (): Promise<void> => {
     setSyncing(true)
     try {
+      const beforeStatus = await loadStatus()
       const response = await window.api.db.sync.pull()
       if (response.success && response.data) {
         setLastResult(response.data)
-        await loadStatus()
+        const afterStatus = await loadStatus()
+        if (beforeStatus && afterStatus) {
+          updateProgress(beforeStatus, afterStatus)
+        } else {
+          setLastProgressPercent(null)
+        }
       }
     } catch (error) {
       console.error('Pull error:', error)
@@ -128,10 +173,16 @@ export function CloudSync(): React.JSX.Element {
   const handlePush = async (): Promise<void> => {
     setSyncing(true)
     try {
+      const beforeStatus = await loadStatus()
       const response = await window.api.db.sync.push()
       if (response.success && response.data) {
         setLastResult(response.data)
-        await loadStatus()
+        const afterStatus = await loadStatus()
+        if (beforeStatus && afterStatus) {
+          updateProgress(beforeStatus, afterStatus)
+        } else {
+          setLastProgressPercent(null)
+        }
       }
     } catch (error) {
       console.error('Push error:', error)
@@ -143,10 +194,16 @@ export function CloudSync(): React.JSX.Element {
   const handleInitialSync = async (): Promise<void> => {
     setSyncing(true)
     try {
+      const beforeStatus = await loadStatus()
       const response = await window.api.db.sync.initialSync()
       if (response.success && response.data) {
         setLastResult(response.data)
-        await loadStatus()
+        const afterStatus = await loadStatus()
+        if (beforeStatus && afterStatus) {
+          updateProgress(beforeStatus, afterStatus)
+        } else {
+          setLastProgressPercent(null)
+        }
       }
     } catch (error) {
       console.error('Initial sync error:', error)
@@ -211,7 +268,9 @@ export function CloudSync(): React.JSX.Element {
             <div className="bg-gray-50 p-4 rounded">
               <div className="text-sm text-gray-600">Last Sync</div>
               <div className="text-lg font-semibold text-gray-800">
-                {new Date(status.lastSyncTime).toLocaleString()}
+                {status.lastSyncTime
+                  ? new Date(status.lastSyncTime).toLocaleString()
+                  : 'Belum pernah sync'}
               </div>
             </div>
           </div>
@@ -280,6 +339,13 @@ export function CloudSync(): React.JSX.Element {
               </div>
             </div>
 
+            {lastProgressPercent !== null && (
+              <div className="mt-3 text-sm text-gray-700">
+                <span className="text-gray-600">Perkiraan progress:</span>
+                <span className="ml-2 font-semibold">{lastProgressPercent}%</span>
+              </div>
+            )}
+
             {lastResult.errors.length > 0 && (
               <div className="mt-3 text-sm text-red-600">
                 <div className="font-semibold mb-1">Errors:</div>
@@ -288,6 +354,38 @@ export function CloudSync(): React.JSX.Element {
                     • {error}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {lastResult.byEntity && (
+              <div className="mt-4 text-sm">
+                <div className="font-semibold mb-2">Detail per Entitas</div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs border border-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-2 py-1 text-left border-b border-gray-200">Entitas</th>
+                        <th className="px-2 py-1 text-right border-b border-gray-200">Pulled</th>
+                        <th className="px-2 py-1 text-right border-b border-gray-200">Pushed</th>
+                        <th className="px-2 py-1 text-right border-b border-gray-200">Conflicts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(lastResult.byEntity).map(([entity, stats]) => (
+                        <tr key={entity} className="odd:bg-white even:bg-gray-50">
+                          <td className="px-2 py-1 border-b border-gray-100 font-mono text-[11px]">
+                            {entity}
+                          </td>
+                          <td className="px-2 py-1 border-b border-gray-100 text-right">{stats.pulled}</td>
+                          <td className="px-2 py-1 border-b border-gray-100 text-right">{stats.pushed}</td>
+                          <td className="px-2 py-1 border-b border-gray-100 text-right text-orange-600">
+                            {stats.conflicts}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

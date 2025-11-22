@@ -14,6 +14,16 @@ export interface UpdateUserDto {
   storeId?: string
 }
 
+export interface CreateRoleDto {
+  name: string
+  description?: string
+}
+
+export interface UpdateRoleDto {
+  name?: string
+  description?: string
+}
+
 export interface CreateProductDto {
   sku: string
   name: string

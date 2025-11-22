@@ -114,6 +114,62 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Roles table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS role (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Permissions table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS permission (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // User-Role mapping table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS user_role (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      role_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Role-Permission mapping table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS role_permission (
+      id TEXT PRIMARY KEY,
+      role_id TEXT NOT NULL,
+      permission_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
   // Products table
   database.run(`
     CREATE TABLE IF NOT EXISTS product (

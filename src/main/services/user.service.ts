@@ -101,15 +101,31 @@ export class UserService {
    * Update user
    */
   async update(id: string, data: UpdateUserDto): Promise<User> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('User not found')
+    }
+
     const now = Date.now()
-    
+
+    const name = data.name ?? existing.name
+    const email = data.email ?? existing.email
+    const password = data.password ?? existing.password
+
+    let storeId: string | null
+    if ('storeId' in data) {
+      storeId = data.storeId && data.storeId.length > 0 ? data.storeId : null
+    } else {
+      storeId = existing.storeId
+    }
+
     this.db.run(
       'UPDATE user SET name = ?, email = ?, password = ?, store_id = ?, updated_at = ? WHERE id = ?',
-      [data.name, data.email, data.password, data.storeId ?? null, now, id]
+      [name, email, password, storeId ?? null, now, id]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('User not found after update')

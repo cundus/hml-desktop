@@ -19,27 +19,39 @@ import CircularProgress from '@mui/material/CircularProgress'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import MenuItem from '@mui/material/MenuItem'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import api from '../../../lib/api'
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
   phone: z.string().optional(),
-  tier: z.string().optional()
+  address: z.string().optional(),
+  categoryId: z.string().optional()
 })
 
 export type CustomerFormValues = z.infer<typeof customerSchema>
 
-export type Customer = CustomerFormValues & {
+export type Customer = {
   id: string
+  name: string
+  phone: string | null
+  address: string | null
+  categoryId: string | null
+  categoryName?: string
+}
+
+type CustomerCategory = {
+  id: string
+  name: string
 }
 
 export default function CustomerPage(): React.JSX.Element {
   const [items, setItems] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [categories, setCategories] = useState<CustomerCategory[]>([])
   const [dialogOpen, setDialogOpen] = useState(() =>
     typeof window !== 'undefined' ? window.location.hash.includes('add-customer') : false
   )
@@ -52,12 +64,12 @@ export default function CustomerPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: '', phone: '', tier: '' }
+    defaultValues: { name: '', phone: '', address: '', categoryId: '' }
   })
 
   useEffect(() => {
     if (dialogOpen && !editing) {
-      reset({ name: '', phone: '', tier: '' })
+      reset({ name: '', phone: '', address: '', categoryId: '' })
     }
   }, [dialogOpen, editing, reset])
 
@@ -66,8 +78,33 @@ export default function CustomerPage(): React.JSX.Element {
       try {
         setLoading(true)
         setError(null)
-        const res = await api.get<Customer[]>('/master/customers')
-        setItems(res.data ?? [])
+        const [customersRes, categoriesRes] = await Promise.all([
+          window.api.db.customers.getAll(),
+          window.api.db.customerCategories.getAll()
+        ])
+
+        if (customersRes.success && categoriesRes.success) {
+          const categoryList = categoriesRes.data ?? []
+          const categoryMap = new Map(categoryList.map((c) => [c.id, c.name]))
+
+          const customers = (customersRes.data ?? []).map((c) => ({
+            id: c.id,
+            name: c.name,
+            phone: c.phone,
+            address: c.address,
+            categoryId: c.categoryId,
+            categoryName: c.categoryId ? categoryMap.get(c.categoryId) ?? '' : ''
+          }))
+
+          setItems(customers)
+          setCategories(categoryList)
+        } else {
+          setError(
+            customersRes.error ??
+              categoriesRes.error ??
+              'Gagal memuat pelanggan'
+          )
+        }
       } catch {
         setError('Gagal memuat pelanggan')
       } finally {
@@ -79,13 +116,18 @@ export default function CustomerPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ name: '', phone: '', tier: '' })
+    reset({ name: '', phone: '', address: '', categoryId: '' })
     setDialogOpen(true)
   }
 
   const openEdit = (customer: Customer): void => {
     setEditing(customer)
-    reset({ name: customer.name, phone: customer.phone ?? '', tier: customer.tier ?? '' })
+    reset({
+      name: customer.name,
+      phone: customer.phone ?? '',
+      address: customer.address ?? '',
+      categoryId: customer.categoryId ?? ''
+    })
     setDialogOpen(true)
   }
 
@@ -95,17 +137,64 @@ export default function CustomerPage(): React.JSX.Element {
 
   const onSubmit = async (values: CustomerFormValues): Promise<void> => {
     try {
+      const payload = {
+        name: values.name,
+        phone: values.phone || undefined,
+        address: values.address || undefined,
+        categoryId: values.categoryId || undefined
+      }
+
       if (editing) {
-        const res = await api.put<Customer>(`/master/customers/${editing.id}`, values)
-        const updated = res.data ?? { ...editing, ...values }
-        setItems((prev) => prev.map((c) => (c.id === editing.id ? updated : c)))
-      } else {
-        const res = await api.post<Customer>('/master/customers', values)
-        const created = res.data ?? {
-          id: Date.now().toString(),
-          ...values
+        const response = await window.api.db.customers.update(editing.id, payload)
+        if (response.success && response.data) {
+          const updated = response.data
+          const categoryName =
+            updated.categoryId
+              ? categories.find((c) => c.id === updated.categoryId)?.name ?? ''
+              : ''
+
+          setItems((prev) =>
+            prev.map((c) =>
+              c.id === editing.id
+                ? {
+                    id: updated.id,
+                    name: updated.name,
+                    phone: updated.phone,
+                    address: updated.address,
+                    categoryId: updated.categoryId,
+                    categoryName
+                  }
+                : c
+            )
+          )
+        } else {
+          setError(response.error ?? 'Gagal menyimpan pelanggan')
+          return
         }
-        setItems((prev) => [...prev, created])
+      } else {
+        const response = await window.api.db.customers.create(payload)
+        if (response.success && response.data) {
+          const created = response.data
+          const categoryName =
+            created.categoryId
+              ? categories.find((c) => c.id === created.categoryId)?.name ?? ''
+              : ''
+
+          setItems((prev) => [
+            ...prev,
+            {
+              id: created.id,
+              name: created.name,
+              phone: created.phone,
+              address: created.address,
+              categoryId: created.categoryId,
+              categoryName
+            }
+          ])
+        } else {
+          setError(response.error ?? 'Gagal menyimpan pelanggan')
+          return
+        }
       }
       setDialogOpen(false)
     } catch {
@@ -116,7 +205,11 @@ export default function CustomerPage(): React.JSX.Element {
   const handleDelete = async (customer: Customer): Promise<void> => {
     try {
       if (!confirm('Apakah Anda yakin ingin menghapus pelanggan ini?')) return
-      await api.delete(`/master/customers/${customer.id}`)
+      const response = await window.api.db.customers.delete(customer.id)
+      if (!response.success) {
+        setError(response.error ?? 'Gagal menghapus pelanggan')
+        return
+      }
     } catch {
       setError('Gagal menghapus pelanggan')
     }
@@ -171,7 +264,7 @@ export default function CustomerPage(): React.JSX.Element {
                   <TableRow key={customer.id} hover>
                     <TableCell>{customer.name}</TableCell>
                     <TableCell>{customer.phone}</TableCell>
-                    <TableCell>{customer.tier}</TableCell>
+                    <TableCell>{customer.categoryName}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEdit(customer)}>
                         <EditIcon fontSize="small" />
@@ -214,12 +307,28 @@ export default function CustomerPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Kategori"
+              label="Alamat"
               fullWidth
-              {...register('tier')}
-              error={!!errors.tier}
-              helperText={errors.tier?.message}
+              {...register('address')}
+              error={!!errors.address}
+              helperText={errors.address?.message}
             />
+            <TextField
+              margin="normal"
+              label="Kategori Pelanggan"
+              fullWidth
+              select
+              {...register('categoryId')}
+              error={!!errors.categoryId}
+              helperText={errors.categoryId?.message}
+            >
+              <MenuItem value="">Tanpa Kategori</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </Box>
         </DialogContent>
         <DialogActions>

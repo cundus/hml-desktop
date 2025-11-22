@@ -85,7 +85,7 @@ export default function SalesReportsPage(): React.JSX.Element {
 
       if (transactionsRes.success && storesRes.success) {
         const storesMap = new Map(storesRes.data?.map((s) => [s.id, s.name]))
-        
+
         const enrichedTransactions = (transactionsRes.data ?? []).map((txn) => ({
           ...txn,
           storeName: storesMap.get(txn.storeId)
@@ -155,10 +155,7 @@ export default function SalesReportsPage(): React.JSX.Element {
       (parseFloat(txn.total) - parseFloat(txn.discount) + parseFloat(txn.tax)).toFixed(2)
     ])
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.join(','))
-    ].join('\n')
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
 
     const blob = new Blob([csvContent], { type: 'text/csv' })
     const url = window.URL.createObjectURL(blob)
@@ -190,18 +187,12 @@ export default function SalesReportsPage(): React.JSX.Element {
   }
 
   return (
-    <Box p={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4">Laporan Penjualan</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={exportToCSV}
-          disabled={filteredTransactions.length === 0}
-        >
-          Ekspor CSV
-        </Button>
-      </Stack>
+    <Box>
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h5" fontWeight="600">
+          Laporan Transaksi
+        </Typography>
+      </Box>
 
       {/* Summary Cards */}
       <Stack direction="row" spacing={3} mb={3} sx={{ flexWrap: 'wrap', gap: 3 }}>
@@ -328,7 +319,9 @@ export default function SalesReportsPage(): React.JSX.Element {
                 <TableCell>{txn.code}</TableCell>
                 <TableCell>{txn.storeName || txn.storeId}</TableCell>
                 <TableCell>
-                  {(parseFloat(txn.total) - parseFloat(txn.tax) + parseFloat(txn.discount)).toFixed(2)}
+                  {(parseFloat(txn.total) - parseFloat(txn.tax) + parseFloat(txn.discount)).toFixed(
+                    2
+                  )}
                 </TableCell>
                 <TableCell align="right">{txn.discount}</TableCell>
                 <TableCell align="right">{txn.tax}</TableCell>

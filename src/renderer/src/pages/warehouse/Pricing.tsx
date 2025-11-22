@@ -86,63 +86,61 @@ export default function WarehousePricingPage(): React.JSX.Element {
     new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value)
 
   return (
-    <Box p={3} sx={{ height: '100%' }}>
+    <Box sx={{ height: '100%' }}>
       <Typography variant="h5" gutterBottom>
         Warehouse - Pricing
       </Typography>
 
-      <Paper elevation={6} square sx={{ p: 2, mt: 1, borderRadius: 2, height: 'calc(100% - 56px)' }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Typography variant="subtitle1">Product Pricing</Typography>
-          <Typography variant="body2" color="text.secondary">
-            Adjust margins to update selling prices.
-          </Typography>
-        </Stack>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="subtitle1">Product Pricing</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Adjust margins to update selling prices.
+        </Typography>
+      </Stack>
 
-        <Table size="small">
-          <TableHead>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Product</TableCell>
+            <TableCell align="right">Base Cost</TableCell>
+            <TableCell align="right">Margin %</TableCell>
+            <TableCell align="right">Selling Price</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {items.length === 0 ? (
             <TableRow>
-              <TableCell>Product</TableCell>
-              <TableCell align="right">Base Cost</TableCell>
-              <TableCell align="right">Margin %</TableCell>
-              <TableCell align="right">Selling Price</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell colSpan={5} align="center">
+                No pricing data
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {items.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} align="center">
-                  No pricing data
+          ) : (
+            items.map((item) => (
+              <TableRow key={item.id} hover>
+                <TableCell>
+                  <Stack spacing={0.3}>
+                    <Typography variant="body2" fontWeight={600}>
+                      {item.productCode}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {item.productName}
+                    </Typography>
+                  </Stack>
+                </TableCell>
+                <TableCell align="right">{formatCurrency(item.baseCost)}</TableCell>
+                <TableCell align="right">{item.marginPct}%</TableCell>
+                <TableCell align="right">{formatCurrency(item.sellingPrice)}</TableCell>
+                <TableCell align="right">
+                  <IconButton size="small" onClick={() => openEdit(item)}>
+                    <EditIcon fontSize="small" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
-            ) : (
-              items.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>
-                    <Stack spacing={0.3}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {item.productCode}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.productName}
-                      </Typography>
-                    </Stack>
-                  </TableCell>
-                  <TableCell align="right">{formatCurrency(item.baseCost)}</TableCell>
-                  <TableCell align="right">{item.marginPct}%</TableCell>
-                  <TableCell align="right">{formatCurrency(item.sellingPrice)}</TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(item)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+            ))
+          )}
+        </TableBody>
+      </Table>
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="xs">
         <DialogTitle>Adjust Pricing</DialogTitle>

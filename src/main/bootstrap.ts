@@ -1,4 +1,5 @@
 import { getDb } from './db'
+import { seedPermissions } from './seed'
 import { 
   CategoryController,
   SupplierController,
@@ -13,7 +14,12 @@ import {
   StockTransactionController,
   TransactionController,
   PurchaseOrderController,
-  SyncController
+  SyncController,
+  RoleController,
+  UserRoleController,
+  PermissionController,
+  RolePermissionController,
+  AuthController
 } from './controllers'
 import { 
   CategoryService,
@@ -29,7 +35,12 @@ import {
   StockTransactionService,
   TransactionService,
   PurchaseOrderService,
-  SyncService
+  SyncService,
+  RoleService,
+  UserRoleService,
+  PermissionService,
+  RolePermissionService,
+  AuthService
 } from './services'
 
 /**
@@ -38,6 +49,9 @@ import {
 export async function bootstrap(): Promise<void> {
   // Get sql.js database instance (async)
   const db = await getDb()
+
+  // Seed static reference data
+  await seedPermissions(db)
 
   // Initialize master data services
   const categoryService = new CategoryService(db)
@@ -49,6 +63,11 @@ export async function bootstrap(): Promise<void> {
   // Initialize core entity services
   const userService = new UserService(db)
   const productService = new ProductService(db)
+  const roleService = new RoleService(db)
+  const userRoleService = new UserRoleService(db)
+  const permissionService = new PermissionService(db)
+  const rolePermissionService = new RolePermissionService(db)
+  const authService = new AuthService(db)
   
   // Initialize inventory services
   const productPriceService = new ProductPriceService(db)
@@ -80,6 +99,11 @@ export async function bootstrap(): Promise<void> {
   const transactionController = new TransactionController(transactionService)
   const purchaseOrderController = new PurchaseOrderController(purchaseOrderService)
   const syncController = new SyncController(syncService)
+  const roleController = new RoleController(roleService)
+  const userRoleController = new UserRoleController(userRoleService)
+  const permissionController = new PermissionController(permissionService)
+  const rolePermissionController = new RolePermissionController(rolePermissionService)
+  const authController = new AuthController(authService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -96,6 +120,11 @@ export async function bootstrap(): Promise<void> {
   transactionController.registerHandlers()
   purchaseOrderController.registerHandlers()
   syncController.registerHandlers()
+  roleController.registerHandlers()
+  userRoleController.registerHandlers()
+  permissionController.registerHandlers()
+  rolePermissionController.registerHandlers()
+  authController.registerHandlers()
 
-  console.log('✓ All 14 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 19 services and controllers initialized (sql.js local + cloud sync ready)')
 }

@@ -17,24 +17,41 @@ import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import Chip from '@mui/material/Chip'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import api from '../../../lib/api'
 
 const productSchema = z.object({
-  code: z.string().min(1, 'Kode wajib diisi'),
+  sku: z.string().min(1, 'SKU wajib diisi'),
   name: z.string().min(1, 'Nama wajib diisi'),
-  category: z.string().min(1, 'Kategori wajib diisi')
+  unit: z.string().min(1, 'Satuan wajib diisi'),
+  cost: z.string().min(1, 'Harga pokok wajib diisi'),
+  categoryId: z.string().optional(),
+  isActive: z.boolean()
 })
 
 export type ProductFormValues = z.infer<typeof productSchema>
 
-export type Product = ProductFormValues & {
+export type Product = {
   id: string
+  sku: string
+  name: string
+  unit: string
+  cost: string
+  categoryId: string | null
+  isActive: boolean
+  categoryName?: string
+}
+
+type Category = {
+  id: string
+  name: string
 }
 
 export default function ProductPage(): React.JSX.Element {
@@ -43,6 +60,7 @@ export default function ProductPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
 
   const {
     register,
@@ -51,18 +69,43 @@ export default function ProductPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { code: '', name: '', category: '' }
+    defaultValues: { sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', isActive: true }
   })
-
-  const categories = ['Food', 'Care', 'Accessories', 'Medicine', 'Others']
 
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
         setLoading(true)
         setError(null)
-        const res = await api.get<Product[]>('/master/products')
-        setItems(res.data ?? [])
+        const [productsRes, categoriesRes] = await Promise.all([
+          window.api.db.products.getAll(),
+          window.api.db.categories.getAll()
+        ])
+
+        if (productsRes.success && categoriesRes.success) {
+          const categoryList = categoriesRes.data ?? []
+          const categoryMap = new Map(categoryList.map((c) => [c.id, c.name]))
+
+          const products = (productsRes.data ?? []).map((p) => ({
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            unit: p.unit,
+            cost: p.cost,
+            categoryId: p.categoryId,
+            isActive: p.isActive,
+            categoryName: p.categoryId ? categoryMap.get(p.categoryId) ?? '' : ''
+          }))
+
+          setItems(products)
+          setCategories(categoryList)
+        } else {
+          setError(
+            productsRes.error ??
+              categoriesRes.error ??
+              'Gagal memuat produk'
+          )
+        }
       } catch {
         setError('Gagal memuat produk')
       } finally {
@@ -74,16 +117,19 @@ export default function ProductPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', category: '' })
+    reset({ sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', isActive: true })
     setDialogOpen(true)
   }
 
   const openEdit = (product: Product): void => {
     setEditing(product)
     reset({
-      code: product.code,
+      sku: product.sku,
       name: product.name,
-      category: product.category
+      unit: product.unit,
+      cost: product.cost,
+      categoryId: product.categoryId ?? '',
+      isActive: product.isActive
     })
     setDialogOpen(true)
   }
@@ -94,17 +140,78 @@ export default function ProductPage(): React.JSX.Element {
 
   const onSubmit = async (values: ProductFormValues): Promise<void> => {
     try {
+      const createPayload = {
+        sku: values.sku,
+        name: values.name,
+        unit: values.unit,
+        cost: values.cost,
+        categoryId: values.categoryId || undefined,
+        isActive: values.isActive
+      }
+
+      const updatePayload = {
+        name: values.name,
+        unit: values.unit,
+        cost: values.cost,
+        categoryId: values.categoryId || undefined,
+        isActive: values.isActive
+      }
+
       if (editing) {
-        const res = await api.put<Product>(`/master/products/${editing.id}`, values)
-        const updated = res.data ?? { ...editing, ...values }
-        setItems((prev) => prev.map((p) => (p.id === editing.id ? updated : p)))
-      } else {
-        const res = await api.post<Product>('/master/products', values)
-        const created = res.data ?? {
-          id: Date.now().toString(),
-          ...values
+        const response = await window.api.db.products.update(editing.id, updatePayload)
+        if (response.success && response.data) {
+          const updated = response.data
+          const categoryName =
+            updated.categoryId
+              ? categories.find((c) => c.id === updated.categoryId)?.name ?? ''
+              : ''
+
+          setItems((prev) =>
+            prev.map((p) =>
+              p.id === editing.id
+                ? {
+                    id: updated.id,
+                    sku: updated.sku,
+                    name: updated.name,
+                    unit: updated.unit,
+                    cost: updated.cost,
+                    categoryId: updated.categoryId,
+                    isActive: updated.isActive,
+                    categoryName
+                  }
+                : p
+            )
+          )
+        } else {
+          setError(response.error ?? 'Gagal menyimpan produk')
+          return
         }
-        setItems((prev) => [...prev, created])
+      } else {
+        const response = await window.api.db.products.create(createPayload)
+        if (response.success && response.data) {
+          const created = response.data
+          const categoryName =
+            created.categoryId
+              ? categories.find((c) => c.id === created.categoryId)?.name ?? ''
+              : ''
+
+          setItems((prev) => [
+            ...prev,
+            {
+              id: created.id,
+              sku: created.sku,
+              name: created.name,
+              unit: created.unit,
+              cost: created.cost,
+              categoryId: created.categoryId,
+              isActive: created.isActive,
+              categoryName
+            }
+          ])
+        } else {
+          setError(response.error ?? 'Gagal menyimpan produk')
+          return
+        }
       }
       setDialogOpen(false)
     } catch {
@@ -115,7 +222,11 @@ export default function ProductPage(): React.JSX.Element {
   const handleDelete = async (product: Product): Promise<void> => {
     try {
       if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
-      await api.delete(`/master/products/${product.id}`)
+      const response = await window.api.db.products.delete(product.id)
+      if (!response.success) {
+        setError(response.error ?? 'Gagal menghapus produk')
+        return
+      }
     } catch {
       setError('Gagal menghapus produk')
     }
@@ -146,31 +257,39 @@ export default function ProductPage(): React.JSX.Element {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Kode</TableCell>
+                <TableCell>SKU</TableCell>
                 <TableCell>Nama</TableCell>
                 <TableCell>Kategori</TableCell>
+                <TableCell>Status</TableCell>
                 <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center">
+                  <TableCell colSpan={5} align="center">
                     Tidak ada produk
                   </TableCell>
                 </TableRow>
               ) : (
                 items?.map((product) => (
                   <TableRow key={product.id} hover>
-                    <TableCell>{product.code}</TableCell>
+                    <TableCell>{product.sku}</TableCell>
                     <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.category}</TableCell>
+                    <TableCell>{product.categoryName}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={product.isActive ? 'Aktif' : 'Nonaktif'}
+                        color={product.isActive ? 'success' : 'default'}
+                      />
+                    </TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEdit(product)}>
                         <EditIcon fontSize="small" />
@@ -197,11 +316,12 @@ export default function ProductPage(): React.JSX.Element {
           <Box component="form" id="product-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
             <TextField
               margin="normal"
-              label="Kode"
+              label="SKU"
               fullWidth
-              {...register('code')}
-              error={!!errors.code}
-              helperText={errors.code?.message}
+              {...register('sku')}
+              error={!!errors.sku}
+              helperText={errors.sku?.message}
+              disabled={!!editing}
             />
             <TextField
               margin="normal"
@@ -213,19 +333,41 @@ export default function ProductPage(): React.JSX.Element {
             />
             <TextField
               margin="normal"
-              label="Kategori"
+              label="Satuan"
+              fullWidth
+              {...register('unit')}
+              error={!!errors.unit}
+              helperText={errors.unit?.message}
+            />
+            <TextField
+              margin="normal"
+              label="Harga Pokok"
+              fullWidth
+              type="number"
+              {...register('cost')}
+              error={!!errors.cost}
+              helperText={errors.cost?.message}
+            />
+            <TextField
+              margin="normal"
+              label="Kategori Produk"
               fullWidth
               select
-              {...register('category')}
-              error={!!errors.category}
-              helperText={errors.category?.message}
+              {...register('categoryId')}
+              error={!!errors.categoryId}
+              helperText={errors.categoryId?.message}
             >
-              {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
+              <MenuItem value="">Tanpa Kategori</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
                 </MenuItem>
               ))}
             </TextField>
+            <FormControlLabel
+              control={<Checkbox {...register('isActive')} defaultChecked />}
+              label="Aktif"
+            />
           </Box>
         </DialogContent>
         <DialogActions>

@@ -85,8 +85,7 @@ export default function MainLayout(): React.JSX.Element {
           flexGrow: 1,
           p: 3,
           width: { sm: `calc(100% - ${drawerWidth}px)` },
-          minHeight: 'calc(100vh - 64px)'
-          // overflow: 'hidden'
+          minHeight: 'calc(100vh - 64px)',
         }}
       >
         <Toolbar />

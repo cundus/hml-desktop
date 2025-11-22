@@ -126,83 +126,77 @@ export default function WarehousePurchasingPage(): React.JSX.Element {
   }
 
   return (
-    <Box p={3} sx={{ height: '100%' }}>
+    <Box sx={{ height: '100%' }}>
       <Typography variant="h5" gutterBottom>
         Warehouse - Purchasing
       </Typography>
 
-      <Paper elevation={6} square sx={{ p: 2, mt: 1, borderRadius: 2, height: 'calc(100% - 56px)' }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Typography variant="subtitle1">Purchase Orders</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-            New Purchase
-          </Button>
-        </Stack>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="subtitle1">Purchase Orders</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+          New Purchase
+        </Button>
+      </Stack>
 
-        <Table size="small">
-          <TableHead>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>PO Number</TableCell>
+            <TableCell>Supplier</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell align="right">Items</TableCell>
+            <TableCell align="right">Qty</TableCell>
+            <TableCell align="right">Status</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {orders.length === 0 ? (
             <TableRow>
-              <TableCell>PO Number</TableCell>
-              <TableCell>Supplier</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell align="right">Items</TableCell>
-              <TableCell align="right">Qty</TableCell>
-              <TableCell align="right">Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell colSpan={7} align="center">
+                No purchase orders
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {orders.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  No purchase orders
-                </TableCell>
-              </TableRow>
-            ) : (
-              orders.map((order) => (
-                <TableRow key={order.id} hover>
-                  <TableCell>{order.poNumber}</TableCell>
-                  <TableCell>{order.supplier}</TableCell>
-                  <TableCell>{order.date}</TableCell>
-                  <TableCell align="right">{order.totalItems}</TableCell>
-                  <TableCell align="right">{order.totalQty}</TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      size="small"
-                      label={order.status}
-                      color={
-                        order.status === 'Draft'
-                          ? 'default'
-                          : order.status === 'Ordered'
+          ) : (
+            orders.map((order) => (
+              <TableRow key={order.id} hover>
+                <TableCell>{order.poNumber}</TableCell>
+                <TableCell>{order.supplier}</TableCell>
+                <TableCell>{order.date}</TableCell>
+                <TableCell align="right">{order.totalItems}</TableCell>
+                <TableCell align="right">{order.totalQty}</TableCell>
+                <TableCell align="right">
+                  <Chip
+                    size="small"
+                    label={order.status}
+                    color={
+                      order.status === 'Draft'
+                        ? 'default'
+                        : order.status === 'Ordered'
                           ? 'warning'
                           : 'success'
-                      }
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button
-                        size="small"
-                        variant="outlined"
-                        onClick={() => toggleStatus(order)}
-                      >
-                        {order.status === 'Draft'
-                          ? 'Mark Ordered'
-                          : order.status === 'Ordered'
+                    }
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Button size="small" variant="outlined" onClick={() => toggleStatus(order)}>
+                      {order.status === 'Draft'
+                        ? 'Mark Ordered'
+                        : order.status === 'Ordered'
                           ? 'Mark Received'
                           : 'Received'}
-                      </Button>
-                      <IconButton size="small" onClick={() => openEdit(order)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+                    </Button>
+                    <IconButton size="small" onClick={() => openEdit(order)}>
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Edit Purchase Order' : 'New Purchase Order'}</DialogTitle>

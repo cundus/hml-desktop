@@ -82,18 +82,6 @@ type Product = {
   category: string
 }
 
-type PermissionDef = {
-  key: string
-  label: string
-  description?: string
-}
-
-type PermissionGroup = {
-  id: string
-  name: string
-  description?: string
-  permissions: string[]
-}
 
 let branches: Branch[] = [
   {
@@ -124,56 +112,6 @@ let products: Product[] = [
     code: 'PRD-002',
     name: 'Cat Kibble Salmon 5kg',
     category: 'Food'
-  }
-]
-
-const permissionCatalog: PermissionDef[] = [
-  { key: 'dashboard.view', label: 'View dashboard' },
-  { key: 'sales.view', label: 'Use sales screen' },
-  { key: 'settings.view', label: 'View settings' },
-  { key: 'master.branch.manage', label: 'Manage branches' },
-  { key: 'master.user.manage', label: 'Manage users' },
-  { key: 'master.customer.manage', label: 'Manage customers' },
-  { key: 'master.product.manage', label: 'Manage products' },
-  { key: 'master.category.manage', label: 'Manage categories' },
-  { key: 'master.supplier.manage', label: 'Manage suppliers' },
-  { key: 'master.store.manage', label: 'Manage stores' },
-  { key: 'master.customer-category.manage', label: 'Manage customer categories' },
-  { key: 'settings.access-control.manage', label: 'Manage roles & permissions' },
-  { key: 'warehouse.manage', label: 'Manage warehouse & stocks' },
-  { key: 'inventory.dashboard', label: 'View inventory dashboard' },
-  { key: 'inventory.pricing', label: 'Manage product pricing' },
-  { key: 'inventory.batches', label: 'Manage batches' },
-  { key: 'inventory.transactions', label: 'Manage stock transactions' },
-  { key: 'sales.pos', label: 'Use point of sale' },
-  { key: 'sales.reports', label: 'View sales reports' },
-  { key: 'sales.manage', label: 'Manage sales' },
-  { key: 'warehouse.stock-opname', label: 'Manage stock opname' },
-  { key: 'warehouse.purchasing', label: 'Manage purchasing' },
-  { key: 'warehouse.pricing', label: 'Manage pricing' },
-  { key: 'warehouse.stocks', label: 'View stocks' },
-  { key: 'warehouse.shipping', label: 'Manage shipping' },
-  { key: 'warehouse.transfers', label: 'Manage transfers' }
-]
-
-let permissionGroups: PermissionGroup[] = [
-  {
-    id: 'admin',
-    name: 'Admin',
-    description: 'Full system access',
-    permissions: permissionCatalog.map((p) => p.key)
-  },
-  {
-    id: 'cashier',
-    name: 'Cashier',
-    description: 'Sales and customer management',
-    permissions: ['dashboard.view', 'sales.view', 'master.customer.manage']
-  },
-  {
-    id: 'supervisor',
-    name: 'Supervisor',
-    description: 'Can manage customers and view sales but not user/branch admin',
-    permissions: ['dashboard.view', 'sales.view', 'master.customer.manage']
   }
 ]
 
@@ -239,46 +177,12 @@ async function handleGet<T>(url: string): Promise<ApiResponse<T>> {
     return { data: products as unknown as T }
   }
 
-  if (url === '/auth/permissions') {
-    return { data: permissionCatalog as unknown as T }
-  }
-
-  if (url === '/auth/groups') {
-    return { data: permissionGroups as unknown as T }
-  }
-
   // Default empty response for unknown endpoints
   return { data: undefined as unknown as T }
 }
 
 async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T>> {
   await delay()
-
-  if (url === '/auth/login') {
-    const body = (data ?? {}) as { email?: string }
-    const email = (body.email ?? '').toLowerCase()
-
-    let groupIds: string[]
-    if (email.includes('cashier')) {
-      groupIds = ['cashier']
-    } else if (email.includes('supervisor')) {
-      groupIds = ['supervisor']
-    } else {
-      groupIds = ['admin']
-    }
-    const perms = Array.from(
-      new Set(
-        groupIds.flatMap((id) => permissionGroups.find((g) => g.id === id)?.permissions ?? [])
-      )
-    )
-
-    const response: LoginResponse = {
-      token: 'mock-token',
-      groups: groupIds,
-      permissions: perms
-    }
-    return { data: response as unknown as T }
-  }
 
   if (url === '/master/branches') {
     const body = data as Partial<Branch>
@@ -327,18 +231,6 @@ async function handlePost<T>(url: string, data?: unknown): Promise<ApiResponse<T
       category: body.category ?? 'Uncategorized'
     }
     products = [...products, created]
-    return { data: created as unknown as T }
-  }
-
-  if (url === '/auth/groups') {
-    const body = data as Partial<PermissionGroup>
-    const created: PermissionGroup = {
-      id: body.id ?? `g${Date.now()}`,
-      name: body.name ?? 'New Group',
-      description: body.description ?? '',
-      permissions: Array.isArray(body.permissions) ? body.permissions : []
-    }
-    permissionGroups = [...permissionGroups, created]
     return { data: created as unknown as T }
   }
 
@@ -396,18 +288,6 @@ async function handlePut<T>(url: string, data?: unknown): Promise<ApiResponse<T>
     return { data: (updated ?? ({} as Product)) as unknown as T }
   }
 
-  if (url.startsWith('/auth/groups/')) {
-    const id = url.split('/').at(-1) as string
-    const body = data as Partial<PermissionGroup>
-    let updated: PermissionGroup | undefined
-    permissionGroups = permissionGroups.map((g) => {
-      if (g.id !== id) return g
-      updated = { ...g, ...body, permissions: body.permissions ?? g.permissions }
-      return updated
-    })
-    return { data: (updated ?? ({} as PermissionGroup)) as unknown as T }
-  }
-
   return { data: undefined as unknown as T }
 }
 
@@ -435,12 +315,6 @@ async function handleDelete<T>(url: string): Promise<ApiResponse<T>> {
   if (url.startsWith('/master/products/')) {
     const id = url.split('/').at(-1) as string
     products = products.filter((p) => p.id !== id)
-    return { data: undefined as unknown as T }
-  }
-
-  if (url.startsWith('/auth/groups/')) {
-    const id = url.split('/').at(-1) as string
-    permissionGroups = permissionGroups.filter((g) => g.id !== id)
     return { data: undefined as unknown as T }
   }
 

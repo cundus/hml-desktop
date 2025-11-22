@@ -80,85 +80,77 @@ export default function WarehouseStockOpnamePage(): React.JSX.Element {
       session.status === 'Draft'
         ? 'In Progress'
         : session.status === 'In Progress'
-        ? 'Completed'
-        : 'Completed'
+          ? 'Completed'
+          : 'Completed'
 
-    setSessions((prev) =>
-      prev.map((s) => (s.id === session.id ? { ...s, status: nextStatus } : s))
-    )
+    setSessions((prev) => prev.map((s) => (s.id === session.id ? { ...s, status: nextStatus } : s)))
   }
 
   return (
-    <Box p={3} sx={{ height: '100%' }}>
+    <Box sx={{ height: '100%' }}>
       <Typography variant="h5" gutterBottom>
         Warehouse - Stock Opname
       </Typography>
 
-      <Paper elevation={6} square sx={{ p: 2, mt: 1, borderRadius: 2, height: 'calc(100% - 56px)' }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
-          <Typography variant="subtitle1">Stock Opname Sessions</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-            New Stock Opname
-          </Button>
-        </Stack>
+      <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
+        <Typography variant="subtitle1">Stock Opname Sessions</Typography>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+          New Stock Opname
+        </Button>
+      </Stack>
 
-        <Table size="small">
-          <TableHead>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>Code</TableCell>
+            <TableCell>Date</TableCell>
+            <TableCell>Description</TableCell>
+            <TableCell align="right">Variances</TableCell>
+            <TableCell align="right">Status</TableCell>
+            <TableCell align="right">Actions</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {sessions.length === 0 ? (
             <TableRow>
-              <TableCell>Code</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="right">Variances</TableCell>
-              <TableCell align="right">Status</TableCell>
-              <TableCell align="right">Actions</TableCell>
+              <TableCell colSpan={6} align="center">
+                No stock opname sessions
+              </TableCell>
             </TableRow>
-          </TableHead>
-          <TableBody>
-            {sessions.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} align="center">
-                  No stock opname sessions
-                </TableCell>
-              </TableRow>
-            ) : (
-              sessions.map((session) => (
-                <TableRow key={session.id} hover>
-                  <TableCell>{session.code}</TableCell>
-                  <TableCell>{session.date}</TableCell>
-                  <TableCell>{session.description}</TableCell>
-                  <TableCell align="right">{session.varianceCount}</TableCell>
-                  <TableCell align="right">
-                    <Chip
-                      size="small"
-                      label={session.status}
-                      color={
-                        session.status === 'Draft'
-                          ? 'default'
-                          : session.status === 'In Progress'
+          ) : (
+            sessions.map((session) => (
+              <TableRow key={session.id} hover>
+                <TableCell>{session.code}</TableCell>
+                <TableCell>{session.date}</TableCell>
+                <TableCell>{session.description}</TableCell>
+                <TableCell align="right">{session.varianceCount}</TableCell>
+                <TableCell align="right">
+                  <Chip
+                    size="small"
+                    label={session.status}
+                    color={
+                      session.status === 'Draft'
+                        ? 'default'
+                        : session.status === 'In Progress'
                           ? 'warning'
                           : 'success'
-                      }
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={() => advanceStatus(session)}
-                    >
-                      {session.status === 'Draft'
-                        ? 'Start'
-                        : session.status === 'In Progress'
+                    }
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Button size="small" variant="outlined" onClick={() => advanceStatus(session)}>
+                    {session.status === 'Draft'
+                      ? 'Start'
+                      : session.status === 'In Progress'
                         ? 'Complete'
                         : 'Completed'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Paper>
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
 
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>New Stock Opname</DialogTitle>

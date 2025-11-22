@@ -137,10 +137,7 @@ export default function SalesPage(): React.JSX.Element {
 
   return (
     <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
-      <Paper
-        elevation={2}
-        sx={{ p: 2, width: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}
-      >
+      <Box sx={{ width: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ mb: 2 }}>
           <Typography variant="h5" fontWeight="600">
             Sales
@@ -178,8 +175,7 @@ export default function SalesPage(): React.JSX.Element {
               Items: {cartItems.length}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Subtotal:{' '}
-              {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+              Subtotal: {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Discount: {discount}%
@@ -262,7 +258,7 @@ export default function SalesPage(): React.JSX.Element {
             <Button onClick={() => setProductDialogOpen(false)}>Close</Button>
           </DialogActions>
         </Dialog>
-      </Paper>
+      </Box>
     </Box>
   )
 }

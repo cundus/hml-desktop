@@ -17,7 +17,6 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import api from '../../lib/api'
 
 export type PermissionDef = {
   key: string
@@ -44,12 +43,39 @@ export default function AccessControlPage(): React.JSX.Element {
   useEffect(() => {
     const load = async (): Promise<void> => {
       try {
-        const [permRes, groupRes] = await Promise.all([
-          api.get<PermissionDef[]>('/auth/permissions'),
-          api.get<PermissionGroup[]>('/auth/groups')
+        const [permRes, rolesRes, rolePermRes] = await Promise.all([
+          window.api.db.permissions.getAll(),
+          window.api.db.roles.getAll(),
+          window.api.db.rolePermissions.getAll()
         ])
-        setPermissions(permRes.data ?? [])
-        setGroups(groupRes.data ?? [])
+
+        if (permRes.success && rolesRes.success && rolePermRes.success) {
+          const permData = permRes.data ?? []
+          const rolesData = rolesRes.data ?? []
+          const rolePermData = rolePermRes.data ?? []
+
+          const loadedPermissions: PermissionDef[] = permData.map((p: any) => ({
+            key: p.id as string,
+            label: p.name as string,
+            description: (p.description as string | null) ?? undefined
+          }))
+
+          const groupsFromRoles: PermissionGroup[] = rolesData.map((role: any) => {
+            const permIds = rolePermData
+              .filter((rp: any) => rp.roleId === role.id)
+              .map((rp: any) => rp.permissionId as string)
+
+            return {
+              id: role.id as string,
+              name: role.name as string,
+              description: (role.description as string | null) ?? undefined,
+              permissions: permIds
+            }
+          })
+
+          setPermissions(loadedPermissions)
+          setGroups(groupsFromRoles)
+        }
       } catch {
         return
       }
@@ -83,27 +109,73 @@ export default function AccessControlPage(): React.JSX.Element {
     )
   }
 
-  const handleSave = async (): Promise<void> => {
-    const payload: Partial<PermissionGroup> = {
-      name: formName.trim() || 'New Group',
-      description: formDescription.trim(),
-      permissions: formPermissions
+  const allPermissionsSelected =
+    permissions.length > 0 && formPermissions.length === permissions.length
+  const somePermissionsSelected =
+    formPermissions.length > 0 && formPermissions.length < permissions.length
+
+  const toggleAllPermissions = (): void => {
+    if (allPermissionsSelected) {
+      setFormPermissions([])
+    } else {
+      setFormPermissions(permissions.map((p) => p.key))
     }
+  }
+
+  const handleSave = async (): Promise<void> => {
+    const name = formName.trim() || 'New Group'
+    const description = formDescription.trim()
 
     if (editingGroup) {
-      const res = await api.put<PermissionGroup>(`/auth/groups/${editingGroup.id}`, payload)
-      const updated = res.data
+      const roleRes = await window.api.db.roles.update(editingGroup.id, {
+        name,
+        description: description || undefined
+      })
+
+      if (!roleRes.success || !roleRes.data) return
+
+      const role = roleRes.data
+
+      const permRes = await window.api.db.rolePermissions.setForRole(role.id, formPermissions)
+      if (!permRes.success) return
+
+      const updated: PermissionGroup = {
+        id: role.id,
+        name: role.name,
+        description: (role.description as string | null) ?? undefined,
+        permissions: formPermissions
+      }
+
       setGroups((prev) => prev.map((g) => (g.id === updated.id ? updated : g)))
     } else {
-      const res = await api.post<PermissionGroup>('/auth/groups', payload)
-      setGroups((prev) => [...prev, res.data])
+      const roleRes = await window.api.db.roles.create({
+        name,
+        description: description || undefined
+      })
+
+      if (!roleRes.success || !roleRes.data) return
+
+      const role = roleRes.data
+
+      const permRes = await window.api.db.rolePermissions.setForRole(role.id, formPermissions)
+      if (!permRes.success) return
+
+      const created: PermissionGroup = {
+        id: role.id,
+        name: role.name,
+        description: (role.description as string | null) ?? undefined,
+        permissions: formPermissions
+      }
+
+      setGroups((prev) => [...prev, created])
     }
 
     setDialogOpen(false)
   }
 
   const handleDelete = async (group: PermissionGroup): Promise<void> => {
-    await api.delete(`/auth/groups/${group.id}`)
+    const res = await window.api.db.roles.delete(group.id)
+    if (!res.success) return
     setGroups((prev) => prev.filter((g) => g.id !== group.id))
   }
 
@@ -188,21 +260,36 @@ export default function AccessControlPage(): React.JSX.Element {
               <Typography variant="subtitle2" gutterBottom>
                 Permissions
               </Typography>
-              <FormGroup>
-                {permissions.map((perm) => (
-                  <FormControlLabel
-                    key={perm.key}
-                    control={
-                      <Checkbox
-                        checked={formPermissions.includes(perm.key)}
-                        onChange={() => togglePermission(perm.key)}
-                        size="small"
-                      />
-                    }
-                    label={perm.label}
-                  />
-                ))}
-              </FormGroup>
+              <Box sx={{ mb: 1 }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={allPermissionsSelected}
+                      indeterminate={somePermissionsSelected}
+                      onChange={toggleAllPermissions}
+                      size="small"
+                    />
+                  }
+                  label="Select all permissions"
+                />
+              </Box>
+              <Box sx={{ maxHeight: 260, overflowY: 'auto', pr: 1 }}>
+                <FormGroup>
+                  {permissions.map((perm) => (
+                    <FormControlLabel
+                      key={perm.key}
+                      control={
+                        <Checkbox
+                          checked={formPermissions.includes(perm.key)}
+                          onChange={() => togglePermission(perm.key)}
+                          size="small"
+                        />
+                      }
+                      label={perm.label}
+                    />
+                  ))}
+                </FormGroup>
+              </Box>
             </Box>
           </Box>
         </DialogContent>

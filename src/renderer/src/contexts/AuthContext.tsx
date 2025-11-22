@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import api from '../lib/api'
 import {
   getToken,
   setToken as saveToken,
@@ -28,45 +27,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     if (existingPermissions.length) setPermissions(existingPermissions)
     setIsReady(true)
   }, [])
-
-  type LoginResponse = { token: string; groups?: string[]; permissions?: string[] }
-
   const login = useCallback(async (creds: Credentials): Promise<void> => {
     try {
-      const res = await api.post<LoginResponse>('/auth/login', creds)
-      const t = res.data?.token
-      const g = res.data?.groups ?? []
-      const p = res.data?.permissions ?? []
-      if (t) {
-        saveToken(t)
-        saveGroups(g)
-        savePermissions(p)
-        setToken(t)
-        setGroups(g)
-        setPermissions(p)
-        window.location.hash = '#/'
-        return
+      const res = await window.api.db.auth.login(creds.email, creds.password)
+      if (!res.success || !res.data) {
+        throw new Error(res.error ?? 'Login gagal')
       }
+
+      const t = res.data.token
+      const g = res.data.groups ?? []
+      const p = res.data.permissions ?? []
+
+      saveToken(t)
+      saveGroups(g)
+      savePermissions(p)
+      setToken(t)
+      setGroups(g)
+      setPermissions(p)
+      window.location.hash = '#/'
     } catch (e) {
-      void e
+      // TODO: surface error via UI state; for now, simple alert
+      alert('Email atau kata sandi salah')
     }
-    const fallbackToken = 'dev-token'
-    const fallbackGroups = ['admin']
-    const fallbackPermissions = [
-      'dashboard.view',
-      'sales.view',
-      'settings.view',
-      'master.branch.manage',
-      'master.user.manage',
-      'master.customer.manage'
-    ]
-    saveToken(fallbackToken)
-    saveGroups(fallbackGroups)
-    savePermissions(fallbackPermissions)
-    setToken(fallbackToken)
-    setGroups(fallbackGroups)
-    setPermissions(fallbackPermissions)
-    window.location.hash = '#/'
   }, [])
 
   const logout = useCallback((): void => {

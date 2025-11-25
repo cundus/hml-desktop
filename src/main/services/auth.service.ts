@@ -9,12 +9,12 @@ export interface AuthResult {
 export class AuthService {
   constructor(private db: Database) {}
 
-  async login(email: string, password: string): Promise<AuthResult> {
-    // Find user by email & password (plain-text for local-only dev)
+  async login(identifier: string, password: string): Promise<AuthResult> {
+    // Find user by email OR name & password (plain-text for local-only dev)
     const stmt = this.db.prepare(
-      'SELECT * FROM user WHERE email = ? AND password = ? AND deleted_at IS NULL'
+      'SELECT * FROM user WHERE (email = ? OR name = ?) AND password = ? AND deleted_at IS NULL'
     )
-    stmt.bind([email, password])
+    stmt.bind([identifier, identifier, password])
 
     let user: any | null = null
     if (stmt.step()) {

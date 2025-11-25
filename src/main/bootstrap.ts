@@ -1,5 +1,5 @@
 import { getDb } from './db'
-import { seedPermissions } from './seed'
+import { seedPermissions, seedAdmin } from './seed'
 import { 
   CategoryController,
   SupplierController,
@@ -52,6 +52,7 @@ export async function bootstrap(): Promise<void> {
 
   // Seed static reference data
   await seedPermissions(db)
+  await seedAdmin(db)
 
   // Initialize master data services
   const categoryService = new CategoryService(db)

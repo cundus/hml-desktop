@@ -1,4 +1,5 @@
 import { Database } from 'sql.js'
+import { randomUUID } from 'crypto'
 import { saveDb } from './localDb'
 
 interface SeedPermission {
@@ -47,6 +48,64 @@ export async function seedPermissions(db: Database): Promise<void> {
     db.run(
       'INSERT OR IGNORE INTO permission (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
       [perm.id, perm.name, perm.description ?? null, now, now]
+    )
+  }
+
+  saveDb(db)
+}
+
+/**
+ * Seed a default admin role and user with full permissions.
+ * - Role: id 'role-admin', name 'Admin'
+ * - User: id 'user-admin', name 'Admin', email 'admin@example.com', password 'admin123'
+ * - Grants all permissions from permissionCatalog to role-admin
+ * - Assigns role-admin to user-admin
+ * All operations are idempotent.
+ */
+export async function seedAdmin(db: Database): Promise<void> {
+  const now = Date.now()
+
+  const adminRoleId = 'role-admin'
+  const adminUserId = 'user-admin'
+
+  // Ensure admin role exists
+  db.run(
+    'INSERT OR IGNORE INTO role (id, name, description, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+    [
+      adminRoleId,
+      'Admin',
+      'Default administrator role with full access',
+      now,
+      now
+    ]
+  )
+
+  // Ensure admin user exists
+  db.run(
+    'INSERT OR IGNORE INTO user (id, name, email, password, store_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, NULL, NULL)',
+    [
+      adminUserId,
+      'Admin',
+      'admin@example.com',
+      'admin123',
+      now,
+      now
+    ]
+  )
+
+  // Ensure user_role mapping exists (admin user -> admin role)
+  const userRoleId = 'user-role-admin-admin'
+  db.run(
+    'INSERT OR IGNORE INTO user_role (id, user_id, role_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+    [userRoleId, adminUserId, adminRoleId, now, now]
+  )
+
+  // Grant all permissions to admin role
+  for (const perm of permissionCatalog) {
+    const rpId = `role-admin:${perm.id}`
+    db.run(
+      'INSERT OR IGNORE INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+      [rpId, adminRoleId, perm.id, now, now]
     )
   }
 

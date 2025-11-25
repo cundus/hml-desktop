@@ -11,7 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import useAuth from '../hooks/useAuth'
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
+  identifier: z.string().min(1, 'Masukkan email atau nama pengguna'),
   password: z.string().min(6, 'Password must be at least 6 characters')
 })
 
@@ -26,12 +26,12 @@ export default function Login(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: '', password: '' }
+    defaultValues: { identifier: '', password: '' }
   })
 
-  const onSubmit = async (values: LoginFormValues): Promise<void> => {
+  const onSubmit = handleSubmit(async (values: LoginFormValues): Promise<void> => {
     await login(values)
-  }
+  })
 
   return (
     <Box
@@ -47,18 +47,18 @@ export default function Login(): React.JSX.Element {
             Sign in
           </Typography>
         </Box>
-        <Box component="form" noValidate onSubmit={handleSubmit(onSubmit)}>
+        <Box component="form" noValidate onSubmit={onSubmit}>
           <TextField
             margin="normal"
             required
             fullWidth
-            id="email"
-            label="Email Address"
+            id="identifier"
+            label="Email atau Nama Pengguna"
             autoComplete="email"
             autoFocus
-            {...register('email')}
-            error={!!errors.email}
-            helperText={errors.email?.message}
+            {...register('identifier')}
+            error={!!errors.identifier}
+            helperText={errors.identifier?.message}
           />
           <TextField
             margin="normal"

@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   }, [])
   const login = useCallback(async (creds: Credentials): Promise<void> => {
     try {
-      const res = await window.api.db.auth.login(creds.email, creds.password)
+      const res = await window.api.db.auth.login(creds.identifier, creds.password)
       if (!res.success || !res.data) {
         throw new Error(res.error ?? 'Login gagal')
       }

@@ -98,7 +98,7 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
-  // Users table
+  // s table
   database.run(`
     CREATE TABLE IF NOT EXISTS user (
       id TEXT PRIMARY KEY,

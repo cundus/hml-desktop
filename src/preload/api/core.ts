@@ -123,8 +123,8 @@ export const rolePermissionApi = {
 
 // Auth API
 export const authApi = {
-  login: (email: string, password: string) =>
-    ipcRenderer.invoke('auth:login', email, password) as Promise<ApiResponse<LoginResult>>
+  login: (identifier: string, password: string) =>
+    ipcRenderer.invoke('auth:login', identifier, password) as Promise<ApiResponse<LoginResult>>
 }
 
 // Product API

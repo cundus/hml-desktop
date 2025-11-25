@@ -11,11 +11,41 @@ import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
 import api from '../../lib/api'
 
 const mockProducts: Product[] = [
-  { id: '1', name: 'Premium Dog Food', sku: 'DOG-FOOD-001', category: 'Food', price: 120000 },
-  { id: '2', name: 'Cat Kibble Salmon', sku: 'CAT-FOOD-002', category: 'Food', price: 95000 },
-  { id: '3', name: 'Dog Shampoo Medicated', sku: 'DOG-CARE-003', category: 'Care', price: 68000 },
-  { id: '4', name: 'Cat Litter 10kg', sku: 'CAT-LITTER-004', category: 'Care', price: 80000 },
-  { id: '5', name: 'Pet Leash Nylon', sku: 'ACC-LEASH-005', category: 'Accessories', price: 45000 }
+  {
+    id: '1',
+    name: 'Makanan Anjing Premium',
+    sku: 'DOG-FOOD-001',
+    category: 'Makanan',
+    price: 120000
+  },
+  {
+    id: '2',
+    name: 'Pakan Kucing Salmon',
+    sku: 'CAT-FOOD-002',
+    category: 'Makanan',
+    price: 95000
+  },
+  {
+    id: '3',
+    name: 'Shampo Anjing Medicated',
+    sku: 'DOG-CARE-003',
+    category: 'Perawatan',
+    price: 68000
+  },
+  {
+    id: '4',
+    name: 'Pasir Kucing 10kg',
+    sku: 'CAT-LITTER-004',
+    category: 'Perawatan',
+    price: 80000
+  },
+  {
+    id: '5',
+    name: 'Tali Anjing Nylon',
+    sku: 'ACC-LEASH-005',
+    category: 'Aksesoris',
+    price: 45000
+  }
 ]
 
 export default function SalesPage(): React.JSX.Element {
@@ -80,7 +110,7 @@ export default function SalesPage(): React.JSX.Element {
   }
 
   const handleCheckout = useCallback((): void => {
-    alert('Sale completed (mock).')
+    alert('Transaksi selesai (mock).')
     setCartItems([])
     setDiscount(0)
     setPaidAmount(0)
@@ -140,10 +170,10 @@ export default function SalesPage(): React.JSX.Element {
       <Box sx={{ width: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
         <Box sx={{ mb: 2 }}>
           <Typography variant="h5" fontWeight="600">
-            Sales
+            Penjualan
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Create a new transaction by selecting products and completing payment.
+            Buat transaksi baru dengan memilih produk dan menyelesaikan pembayaran.
           </Typography>
         </Box>
 
@@ -164,7 +194,7 @@ export default function SalesPage(): React.JSX.Element {
         >
           <Box>
             <Typography variant="subtitle2" color="text.secondary">
-              Total to Pay
+              Total Pembayaran
             </Typography>
             <Typography variant="h3" fontWeight={700} color="primary.main">
               {total.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
@@ -172,13 +202,13 @@ export default function SalesPage(): React.JSX.Element {
           </Box>
           <Box sx={{ textAlign: 'right' }}>
             <Typography variant="body2" color="text.secondary">
-              Items: {cartItems.length}
+              Item: {cartItems.length}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Subtotal: {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Discount: {discount}%
+              Diskon: {discount}%
             </Typography>
           </Box>
         </Box>
@@ -221,7 +251,7 @@ export default function SalesPage(): React.JSX.Element {
                   size="small"
                   onClick={() => window.api?.openMasterCustomerWindow?.()}
                 >
-                  Add customer
+                  Tambah pelanggan
                 </Button>
               </Box>
               <PaymentSection
@@ -238,7 +268,7 @@ export default function SalesPage(): React.JSX.Element {
                 sx={{ mt: 1 }}
                 onClick={() => setProductDialogOpen(true)}
               >
-                Browse products (F2)
+                Cari produk (F2)
               </Button>
             </Box>
           </Grid>
@@ -250,12 +280,12 @@ export default function SalesPage(): React.JSX.Element {
           fullWidth
           maxWidth="md"
         >
-          <DialogTitle>Browse products</DialogTitle>
+          <DialogTitle>Cari produk</DialogTitle>
           <DialogContent dividers sx={{ height: 420 }}>
             <ProductBrowser products={products} onAdd={handleAddToCart} />
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setProductDialogOpen(false)}>Close</Button>
+            <Button onClick={() => setProductDialogOpen(false)}>Tutup</Button>
           </DialogActions>
         </Dialog>
       </Box>

@@ -1,6 +1,6 @@
 import { createContext } from 'react'
 
-export type Credentials = { email: string; password: string }
+export type Credentials = { identifier: string; password: string }
 
 export type AuthContextValue = {
   token: string | null

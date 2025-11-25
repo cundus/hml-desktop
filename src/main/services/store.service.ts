@@ -99,11 +99,16 @@ export class StoreService {
    * Update store
    */
   async update(id: string, data: UpdateStoreDto): Promise<Store> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Store not found')
+    }
+
     const now = Date.now()
     
     this.db.run(
       'UPDATE store SET code = ?, name = ?, address = ?, type = ?, updated_at = ? WHERE id = ?',
-      [data.code, data.name, data.address ?? null, data.type, now, id]
+      [data.code ?? existing.code, data.name ?? existing.name, data.address ?? existing.address ?? null, data.type ?? existing.type, now, id]
     )
     
     saveDb(this.db)

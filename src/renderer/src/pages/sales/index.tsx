@@ -19,7 +19,7 @@ export default function SalesPage(): React.JSX.Element {
   const [paidAmount, setPaidAmount] = useState(0)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [, setCheckoutLoading] = useState(false)
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
 
   // For transaction: we need a default store. In real app, this would come from user context.

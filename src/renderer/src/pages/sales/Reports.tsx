@@ -17,7 +17,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
-import DownloadIcon from '@mui/icons-material/Download'
+// import DownloadIcon from '@mui/icons-material/Download'
 
 interface Store {
   id: string
@@ -141,29 +141,6 @@ export default function SalesReportsPage(): React.JSX.Element {
     setSelectedStore('')
     setStartDate('')
     setEndDate('')
-  }
-
-  const exportToCSV = (): void => {
-    const headers = ['Date', 'Transaction Code', 'Store', 'Total', 'Discount', 'Tax', 'Net Total']
-    const rows = filteredTransactions.map((txn) => [
-      new Date(txn.createdAt).toLocaleString(),
-      txn.code,
-      txn.storeName || txn.storeId,
-      txn.total,
-      txn.discount,
-      txn.tax,
-      (parseFloat(txn.total) - parseFloat(txn.discount) + parseFloat(txn.tax)).toFixed(2)
-    ])
-
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n')
-
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `sales-report-${Date.now()}.csv`
-    link.click()
-    window.URL.revokeObjectURL(url)
   }
 
   const formatDate = (date: Date): string => {

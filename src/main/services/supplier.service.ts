@@ -81,11 +81,16 @@ export class SupplierService {
    * Update supplier
    */
   async update(id: string, data: UpdateSupplierDto): Promise<Supplier> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Supplier not found')
+    }
+
     const now = Date.now()
     
     this.db.run(
       'UPDATE supplier SET name = ?, phone = ?, address = ?, updated_at = ? WHERE id = ?',
-      [data.name, data.phone ?? null, data.address ?? null, now, id]
+      [data.name ?? existing.name, data.phone ?? existing.phone ?? null, data.address ?? existing.address ?? null, now, id]
     )
     
     saveDb(this.db)

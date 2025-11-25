@@ -50,8 +50,6 @@ interface ApiClient {
   delete<T = unknown>(url: string): Promise<ApiResponse<T>>
 }
 
-type LoginResponse = { token: string; groups?: string[]; permissions?: string[] }
-
 type Branch = {
   id: string
   code: string

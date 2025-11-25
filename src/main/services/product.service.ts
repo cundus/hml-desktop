@@ -156,17 +156,22 @@ export class ProductService {
    * Update product
    */
   async update(id: string, data: UpdateProductDto): Promise<Product> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Product not found')
+    }
+
     const now = Date.now()
     
     this.db.run(
       'UPDATE product SET name = ?, description = ?, unit = ?, cost = ?, category_id = ?, is_active = ?, updated_at = ? WHERE id = ?',
       [
-        data.name,
-        data.description ?? null,
-        data.unit,
-        data.cost,
-        data.categoryId ?? null,
-        data.isActive ? 1 : 0,
+        data.name ?? existing.name,
+        data.description ?? existing.description ?? null,
+        data.unit ?? existing.unit,
+        data.cost ?? existing.cost,
+        data.categoryId ?? existing.categoryId ?? null,
+        (data.isActive ?? existing.isActive) ? 1 : 0,
         now,
         id
       ]

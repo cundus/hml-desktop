@@ -77,11 +77,16 @@ export class CustomerCategoryService {
    * Update customer category
    */
   async update(id: string, data: UpdateCustomerCategoryDto): Promise<CustomerCategory> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Customer category not found')
+    }
+
     const now = Date.now()
     
     this.db.run(
       'UPDATE customer_category SET name = ?, updated_at = ? WHERE id = ?',
-      [data.name, now, id]
+      [data.name ?? existing.name, now, id]
     )
     
     saveDb(this.db)

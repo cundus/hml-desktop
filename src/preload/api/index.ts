@@ -8,7 +8,7 @@ export * from './purchasing'
 export * from './sync'
 
 // Re-export for convenience
-import { categoryApi, supplierApi, storeApi, customerCategoryApi, customerApi } from './master-data'
+import { categoryApi, supplierApi, storeApi, customerCategoryApi, customerApi, uomApi } from './master-data'
 import {
   userApi,
   productApi,
@@ -30,6 +30,7 @@ export const db = {
   stores: storeApi,
   customerCategories: customerCategoryApi,
   customers: customerApi,
+  uoms: uomApi,
   
   // Core
   users: userApi,

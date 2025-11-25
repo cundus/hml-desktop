@@ -23,7 +23,7 @@ export default function CustomerSelector({
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        Customer
+        Pelanggan
       </Typography>
       <Autocomplete
         size="small"
@@ -32,7 +32,7 @@ export default function CustomerSelector({
         onChange={(_, newValue) => onChange(newValue ? newValue.id : null)}
         getOptionLabel={(option) => option.name}
         renderInput={(params) => (
-          <TextField {...params} inputRef={inputRef} placeholder="Walk-in customer" />
+          <TextField {...params} inputRef={inputRef} placeholder="Pelanggan umum" />
         )}
         clearOnEscape
       />

@@ -30,6 +30,12 @@ export interface Customer extends BaseEntity {
   categoryId: string | null
 }
 
+export interface Uom extends BaseEntity {
+  code: string
+  name: string
+  deviceId: string | null
+}
+
 // Category API
 export const categoryApi = {
   getAll: () => ipcRenderer.invoke('db:categories:getAll') as Promise<ApiResponse<Category[]>>,
@@ -121,4 +127,23 @@ export const customerApi = {
   delete: (id: string) => ipcRenderer.invoke('db:customers:delete', id) as Promise<ApiResponse<Customer>>,
   
   restore: (id: string) => ipcRenderer.invoke('db:customers:restore', id) as Promise<ApiResponse<Customer>>
+}
+
+// UOM API
+export const uomApi = {
+  getAll: () => ipcRenderer.invoke('db:uoms:getAll') as Promise<ApiResponse<Uom[]>>,
+  
+  getById: (id: string) => ipcRenderer.invoke('db:uoms:getById', id) as Promise<ApiResponse<Uom>>,
+  
+  getByCode: (code: string) => ipcRenderer.invoke('db:uoms:getByCode', code) as Promise<ApiResponse<Uom>>,
+  
+  create: (data: { code: string; name: string }) => 
+    ipcRenderer.invoke('db:uoms:create', data) as Promise<ApiResponse<Uom>>,
+  
+  update: (id: string, data: { code?: string; name?: string }) => 
+    ipcRenderer.invoke('db:uoms:update', id, data) as Promise<ApiResponse<Uom>>,
+  
+  delete: (id: string) => ipcRenderer.invoke('db:uoms:softDelete', id) as Promise<ApiResponse<Uom>>,
+  
+  restore: (id: string) => ipcRenderer.invoke('db:uoms:restore', id) as Promise<ApiResponse<Uom>>
 }

@@ -19,7 +19,8 @@ import {
   UserRoleController,
   PermissionController,
   RolePermissionController,
-  AuthController
+  AuthController,
+  UomController
 } from './controllers'
 import { 
   CategoryService,
@@ -40,7 +41,8 @@ import {
   UserRoleService,
   PermissionService,
   RolePermissionService,
-  AuthService
+  AuthService,
+  UomService
 } from './services'
 
 /**
@@ -60,6 +62,7 @@ export async function bootstrap(): Promise<void> {
   const storeService = new StoreService(db)
   const customerCategoryService = new CustomerCategoryService(db)
   const customerService = new CustomerService(db)
+  const uomService = new UomService(db)
   
   // Initialize core entity services
   const userService = new UserService(db)
@@ -105,6 +108,7 @@ export async function bootstrap(): Promise<void> {
   const permissionController = new PermissionController(permissionService)
   const rolePermissionController = new RolePermissionController(rolePermissionService)
   const authController = new AuthController(authService)
+  const uomController = new UomController(uomService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -126,6 +130,7 @@ export async function bootstrap(): Promise<void> {
   permissionController.registerHandlers()
   rolePermissionController.registerHandlers()
   authController.registerHandlers()
+  uomController.registerHandlers()
 
-  console.log('✓ All 19 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 20 services and controllers initialized (sql.js local + cloud sync ready)')
 }

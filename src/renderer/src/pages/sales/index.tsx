@@ -1,55 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Grid, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material'
+import { Box, Grid, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material'
 import Button from '@mui/material/Button'
-import Paper from '@mui/material/Paper'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
+import CircularProgress from '@mui/material/CircularProgress'
 import ProductBrowser, { type Product } from './components/ProductBrowser'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
-import api from '../../lib/api'
-
-const mockProducts: Product[] = [
-  {
-    id: '1',
-    name: 'Makanan Anjing Premium',
-    sku: 'DOG-FOOD-001',
-    category: 'Makanan',
-    price: 120000
-  },
-  {
-    id: '2',
-    name: 'Pakan Kucing Salmon',
-    sku: 'CAT-FOOD-002',
-    category: 'Makanan',
-    price: 95000
-  },
-  {
-    id: '3',
-    name: 'Shampo Anjing Medicated',
-    sku: 'DOG-CARE-003',
-    category: 'Perawatan',
-    price: 68000
-  },
-  {
-    id: '4',
-    name: 'Pasir Kucing 10kg',
-    sku: 'CAT-LITTER-004',
-    category: 'Perawatan',
-    price: 80000
-  },
-  {
-    id: '5',
-    name: 'Tali Anjing Nylon',
-    sku: 'ACC-LEASH-005',
-    category: 'Aksesoris',
-    price: 45000
-  }
-]
 
 export default function SalesPage(): React.JSX.Element {
-  const [products] = useState<Product[]>(mockProducts)
+  const [products, setProducts] = useState<Product[]>([])
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -57,21 +18,72 @@ export default function SalesPage(): React.JSX.Element {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paidAmount, setPaidAmount] = useState(0)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
+
+  // For transaction: we need a default store. In real app, this would come from user context.
+  const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null)
 
   const customerInputRef = useRef<HTMLInputElement | null>(null)
   const discountInputRef = useRef<HTMLInputElement | null>(null)
   const paidInputRef = useRef<HTMLInputElement | null>(null)
 
+  // Load products, customers, categories, and prices from local DB
   useEffect(() => {
-    const loadCustomers = async (): Promise<void> => {
+    const loadData = async (): Promise<void> => {
       try {
-        const res = await api.get<Customer[]>('/master/customers')
-        setCustomers(res.data ?? [])
-      } catch {
-        // ignore for now; keep customers empty
+        setLoading(true)
+
+        // Load products
+        const productsRes = await window.api.db.products.getAll()
+        const dbProducts = productsRes.data ?? []
+
+        // Load categories for mapping
+        const categoriesRes = await window.api.db.categories.getAll()
+        const categoriesMap = new Map((categoriesRes.data ?? []).map(c => [c.id, c.name]))
+
+        // Load product prices
+        const pricesRes = await window.api.db.productPrices.getAll()
+        const pricesMap = new Map((pricesRes.data ?? []).map(p => [p.productId, parseFloat(p.price)]))
+
+        // Map DB products to Product type for ProductBrowser
+        const mappedProducts: Product[] = dbProducts
+          .filter(p => p.isActive)
+          .map(p => ({
+            id: p.id,
+            name: p.name,
+            sku: p.sku,
+            category: p.categoryId ? (categoriesMap.get(p.categoryId) ?? 'Lainnya') : 'Lainnya',
+            price: pricesMap.get(p.id) ?? parseFloat(p.cost) ?? 0
+          }))
+
+        setProducts(mappedProducts)
+
+        // Load customers
+        const customersRes = await window.api.db.customers.getAll()
+        const dbCustomers = customersRes.data ?? []
+        const mappedCustomers: Customer[] = dbCustomers.map(c => ({
+          id: c.id,
+          name: c.name,
+          phone: c.phone ?? undefined
+        }))
+        setCustomers(mappedCustomers)
+
+        // Load stores and pick first as default
+        const storesRes = await window.api.db.stores.getAll()
+        const stores = storesRes.data ?? []
+        if (stores.length > 0) {
+          setDefaultStoreId(stores[0].id)
+        }
+      } catch (err) {
+        console.error('Failed to load sales data:', err)
+        setSnackbar({ open: true, message: 'Gagal memuat data', severity: 'error' })
+      } finally {
+        setLoading(false)
       }
     }
-    void loadCustomers()
+    void loadData()
   }, [])
 
   const subtotal = useMemo(
@@ -109,12 +121,59 @@ export default function SalesPage(): React.JSX.Element {
     setDiscount(Math.max(0, Math.min(100, value)))
   }
 
-  const handleCheckout = useCallback((): void => {
-    alert('Transaksi selesai (mock).')
-    setCartItems([])
-    setDiscount(0)
-    setPaidAmount(0)
-  }, [])
+  const handleCheckout = useCallback(async (): Promise<void> => {
+    if (cartItems.length === 0) return
+    if (!defaultStoreId) {
+      setSnackbar({ open: true, message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.', severity: 'error' })
+      return
+    }
+
+    try {
+      setCheckoutLoading(true)
+
+      // Generate transaction code (simple timestamp-based)
+      const code = `TRX-${Date.now()}`
+
+      // Calculate values
+      const subtotalValue = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
+      const discountValue = (subtotalValue * discount) / 100
+      const totalValue = subtotalValue - discountValue
+
+      // Prepare transaction items
+      const items = cartItems.map(item => ({
+        productId: item.id,
+        quantity: item.quantity,
+        price: item.price.toString()
+      }))
+
+      // Create transaction in DB
+      const result = await window.api.db.transactions.create({
+        code,
+        storeId: defaultStoreId,
+        subtotal: subtotalValue.toString(),
+        discount: discountValue.toString(),
+        tax: '0',
+        total: totalValue.toString(),
+        customerId: selectedCustomerId ?? undefined,
+        items
+      })
+
+      if (result.success) {
+        setSnackbar({ open: true, message: `Transaksi ${code} berhasil disimpan!`, severity: 'success' })
+        setCartItems([])
+        setDiscount(0)
+        setPaidAmount(0)
+        setSelectedCustomerId(null)
+      } else {
+        throw new Error(result.error ?? 'Unknown error')
+      }
+    } catch (err) {
+      console.error('Checkout failed:', err)
+      setSnackbar({ open: true, message: 'Gagal menyimpan transaksi', severity: 'error' })
+    } finally {
+      setCheckoutLoading(false)
+    }
+  }, [cartItems, discount, defaultStoreId, selectedCustomerId])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -155,7 +214,7 @@ export default function SalesPage(): React.JSX.Element {
       if (event.key === 'F9' || (event.ctrlKey && event.key === 'Enter')) {
         if (cartItems.length === 0) return
         event.preventDefault()
-        handleCheckout()
+        void handleCheckout()
       }
     }
 
@@ -164,6 +223,14 @@ export default function SalesPage(): React.JSX.Element {
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [cartItems.length, handleCheckout])
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    )
+  }
 
   return (
     <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
@@ -288,6 +355,21 @@ export default function SalesPage(): React.JSX.Element {
             <Button onClick={() => setProductDialogOpen(false)}>Tutup</Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={4000}
+          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert
+            onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+            severity={snackbar.severity}
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Box>
   )

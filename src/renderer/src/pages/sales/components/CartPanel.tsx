@@ -54,17 +54,17 @@ export default function CartPanel({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
-      <Typography variant="h6">Current Sale</Typography>
+      <Typography variant="h6">Keranjang Belanja</Typography>
 
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
               <TableCell>Item</TableCell>
-              <TableCell align="right">Price</TableCell>
-              <TableCell align="center">Qty</TableCell>
-              <TableCell align="right">Line Total</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell align="right">Harga</TableCell>
+              <TableCell align="center">Jml</TableCell>
+              <TableCell align="right">Total</TableCell>
+              <TableCell align="center">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -72,7 +72,7 @@ export default function CartPanel({
               <TableRow>
                 <TableCell colSpan={5} align="center">
                   <Typography variant="body2" color="text.secondary">
-                    No items in the cart.
+                    Keranjang kosong.
                   </Typography>
                 </TableCell>
               </TableRow>
@@ -151,7 +151,7 @@ export default function CartPanel({
 
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Typography variant="body2" color="text.secondary">
-            Discount (%)
+            Diskon (%)
           </Typography>
           <TextField
             size="small"
@@ -179,7 +179,7 @@ export default function CartPanel({
           onClick={onCheckout}
           disabled={disabled || items.length === 0}
         >
-          Complete Sale
+          Selesaikan Transaksi
         </Button>
       </Box>
     </Box>

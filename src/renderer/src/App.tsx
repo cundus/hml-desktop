@@ -24,6 +24,7 @@ import ProductPage from './pages/settings/master/Product'
 import StorePage from './pages/settings/master/Store'
 import SupplierPage from './pages/settings/master/Supplier'
 import UserPage from './pages/settings/master/User'
+import UomPage from './pages/settings/master/Uom'
 import WarehousePricingPage from './pages/warehouse/Pricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
 import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
@@ -79,6 +80,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['master.customer-category.manage']} />,
             children: [{ path: 'master-customer-category', element: <CustomerCategoryPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['master.uom.manage']} />,
+            children: [{ path: 'master-uom', element: <UomPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,

@@ -98,6 +98,20 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Unit of Measure (UOM) table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS uom (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
   // s table
   database.run(`
     CREATE TABLE IF NOT EXISTS user (

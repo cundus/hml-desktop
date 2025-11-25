@@ -191,6 +191,12 @@ const menus: MenuItem[] = [
             label: 'Kategori Pelanggan',
             path: '/master-customer-category',
             permissions: ['master.customer-category.manage']
+          },
+          {
+            key: 'master-uom',
+            label: 'Satuan (UOM)',
+            path: '/master-uom',
+            permissions: ['master.uom.manage']
           }
         ]
       },

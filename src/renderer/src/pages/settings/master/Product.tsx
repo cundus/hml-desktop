@@ -54,6 +54,12 @@ type Category = {
   name: string
 }
 
+type Uom = {
+  id: string
+  code: string
+  name: string
+}
+
 export default function ProductPage(): React.JSX.Element {
   const [items, setItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +67,7 @@ export default function ProductPage(): React.JSX.Element {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [uoms, setUoms] = useState<Uom[]>([])
 
   const {
     register,
@@ -77,14 +84,17 @@ export default function ProductPage(): React.JSX.Element {
       try {
         setLoading(true)
         setError(null)
-        const [productsRes, categoriesRes] = await Promise.all([
+        const [productsRes, categoriesRes, uomsRes] = await Promise.all([
           window.api.db.products.getAll(),
-          window.api.db.categories.getAll()
+          window.api.db.categories.getAll(),
+          window.api.db.uoms.getAll()
         ])
 
-        if (productsRes.success && categoriesRes.success) {
+        if (productsRes.success && categoriesRes.success && uomsRes.success) {
           const categoryList = categoriesRes.data ?? []
           const categoryMap = new Map(categoryList.map((c) => [c.id, c.name]))
+          const uomList = uomsRes.data ?? []
+          setUoms(uomList)
 
           const products = (productsRes.data ?? []).map((p) => ({
             id: p.id,
@@ -103,6 +113,7 @@ export default function ProductPage(): React.JSX.Element {
           setError(
             productsRes.error ??
               categoriesRes.error ??
+              uomsRes.error ??
               'Gagal memuat produk'
           )
         }
@@ -335,10 +346,21 @@ export default function ProductPage(): React.JSX.Element {
               margin="normal"
               label="Satuan"
               fullWidth
+              select
               {...register('unit')}
               error={!!errors.unit}
               helperText={errors.unit?.message}
-            />
+            >
+              {uoms.length === 0 ? (
+                <MenuItem value="PCS">PCS (Default)</MenuItem>
+              ) : (
+                uoms.map((uom) => (
+                  <MenuItem key={uom.id} value={uom.code}>
+                    {uom.code} - {uom.name}
+                  </MenuItem>
+                ))
+              )}
+            </TextField>
             <TextField
               margin="normal"
               label="Harga Pokok"

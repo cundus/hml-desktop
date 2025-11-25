@@ -1,5 +1,4 @@
 import { Database } from 'sql.js'
-import { randomUUID } from 'crypto'
 import { saveDb } from './localDb'
 
 interface SeedPermission {
@@ -20,6 +19,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'master.supplier.manage', name: 'Manage suppliers' },
   { id: 'master.store.manage', name: 'Manage stores' },
   { id: 'master.customer-category.manage', name: 'Manage customer categories' },
+  { id: 'master.uom.manage', name: 'Manage units of measure' },
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
   { id: 'warehouse.manage', name: 'Manage warehouse & stocks' },
   { id: 'inventory.dashboard', name: 'View inventory dashboard' },

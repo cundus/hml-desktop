@@ -56,11 +56,11 @@ export default function ProductBrowser({ products, onAdd }: ProductBrowserProps)
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
       <Box>
         <Typography variant="h6" gutterBottom>
-          Products
+          Produk
         </Typography>
         <TextField
           fullWidth
-          placeholder="Search by name or SKU"
+          placeholder="Cari berdasarkan nama atau SKU"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           InputProps={{
@@ -75,7 +75,7 @@ export default function ProductBrowser({ products, onAdd }: ProductBrowserProps)
         {categories.length > 0 && (
           <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
             <Chip
-              label="All"
+              label="Semua"
               size="small"
               clickable
               color={!activeCategory ? 'primary' : 'default'}
@@ -98,7 +98,7 @@ export default function ProductBrowser({ products, onAdd }: ProductBrowserProps)
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {filtered.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
-            No products found.
+            Tidak ada produk ditemukan.
           </Typography>
         ) : (
           <List dense>

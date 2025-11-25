@@ -33,15 +33,15 @@ export default function PaymentSection({
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
-        Payment
+        Pembayaran
       </Typography>
       <RadioGroup
         row
         value={method}
         onChange={(e) => onMethodChange(e.target.value as PaymentMethod)}
       >
-        <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-        <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
+        <FormControlLabel value="cash" control={<Radio size="small" />} label="Tunai" />
+        <FormControlLabel value="card" control={<Radio size="small" />} label="Kartu" />
         <FormControlLabel value="qris" control={<Radio size="small" />} label="QRIS" />
       </RadioGroup>
 
@@ -50,7 +50,7 @@ export default function PaymentSection({
           <TextField
             size="small"
             type="number"
-            label="Paid (IDR)"
+            label="Dibayar (IDR)"
             value={paidAmount}
             onChange={(e) => onPaidAmountChange(Number(e.target.value) || 0)}
             sx={{ maxWidth: 180 }}
@@ -58,7 +58,7 @@ export default function PaymentSection({
             inputRef={paidInputRef}
           />
           <Typography variant="body2" color="text.secondary">
-            Change:{' '}
+            Kembalian:{' '}
             <Typography component="span" fontWeight="600">
               {change.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
             </Typography>

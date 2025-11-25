@@ -136,5 +136,18 @@ export class TransactionController {
         }
       }
     })
+
+    // Get dashboard stats
+    ipcMain.handle('db:transactions:getDashboardStats', async () => {
+      try {
+        const stats = await this.transactionService.getDashboardStats()
+        return { success: true, data: stats }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

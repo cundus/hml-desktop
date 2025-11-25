@@ -32,6 +32,18 @@ export interface SalesSummary {
   totalTax: string
 }
 
+export interface DashboardStats {
+  todayRevenue: number
+  todayTransactions: number
+  weekRevenue: number
+  weekTransactions: number
+  monthRevenue: number
+  monthTransactions: number
+  totalProducts: number
+  totalCustomers: number
+  lowStockCount: number
+}
+
 // Transaction API
 export const transactionApi = {
   getAll: () => ipcRenderer.invoke('db:transactions:getAll') as Promise<ApiResponse<Transaction[]>>,
@@ -67,5 +79,7 @@ export const transactionApi = {
   
   delete: (id: string) => ipcRenderer.invoke('db:transactions:delete', id) as Promise<ApiResponse<Transaction>>,
   
-  restore: (id: string) => ipcRenderer.invoke('db:transactions:restore', id) as Promise<ApiResponse<Transaction>>
+  restore: (id: string) => ipcRenderer.invoke('db:transactions:restore', id) as Promise<ApiResponse<Transaction>>,
+  
+  getDashboardStats: () => ipcRenderer.invoke('db:transactions:getDashboardStats') as Promise<ApiResponse<DashboardStats>>
 }

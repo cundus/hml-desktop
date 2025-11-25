@@ -12,6 +12,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import SideNav from '../components/SideNav'
+import SyncButton from '../components/SyncButton'
 import useThemeMode from '../hooks/useThemeMode'
 import { Paper } from '@mui/material'
 
@@ -50,6 +51,7 @@ export default function MainLayout(): React.JSX.Element {
           <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1 }}>
             Petshop Management
           </Typography>
+          <SyncButton />
           <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>

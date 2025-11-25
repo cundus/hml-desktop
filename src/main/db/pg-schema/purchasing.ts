@@ -25,5 +25,6 @@ export const purchaseOrderItems = pgTable('purchase_order_item', {
   quantity: integer('quantity').notNull(),
   cost: numeric('cost').notNull(),
 
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
 })

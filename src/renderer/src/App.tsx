@@ -1,4 +1,5 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
+import { ToastProvider } from './contexts/ToastContext'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
 import MainLayout from './layouts/MainLayout'
@@ -123,7 +124,11 @@ const router = createHashRouter([
 ])
 
 function App(): React.JSX.Element {
-  return <RouterProvider router={router} />
+  return (
+    <ToastProvider>
+      <RouterProvider router={router} />
+    </ToastProvider>
+  )
 }
 
 export default App

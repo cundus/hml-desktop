@@ -45,13 +45,14 @@ export const productPrices = pgTable('product_price', {
   productId: text('product_id').notNull(),
   storeId: text('store_id').notNull(),
   price: numeric('price').notNull(),
-  startDate: timestamp('start_date', { withTimezone: false }).notNull(),
-  endDate: timestamp('end_date', { withTimezone: false }),
+  cost: numeric('cost').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id'),
 })
 
 export const batches = pgTable('batch', {
@@ -59,6 +60,18 @@ export const batches = pgTable('batch', {
   productId: text('product_id').notNull(),
   code: text('code').notNull(),
   expiryDate: timestamp('expiry_date', { withTimezone: false }),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+})
+
+export const uom = pgTable('uom', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  deviceId: text('device_id'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

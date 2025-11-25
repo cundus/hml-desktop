@@ -19,7 +19,8 @@ export const customers = pgTable('customer', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   phone: text('phone'),
-  categoryId: text('category_id').notNull(),
+  address: text('address'),
+  categoryId: text('category_id'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

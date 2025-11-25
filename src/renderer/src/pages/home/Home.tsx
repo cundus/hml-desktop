@@ -1,4 +1,5 @@
-import { Box, Grid, Typography } from '@mui/material'
+import { useEffect, useState, useCallback } from 'react'
+import { Box, Grid, Typography, CircularProgress } from '@mui/material'
 import KpiSummary, { type KpiItem } from './components/KpiSummary'
 import SalesPerformanceCard from './components/SalesPerformanceCard'
 import TopProductsList, { type TopProduct } from './components/TopProductsList'
@@ -9,48 +10,26 @@ import AlertsPanel, {
 } from './components/AlertsPanel'
 import QuickNavigation, { type QuickNavItem } from './components/QuickNavigation'
 
-const kpis: KpiItem[] = [
-  {
-    key: 'revenue-today',
-    label: 'Revenue (Today)',
-    value: 'Rp 12.450.000',
-    changeLabel: '+8.2% vs yesterday',
-    changeColor: 'success.main',
-    type: 'revenue'
-  },
-  {
-    key: 'revenue-week',
-    label: 'Revenue (This Week)',
-    value: 'Rp 72.800.000',
-    changeLabel: '+12.5% vs last week',
-    changeColor: 'success.main',
-    type: 'revenue'
-  },
-  {
-    key: 'profit-margin',
-    label: 'Profit Margin',
-    value: '24.3%',
-    changeLabel: 'Target: 22.0%',
-    changeColor: 'primary.main',
-    type: 'margin'
-  },
-  {
-    key: 'active-orders',
-    label: 'Active Orders',
-    value: '18',
-    changeLabel: '5 in-store · 13 online',
-    changeColor: 'info.main',
-    type: 'orders'
-  },
-  {
-    key: 'inventory-value',
-    label: 'Inventory Value',
-    value: 'Rp 215.300.000',
-    changeLabel: '1.2k SKUs · 48 low stock',
-    changeColor: 'warning.main',
-    type: 'inventory'
-  }
-]
+interface DashboardStats {
+  todayRevenue: number
+  todayTransactions: number
+  weekRevenue: number
+  weekTransactions: number
+  monthRevenue: number
+  monthTransactions: number
+  totalProducts: number
+  totalCustomers: number
+  lowStockCount: number
+}
+
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(value)
+}
 
 const lowStockAlerts: LowStockAlert[] = [
   { name: 'Premium Dog Food 10kg', onHand: 3, reorderPoint: 10, severity: 'Critical' },
@@ -111,36 +90,113 @@ const topProducts: TopProduct[] = [
 ]
 
 const quickNavItems: QuickNavItem[] = [
-  { key: 'pos', label: 'POS', description: 'Open POS terminal', path: '/sales' },
+  { key: 'pos', label: 'Kasir', description: 'Buka terminal kasir', path: '/sales' },
   {
     key: 'inventory',
-    label: 'Inventory',
-    description: 'Stock levels & adjustments',
-    path: '/master-branch'
+    label: 'Inventori',
+    description: 'Stok & penyesuaian',
+    path: '/inventory/dashboard'
   },
   {
     key: 'reports',
-    label: 'Reports',
-    description: 'Sales & performance reports',
-    path: '/reports'
+    label: 'Laporan',
+    description: 'Laporan penjualan',
+    path: '/sales/reports'
   },
   {
     key: 'suppliers',
-    label: 'Suppliers',
-    description: 'Manage supplier data',
-    path: '/suppliers'
+    label: 'Pemasok',
+    description: 'Kelola data pemasok',
+    path: '/master-supplier'
   },
   {
     key: 'users',
-    label: 'Users',
-    description: 'User & role management',
+    label: 'Pengguna',
+    description: 'Kelola pengguna & peran',
     path: '/master-user'
   }
 ]
 
 function Home(): React.JSX.Element {
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const loadDashboardStats = useCallback(async () => {
+    try {
+      setLoading(true)
+      const response = await window.api.db.transactions.getDashboardStats()
+      if (response.success && response.data) {
+        setStats(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to load dashboard stats:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadDashboardStats()
+    // Refresh every 60 seconds
+    const interval = setInterval(() => {
+      void loadDashboardStats()
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [loadDashboardStats])
+
   const handleNavigate = (path: string): void => {
     window.location.hash = `#${path}`
+  }
+
+  const kpis: KpiItem[] = [
+    {
+      key: 'revenue-today',
+      label: 'Pendapatan (Hari Ini)',
+      value: stats ? formatCurrency(stats.todayRevenue) : '-',
+      changeLabel: `${stats?.todayTransactions ?? 0} transaksi`,
+      changeColor: 'success.main',
+      type: 'revenue'
+    },
+    {
+      key: 'revenue-week',
+      label: 'Pendapatan (Minggu Ini)',
+      value: stats ? formatCurrency(stats.weekRevenue) : '-',
+      changeLabel: `${stats?.weekTransactions ?? 0} transaksi`,
+      changeColor: 'success.main',
+      type: 'revenue'
+    },
+    {
+      key: 'revenue-month',
+      label: 'Pendapatan (Bulan Ini)',
+      value: stats ? formatCurrency(stats.monthRevenue) : '-',
+      changeLabel: `${stats?.monthTransactions ?? 0} transaksi`,
+      changeColor: 'primary.main',
+      type: 'revenue'
+    },
+    {
+      key: 'total-products',
+      label: 'Total Produk',
+      value: String(stats?.totalProducts ?? 0),
+      changeLabel: 'Produk aktif',
+      changeColor: 'info.main',
+      type: 'orders'
+    },
+    {
+      key: 'total-customers',
+      label: 'Total Pelanggan',
+      value: String(stats?.totalCustomers ?? 0),
+      changeLabel: stats?.lowStockCount ? `${stats.lowStockCount} stok rendah` : 'Semua stok aman',
+      changeColor: stats?.lowStockCount ? 'warning.main' : 'success.main',
+      type: 'inventory'
+    }
+  ]
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+        <CircularProgress />
+      </Box>
+    )
   }
 
   return (
@@ -148,10 +204,10 @@ function Home(): React.JSX.Element {
       <Box sx={{ width: '100%', p: 2 }}>
         <Box sx={{ mb: 3 }}>
           <Typography variant="h5" fontWeight={600} gutterBottom>
-            Store Overview
+            Ringkasan Toko
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Get an instant view of today&apos;s performance and what needs your attention.
+            Lihat performa hari ini dan hal yang perlu perhatian Anda.
           </Typography>
         </Box>
         <KpiSummary items={kpis} />

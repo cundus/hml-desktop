@@ -4,6 +4,10 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { disconnectDb } from './db'
 import { bootstrap } from './bootstrap'
+import { config } from 'dotenv'
+
+// Load .env file for DATABASE_URL and other env vars
+config()
 
 function createWindow(): void {
   // Create the browser window.

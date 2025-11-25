@@ -38,10 +38,14 @@ export class SyncService {
    * Initialize cloud connection
    */
   async initCloudConnection(cloudDatabaseUrl?: string): Promise<void> {
-    const url = cloudDatabaseUrl || process.env.DATABASE_URL
+    const url = cloudDatabaseUrl || process.env.PG_DATABASE_URL || process.env.DATABASE_URL
     if (!url) {
-      throw new Error('Cloud DATABASE_URL is not set')
+      throw new Error('Cloud PG_DATABASE_URL is not set')
     }
+
+    // Log connection URL (masked for security)
+    const maskedUrl = url.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')
+    console.log('Connecting to cloud database:', maskedUrl)
 
     // Close existing pool if reconnecting
     if (this.cloudPool) {
@@ -536,6 +540,7 @@ export class SyncService {
       'customer_category',
       'user',
       'product',
+      'uom',
       'role',
       'permission',
       'user_role',

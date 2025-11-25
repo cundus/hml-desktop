@@ -3,9 +3,9 @@ import type { Config } from 'drizzle-kit'
 export default {
   schema: './src/main/db/schema/*',
   out: './drizzle',
-  dialect: 'sqlite',
+  dialect: 'postgresql',
   dbCredentials: {
     // Local dev SQLite file used only for Drizzle tooling, not the Electron app
-    url: process.env.DATABASE_URL ?? 'file:./dev.db'
+    url: process.env.DATABASE_URL || ''
   }
 } satisfies Config

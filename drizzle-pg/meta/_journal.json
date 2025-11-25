@@ -8,6 +8,20 @@
       "when": 1763478106393,
       "tag": "0000_productive_blob",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1764081265801,
+      "tag": "0001_add_uom_table",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1764082006778,
+      "tag": "0002_sync_schema_with_local",
+      "breakpoints": true
     }
   ]
 }

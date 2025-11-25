@@ -88,6 +88,18 @@ export async function bootstrap(): Promise<void> {
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
 
+  // Auto-connect to cloud if PG_DATABASE_URL or DATABASE_URL is set
+  const pgUrl = process.env.PG_DATABASE_URL || process.env.DATABASE_URL
+  if (pgUrl) {
+    try {
+      await syncService.initCloudConnection(pgUrl)
+      console.log('✓ Auto-connected to cloud database')
+    } catch (error) {
+      console.warn('⚠ Cloud auto-connect failed:', error instanceof Error ? error.message : error)
+      console.log('  App will run in offline mode. You can connect manually later.')
+    }
+  }
+
   // Initialize controllers
   const categoryController = new CategoryController(categoryService)
   const supplierController = new SupplierController(supplierService)

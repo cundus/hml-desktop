@@ -117,6 +117,22 @@ export const productPrice = pgTable("product_price", {
 	deviceId: text("device_id"),
 });
 
+export const product = pgTable("product", {
+	id: text().primaryKey().notNull(),
+	sku: text().notNull(),
+	name: text().notNull(),
+	description: text(),
+	unit: text().notNull(),
+	cost: numeric().notNull(),
+	isActive: boolean("is_active").default(true).notNull(),
+	categoryId: text("category_id"),
+	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
+	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
+	syncedAt: timestamp("synced_at", { mode: 'string' }),
+	deletedAt: timestamp("deleted_at", { mode: 'string' }),
+	deviceId: text("device_id"),
+});
+
 export const supplier = pgTable("supplier", {
 	id: text().primaryKey().notNull(),
 	name: text().notNull(),
@@ -143,21 +159,6 @@ export const store = pgTable("store", {
 	name: text().notNull(),
 	address: text(),
 	type: text().notNull(),
-	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
-	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
-	syncedAt: timestamp("synced_at", { mode: 'string' }),
-	deletedAt: timestamp("deleted_at", { mode: 'string' }),
-});
-
-export const product = pgTable("product", {
-	id: text().primaryKey().notNull(),
-	sku: text().notNull(),
-	name: text().notNull(),
-	description: text(),
-	unit: text().notNull(),
-	cost: numeric().notNull(),
-	isActive: boolean("is_active").default(true).notNull(),
-	categoryId: text("category_id"),
 	createdAt: timestamp("created_at", { mode: 'string' }).defaultNow().notNull(),
 	updatedAt: timestamp("updated_at", { mode: 'string' }).defaultNow().notNull(),
 	syncedAt: timestamp("synced_at", { mode: 'string' }),

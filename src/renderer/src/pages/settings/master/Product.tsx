@@ -104,17 +104,14 @@ export default function ProductPage(): React.JSX.Element {
             cost: p.cost,
             categoryId: p.categoryId,
             isActive: p.isActive,
-            categoryName: p.categoryId ? categoryMap.get(p.categoryId) ?? '' : ''
+            categoryName: p.categoryId ? (categoryMap.get(p.categoryId) ?? '') : ''
           }))
 
           setItems(products)
           setCategories(categoryList)
         } else {
           setError(
-            productsRes.error ??
-              categoriesRes.error ??
-              uomsRes.error ??
-              'Gagal memuat produk'
+            productsRes.error ?? categoriesRes.error ?? uomsRes.error ?? 'Gagal memuat produk'
           )
         }
       } catch {
@@ -150,6 +147,8 @@ export default function ProductPage(): React.JSX.Element {
   }
 
   const onSubmit = async (values: ProductFormValues): Promise<void> => {
+    console.log(values)
+
     try {
       const createPayload = {
         sku: values.sku,
@@ -172,10 +171,9 @@ export default function ProductPage(): React.JSX.Element {
         const response = await window.api.db.products.update(editing.id, updatePayload)
         if (response.success && response.data) {
           const updated = response.data
-          const categoryName =
-            updated.categoryId
-              ? categories.find((c) => c.id === updated.categoryId)?.name ?? ''
-              : ''
+          const categoryName = updated.categoryId
+            ? (categories.find((c) => c.id === updated.categoryId)?.name ?? '')
+            : ''
 
           setItems((prev) =>
             prev.map((p) =>
@@ -201,10 +199,9 @@ export default function ProductPage(): React.JSX.Element {
         const response = await window.api.db.products.create(createPayload)
         if (response.success && response.data) {
           const created = response.data
-          const categoryName =
-            created.categoryId
-              ? categories.find((c) => c.id === created.categoryId)?.name ?? ''
-              : ''
+          const categoryName = created.categoryId
+            ? (categories.find((c) => c.id === created.categoryId)?.name ?? '')
+            : ''
 
           setItems((prev) => [
             ...prev,
@@ -324,7 +321,12 @@ export default function ProductPage(): React.JSX.Element {
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Ubah Produk' : 'Buat Produk'}</DialogTitle>
         <DialogContent>
-          <Box component="form" id="product-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          <Box
+            component="form"
+            id="product-form"
+            onSubmit={handleSubmit(onSubmit, console.log)}
+            sx={{ mt: 1 }}
+          >
             <TextField
               margin="normal"
               label="SKU"
@@ -394,7 +396,7 @@ export default function ProductPage(): React.JSX.Element {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDialog}>Batal</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
+          <Button type="submit" form="product-form" variant="contained" disabled={isSubmitting}>
             {isSubmitting ? 'Menyimpan...' : 'Simpan'}
           </Button>
         </DialogActions>

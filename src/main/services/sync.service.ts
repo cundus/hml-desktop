@@ -6,6 +6,75 @@ import { randomUUID } from 'crypto'
 import { saveDb } from '../localDb'
 
 /**
+ * Entity configuration for sync
+ * Maps entity names to their column configurations
+ */
+const ENTITY_CONFIG: Record<string, {
+  columns: string[]
+  hasDeviceId: boolean
+}> = {
+  category: {
+    columns: ['id', 'name', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  supplier: {
+    columns: ['id', 'name', 'phone', 'address', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  store: {
+    columns: ['id', 'code', 'name', 'address', 'type', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  customer_category: {
+    columns: ['id', 'name', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  customer: {
+    columns: ['id', 'name', 'phone', 'address', 'category_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  uom: {
+    columns: ['id', 'code', 'name', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  user: {
+    columns: ['id', 'name', 'email', 'password', 'store_id', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  product: {
+    columns: ['id', 'sku', 'name', 'description', 'unit', 'cost', 'category_id', 'is_active', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  role: {
+    columns: ['id', 'name', 'description', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  permission: {
+    columns: ['id', 'name', 'description', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  user_role: {
+    columns: ['id', 'user_id', 'role_id', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  },
+  role_permission: {
+    columns: ['id', 'role_id', 'permission_id', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: true
+  }
+}
+
+// List of entities to sync
+const SYNC_ENTITIES = Object.keys(ENTITY_CONFIG)
+
+/**
+ * Quote table name for PostgreSQL (handles reserved keywords like 'user')
+ */
+function pgTable(name: string): string {
+  // Always quote table names to handle reserved keywords
+  return `"${name}"`
+}
+
+/**
  * SyncService - Handles bidirectional sync between local sql.js and cloud PostgreSQL
  *
  * Architecture:
@@ -118,23 +187,28 @@ export class SyncService {
     }
 
     try {
+      console.log('Starting pull from cloud...')
       // Pull first (cloud is source of truth for conflicts)
       const pullResult = await this.pullFromCloud()
       result.pulled = pullResult.count
       result.conflicts += pullResult.conflicts
       this.mergeEntityStats(result.byEntity!, pullResult.byEntity)
+      console.log(`✓ Pull complete: ${pullResult.count} records`)
 
+      console.log('Starting push to cloud...')
       // Then push local changes
       const pushResult = await this.pushToCloud()
       result.pushed = pushResult.count
       result.conflicts += pushResult.conflicts
       this.mergeEntityStats(result.byEntity!, pushResult.byEntity)
+      console.log(`✓ Push complete: ${pushResult.count} records`)
 
-      console.log(`✓ Full sync complete: pulled ${result.pulled}, pushed ${result.pushed}`)
+      console.log(`✓ Full sync complete: pulled ${result.pulled}, pushed ${result.pushed}, conflicts ${result.conflicts}`)
     } catch (error) {
       result.success = false
-      result.errors.push(error instanceof Error ? error.message : String(error))
-      console.error('✗ Full sync failed:', error)
+      const errorMsg = error instanceof Error ? error.message : String(error)
+      result.errors.push(errorMsg)
+      console.error('✗ Full sync failed:', errorMsg)
     }
 
     return result
@@ -152,23 +226,9 @@ export class SyncService {
     let totalConflicts = 0
     const byEntity: Record<string, EntitySyncStats> = {}
 
-    // Define entities to sync (including RBAC tables)
-    const entities = [
-      'category',
-      'supplier',
-      'store',
-      'customer_category',
-      'user',
-      'product',
-      'uom',
-      'role',
-      'permission',
-      'user_role',
-      'role_permission'
-    ]
-
-    for (const entity of entities) {
+    for (const entity of SYNC_ENTITIES) {
       try {
+        console.log(`  Pulling ${entity}...`)
         const { count, conflicts } = await this.pullEntityFromCloud(entity)
         totalCount += count
         totalConflicts += conflicts
@@ -177,9 +237,13 @@ export class SyncService {
           pushed: 0,
           conflicts
         }
+        if (count > 0 || conflicts > 0) {
+          console.log(`    ✓ ${entity}: ${count} pulled, ${conflicts} conflicts`)
+        }
       } catch (error) {
-        console.error(`Error pulling ${entity}:`, error)
-        throw error
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error(`  ✗ Error pulling ${entity}: ${errorMsg}`)
+        throw new Error(`Failed to pull ${entity}: ${errorMsg}`)
       }
     }
 
@@ -193,16 +257,20 @@ export class SyncService {
    * Pull single entity from cloud
    */
   private async pullEntityFromCloud(entityName: string): Promise<{ count: number; conflicts: number }> {
-    if (!this.cloudDb) throw new Error('Cloud not connected')
+    if (!this.cloudPool) throw new Error('Cloud pool not available')
+
+    const config = ENTITY_CONFIG[entityName]
+    if (!config) throw new Error(`Unknown entity: ${entityName}`)
 
     const lastPullAt = this.getLastSyncTime(entityName, 'last_pull_at')
-    const lastPullDate = new Date(lastPullAt)
+    const lastPullDate = lastPullAt > 0 ? new Date(lastPullAt) : new Date(0)
     
     // Fetch records from cloud that were updated since last pull
-    // Using raw query via the pool directly
-    if (!this.cloudPool) throw new Error('Cloud pool not available')
+    // Only select columns that exist in both local and cloud
+    const columns = config.columns.join(', ')
+    const tableName = pgTable(entityName) // Quote table name for PostgreSQL
     const cloudRecords = await this.cloudPool.query(
-      `SELECT * FROM ${entityName} WHERE updated_at > $1 OR synced_at > $1`,
+      `SELECT ${columns} FROM ${tableName} WHERE updated_at > $1 OR synced_at > $1 OR synced_at IS NULL`,
       [lastPullDate]
     )
 
@@ -218,18 +286,21 @@ export class SyncService {
       const localRecord = hasLocal ? localStmt.getAsObject() : null
       localStmt.free()
 
+      // Convert cloud record timestamps to local format
+      const normalizedCloudRecord = this.normalizeCloudRecord(cloudRecord)
+
       if (!localRecord) {
         // New record - insert
-        this.insertRecordToLocal(entityName, cloudRecord)
+        this.insertRecordToLocal(entityName, normalizedCloudRecord, config.columns)
         count++
       } else {
         // Existing record - check for conflict
-        const localUpdatedAt = localRecord.updated_at as number
-        const cloudUpdatedAt = new Date(cloudRecord.updated_at as string).getTime()
+        const localUpdatedAt = localRecord.updated_at as number || 0
+        const cloudUpdatedAt = this.toTimestamp(cloudRecord.updated_at)
 
         if (cloudUpdatedAt > localUpdatedAt) {
           // Cloud is newer - update local
-          this.updateRecordInLocal(entityName, cloudRecord)
+          this.updateRecordInLocal(entityName, normalizedCloudRecord, config.columns)
           count++
         } else if (localUpdatedAt > cloudUpdatedAt) {
           // Local is newer - conflict (will be resolved on push)
@@ -240,6 +311,34 @@ export class SyncService {
     }
 
     return { count, conflicts }
+  }
+
+  /**
+   * Normalize cloud record for local storage
+   * Converts Date objects to timestamps, booleans to integers
+   */
+  private normalizeCloudRecord(record: Record<string, unknown>): Record<string, unknown> {
+    const normalized: Record<string, unknown> = {}
+    for (const [key, value] of Object.entries(record)) {
+      if (value instanceof Date) {
+        normalized[key] = value.getTime()
+      } else if (typeof value === 'boolean') {
+        normalized[key] = value ? 1 : 0
+      } else {
+        normalized[key] = value
+      }
+    }
+    return normalized
+  }
+
+  /**
+   * Convert various date formats to timestamp
+   */
+  private toTimestamp(value: unknown): number {
+    if (value instanceof Date) return value.getTime()
+    if (typeof value === 'string') return new Date(value).getTime()
+    if (typeof value === 'number') return value
+    return 0
   }
 
   /**
@@ -254,22 +353,9 @@ export class SyncService {
     let totalConflicts = 0
     const byEntity: Record<string, EntitySyncStats> = {}
 
-    const entities = [
-      'category',
-      'supplier',
-      'store',
-      'customer_category',
-      'user',
-      'product',
-      'uom',
-      'role',
-      'permission',
-      'user_role',
-      'role_permission'
-    ]
-
-    for (const entity of entities) {
+    for (const entity of SYNC_ENTITIES) {
       try {
+        console.log(`  Pushing ${entity}...`)
         const { count, conflicts } = await this.pushEntityToCloud(entity)
         totalCount += count
         totalConflicts += conflicts
@@ -278,9 +364,13 @@ export class SyncService {
           pushed: count,
           conflicts
         }
+        if (count > 0 || conflicts > 0) {
+          console.log(`    ✓ ${entity}: ${count} pushed, ${conflicts} conflicts`)
+        }
       } catch (error) {
-        console.error(`Error pushing ${entity}:`, error)
-        throw error
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        console.error(`  ✗ Error pushing ${entity}: ${errorMsg}`)
+        throw new Error(`Failed to push ${entity}: ${errorMsg}`)
       }
     }
 
@@ -294,13 +384,17 @@ export class SyncService {
    * Push single entity to cloud
    */
   private async pushEntityToCloud(entityName: string): Promise<{ count: number; conflicts: number }> {
-    if (!this.cloudDb) throw new Error('Cloud not connected')
+    if (!this.cloudPool) throw new Error('Cloud pool not available')
+
+    const config = ENTITY_CONFIG[entityName]
+    if (!config) throw new Error(`Unknown entity: ${entityName}`)
 
     const lastPushAt = this.getLastSyncTime(entityName, 'last_push_at')
 
     // Fetch local records that were updated since last push
+    const columns = config.columns.join(', ')
     const stmt = this.localDb.prepare(
-      `SELECT * FROM ${entityName} WHERE updated_at > ? OR synced_at IS NULL`
+      `SELECT ${columns} FROM ${entityName} WHERE updated_at > ? OR synced_at IS NULL`
     )
     stmt.bind([lastPushAt])
 
@@ -313,28 +407,30 @@ export class SyncService {
     let count = 0
     let conflicts = 0
 
+    const tableName = pgTable(entityName) // Quote table name for PostgreSQL
+
     for (const localRecord of localRecords) {
       try {
         // Check if record exists in cloud
         if (!this.cloudPool) throw new Error('Cloud pool not available')
         const cloudResult = await this.cloudPool.query(
-          `SELECT * FROM ${entityName} WHERE id = $1`,
+          `SELECT * FROM ${tableName} WHERE id = $1`,
           [localRecord.id]
         )
 
         if (cloudResult.rows.length === 0) {
           // New record - insert to cloud
-          await this.insertRecordToCloud(entityName, localRecord)
+          await this.insertRecordToCloud(entityName, localRecord, config.columns)
           count++
         } else {
           // Existing record - check for conflict
           const cloudRecord = cloudResult.rows[0]
-          const localUpdatedAt = localRecord.updated_at as number
-          const cloudUpdatedAt = new Date(cloudRecord.updated_at as string).getTime()
+          const localUpdatedAt = localRecord.updated_at as number || 0
+          const cloudUpdatedAt = this.toTimestamp(cloudRecord.updated_at)
 
           if (localUpdatedAt > cloudUpdatedAt) {
             // Local is newer - update cloud
-            await this.updateRecordInCloud(entityName, localRecord)
+            await this.updateRecordInCloud(entityName, localRecord, config.columns)
             count++
           } else if (cloudUpdatedAt > localUpdatedAt) {
             // Cloud is newer - conflict (already handled in pull)
@@ -360,16 +456,11 @@ export class SyncService {
   /**
    * Insert record to local database
    */
-  private insertRecordToLocal(entityName: string, record: any): void {
-    const columns = Object.keys(record)
+  private insertRecordToLocal(entityName: string, record: Record<string, unknown>, allowedColumns: string[]): void {
+    // Only use columns that are in the allowed list
+    const columns = allowedColumns.filter(col => col in record)
     const placeholders = columns.map(() => '?').join(', ')
-    const values = columns.map(col => {
-      const val = record[col]
-      // Convert Date to timestamp
-      if (val instanceof Date) return val.getTime()
-      if (typeof val === 'boolean') return val ? 1 : 0
-      return val
-    })
+    const values = columns.map(col => this.toSqlValue(record[col]))
 
     this.localDb.run(
       `INSERT OR REPLACE INTO ${entityName} (${columns.join(', ')}) VALUES (${placeholders})`,
@@ -381,16 +472,12 @@ export class SyncService {
   /**
    * Update record in local database
    */
-  private updateRecordInLocal(entityName: string, record: any): void {
-    const columns = Object.keys(record).filter(col => col !== 'id')
+  private updateRecordInLocal(entityName: string, record: Record<string, unknown>, allowedColumns: string[]): void {
+    // Only use columns that are in the allowed list (except id)
+    const columns = allowedColumns.filter(col => col !== 'id' && col in record)
     const setClause = columns.map(col => `${col} = ?`).join(', ')
-    const values = columns.map(col => {
-      const val = record[col]
-      if (val instanceof Date) return val.getTime()
-      if (typeof val === 'boolean') return val ? 1 : 0
-      return val
-    })
-    values.push(record.id)
+    const values = columns.map(col => this.toSqlValue(record[col]))
+    values.push(this.toSqlValue(record.id))
 
     this.localDb.run(
       `UPDATE ${entityName} SET ${setClause} WHERE id = ?`,
@@ -400,27 +487,32 @@ export class SyncService {
   }
 
   /**
+   * Convert value to SQL-compatible type
+   */
+  private toSqlValue(value: unknown): string | number | null | Uint8Array {
+    if (value === null || value === undefined) return null
+    if (typeof value === 'string') return value
+    if (typeof value === 'number') return value
+    if (typeof value === 'boolean') return value ? 1 : 0
+    if (value instanceof Date) return value.getTime()
+    if (value instanceof Uint8Array) return value
+    return String(value)
+  }
+
+  /**
    * Insert record to cloud database
    */
-  private async insertRecordToCloud(entityName: string, record: any): Promise<void> {
+  private async insertRecordToCloud(entityName: string, record: Record<string, unknown>, allowedColumns: string[]): Promise<void> {
     if (!this.cloudPool) throw new Error('Cloud not connected')
 
-    const columns = Object.keys(record)
+    // Only use columns that are in the allowed list
+    const columns = allowedColumns.filter(col => col in record)
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ')
-    const values = columns.map(col => {
-      const val = record[col]
-      // Convert timestamp to Date
-      if (col.endsWith('_at') && typeof val === 'number') {
-        return new Date(val)
-      }
-      if (typeof val === 'number' && col === 'is_active') {
-        return val === 1
-      }
-      return val
-    })
+    const values = columns.map(col => this.toCloudValue(col, record[col]))
+    const tableName = pgTable(entityName)
 
     await this.cloudPool.query(
-      `INSERT INTO ${entityName} (${columns.join(', ')}) VALUES (${placeholders})
+      `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})
        ON CONFLICT (id) DO NOTHING`,
       values
     )
@@ -429,27 +521,36 @@ export class SyncService {
   /**
    * Update record in cloud database
    */
-  private async updateRecordInCloud(entityName: string, record: any): Promise<void> {
+  private async updateRecordInCloud(entityName: string, record: Record<string, unknown>, allowedColumns: string[]): Promise<void> {
     if (!this.cloudPool) throw new Error('Cloud not connected')
 
-    const columns = Object.keys(record).filter(col => col !== 'id')
+    // Only use columns that are in the allowed list (except id)
+    const columns = allowedColumns.filter(col => col !== 'id' && col in record)
     const setClause = columns.map((col, i) => `${col} = $${i + 1}`).join(', ')
-    const values = columns.map(col => {
-      const val = record[col]
-      if (col.endsWith('_at') && typeof val === 'number') {
-        return new Date(val)
-      }
-      if (typeof val === 'number' && col === 'is_active') {
-        return val === 1
-      }
-      return val
-    })
+    const values = columns.map(col => this.toCloudValue(col, record[col]))
     values.push(record.id)
+    const tableName = pgTable(entityName)
 
     await this.cloudPool.query(
-      `UPDATE ${entityName} SET ${setClause} WHERE id = $${values.length}`,
+      `UPDATE ${tableName} SET ${setClause} WHERE id = $${values.length}`,
       values
     )
+  }
+
+  /**
+   * Convert local value to cloud-compatible type
+   */
+  private toCloudValue(column: string, value: unknown): unknown {
+    if (value === null || value === undefined) return null
+    // Convert timestamp to Date for _at columns
+    if (column.endsWith('_at') && typeof value === 'number') {
+      return new Date(value)
+    }
+    // Convert integer to boolean for is_active
+    if (column === 'is_active' && typeof value === 'number') {
+      return value === 1
+    }
+    return value
   }
 
   /**
@@ -484,20 +585,8 @@ export class SyncService {
    */
   private updateSyncMetadata(column: 'last_pull_at' | 'last_push_at'): void {
     const now = Date.now()
-    const entities = [
-      'category',
-      'supplier',
-      'store',
-      'customer_category',
-      'user',
-      'product',
-      'role',
-      'permission',
-      'user_role',
-      'role_permission'
-    ]
 
-    for (const entity of entities) {
+    for (const entity of SYNC_ENTITIES) {
       this.localDb.run(
         `UPDATE sync_metadata SET ${column} = ?, last_sync_at = ? WHERE entity_name = ?`,
         [now, now, entity]
@@ -533,22 +622,9 @@ export class SyncService {
    * Get count of unsynced records
    */
   private getUnsyncedRecordsCount(): number {
-    const entities = [
-      'category',
-      'supplier',
-      'store',
-      'customer_category',
-      'user',
-      'product',
-      'uom',
-      'role',
-      'permission',
-      'user_role',
-      'role_permission'
-    ]
     let total = 0
 
-    for (const entity of entities) {
+    for (const entity of SYNC_ENTITIES) {
       const stmt = this.localDb.prepare(
         `SELECT COUNT(*) as count FROM ${entity} WHERE synced_at IS NULL OR synced_at < updated_at`
       )

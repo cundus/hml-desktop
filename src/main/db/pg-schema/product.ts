@@ -11,6 +11,7 @@ export const products = pgTable('product', {
   cost: numeric('cost').notNull(),
   isActive: boolean('is_active').notNull().default(true),
   categoryId: text('category_id'),
+  deviceId: text('device_id'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

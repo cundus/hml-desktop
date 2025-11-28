@@ -23,6 +23,12 @@ import Chip from '@mui/material/Chip'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import FileUploadIcon from '@mui/icons-material/FileUpload'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import DescriptionIcon from '@mui/icons-material/Description'
+import Menu from '@mui/material/Menu'
+import Snackbar from '@mui/material/Snackbar'
+import Alert from '@mui/material/Alert'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -68,6 +74,15 @@ export default function ProductPage(): React.JSX.Element {
   const [editing, setEditing] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
   const [uoms, setUoms] = useState<Uom[]>([])
+  
+  // Excel import/export state
+  const [excelMenuAnchor, setExcelMenuAnchor] = useState<null | HTMLElement>(null)
+  const [excelLoading, setExcelLoading] = useState(false)
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean
+    message: string
+    severity: 'success' | 'error' | 'info'
+  }>({ open: false, message: '', severity: 'info' })
 
   const {
     register,
@@ -241,13 +256,157 @@ export default function ProductPage(): React.JSX.Element {
     setItems((prev) => prev.filter((p) => p.id !== product.id))
   }
 
+  // Excel handlers
+  const handleExcelMenuOpen = (event: React.MouseEvent<HTMLElement>): void => {
+    setExcelMenuAnchor(event.currentTarget)
+  }
+
+  const handleExcelMenuClose = (): void => {
+    setExcelMenuAnchor(null)
+  }
+
+  const handleExport = async (): Promise<void> => {
+    handleExcelMenuClose()
+    setExcelLoading(true)
+    try {
+      const response = await window.api.db.products.exportExcel()
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: response.message || 'Export berhasil',
+          severity: 'success'
+        })
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.error || 'Export gagal',
+          severity: 'error'
+        })
+      }
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'Export gagal',
+        severity: 'error'
+      })
+    } finally {
+      setExcelLoading(false)
+    }
+  }
+
+  const handleImport = async (): Promise<void> => {
+    handleExcelMenuClose()
+    setExcelLoading(true)
+    try {
+      const response = await window.api.db.products.importExcel()
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: response.message || 'Import berhasil',
+          severity: 'success'
+        })
+        // Reload products
+        const productsRes = await window.api.db.products.getAll()
+        if (productsRes.success) {
+          const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
+          const products = (productsRes.data ?? []).map((p) => ({
+            id: p.id,
+            sku: p.sku,
+            name: p.name,
+            unit: p.unit,
+            cost: p.cost,
+            categoryId: p.categoryId,
+            isActive: p.isActive,
+            categoryName: p.categoryId ? (categoryMap.get(p.categoryId) ?? '') : ''
+          }))
+          setItems(products)
+        }
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.error || 'Import gagal',
+          severity: 'error'
+        })
+      }
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'Import gagal',
+        severity: 'error'
+      })
+    } finally {
+      setExcelLoading(false)
+    }
+  }
+
+  const handleDownloadTemplate = async (): Promise<void> => {
+    handleExcelMenuClose()
+    setExcelLoading(true)
+    try {
+      const response = await window.api.db.products.downloadTemplate()
+      if (response.success) {
+        setSnackbar({
+          open: true,
+          message: response.message || 'Template berhasil diunduh',
+          severity: 'success'
+        })
+      } else {
+        setSnackbar({
+          open: true,
+          message: response.error || 'Gagal mengunduh template',
+          severity: 'error'
+        })
+      }
+    } catch {
+      setSnackbar({
+        open: true,
+        message: 'Gagal mengunduh template',
+        severity: 'error'
+      })
+    } finally {
+      setExcelLoading(false)
+    }
+  }
+
+  const handleSnackbarClose = (): void => {
+    setSnackbar((prev) => ({ ...prev, open: false }))
+  }
+
   return (
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Master Produk</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Tambah Produk
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            onClick={handleExcelMenuOpen}
+            disabled={loading || excelLoading}
+            startIcon={excelLoading ? <CircularProgress size={16} /> : <DescriptionIcon />}
+          >
+            Excel
+          </Button>
+          <Menu
+            anchorEl={excelMenuAnchor}
+            open={Boolean(excelMenuAnchor)}
+            onClose={handleExcelMenuClose}
+          >
+            <MenuItem onClick={handleExport}>
+              <FileDownloadIcon sx={{ mr: 1 }} fontSize="small" />
+              Export Data
+            </MenuItem>
+            <MenuItem onClick={handleImport}>
+              <FileUploadIcon sx={{ mr: 1 }} fontSize="small" />
+              Import Data
+            </MenuItem>
+            <MenuItem onClick={handleDownloadTemplate}>
+              <DescriptionIcon sx={{ mr: 1 }} fontSize="small" />
+              Download Template
+            </MenuItem>
+          </Menu>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
+            Tambah Produk
+          </Button>
+        </Stack>
       </Stack>
 
       {error && (
@@ -401,6 +560,18 @@ export default function ProductPage(): React.JSX.Element {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%' }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   )
 }

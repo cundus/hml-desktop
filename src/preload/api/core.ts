@@ -162,5 +162,18 @@ export const productApi = {
   
   restore: (id: string) => ipcRenderer.invoke('db:products:restore', id) as Promise<ApiResponse<Product>>,
   
-  toggleActive: (id: string) => ipcRenderer.invoke('db:products:toggleActive', id) as Promise<ApiResponse<Product>>
+  toggleActive: (id: string) => ipcRenderer.invoke('db:products:toggleActive', id) as Promise<ApiResponse<Product>>,
+
+  // Excel import/export
+  exportExcel: () => ipcRenderer.invoke('db:products:exportExcel') as Promise<ApiResponse<{ filePath: string }>>,
+  
+  importExcel: () => ipcRenderer.invoke('db:products:importExcel') as Promise<ApiResponse<{
+    totalRows: number
+    successCount: number
+    skipCount: number
+    errorCount: number
+    errors?: string[]
+  }>>,
+  
+  downloadTemplate: () => ipcRenderer.invoke('db:products:downloadTemplate') as Promise<ApiResponse<{ filePath: string }>>
 }

@@ -333,7 +333,7 @@ export default function CustomerPage(): React.JSX.Element {
         </DialogContent>
         <DialogActions>
           <Button onClick={closeDialog}>Batal</Button>
-          <Button type="submit" variant="contained" disabled={isSubmitting}>
+          <Button type="submit" form="customer-form" variant="contained" disabled={isSubmitting}>
             {isSubmitting ? 'Menyimpan...' : 'Simpan'}
           </Button>
         </DialogActions>

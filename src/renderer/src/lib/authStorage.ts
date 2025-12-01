@@ -1,6 +1,8 @@
 const TOKEN_KEY = 'auth_token'
 const GROUPS_KEY = 'auth_groups'
 const PERMISSIONS_KEY = 'auth_permissions'
+const USER_NAME_KEY = 'auth_user_name'
+const USER_ROLE_KEY = 'auth_user_role'
 
 export function getToken(): string | null {
   try {
@@ -75,6 +77,54 @@ export function setPermissions(permissions: string[]): void {
 export function clearPermissions(): void {
   try {
     localStorage.removeItem(PERMISSIONS_KEY)
+  } catch {
+    return
+  }
+}
+
+export function getUserName(): string | null {
+  try {
+    return localStorage.getItem(USER_NAME_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setUserName(name: string): void {
+  try {
+    localStorage.setItem(USER_NAME_KEY, name)
+  } catch {
+    return
+  }
+}
+
+export function clearUserName(): void {
+  try {
+    localStorage.removeItem(USER_NAME_KEY)
+  } catch {
+    return
+  }
+}
+
+export function getUserRole(): string | null {
+  try {
+    return localStorage.getItem(USER_ROLE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setUserRole(role: string): void {
+  try {
+    localStorage.setItem(USER_ROLE_KEY, role)
+  } catch {
+    return
+  }
+}
+
+export function clearUserRole(): void {
+  try {
+    localStorage.removeItem(USER_ROLE_KEY)
   } catch {
     return
   }

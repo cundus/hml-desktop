@@ -8,12 +8,20 @@ import {
   clearGroups,
   getPermissions,
   setPermissions as savePermissions,
-  clearPermissions
+  clearPermissions,
+  getUserName,
+  setUserName as saveUserName,
+  clearUserName,
+  getUserRole,
+  setUserRole as saveUserRole,
+  clearUserRole
 } from '../lib/authStorage'
 import { AuthContext, type AuthContextValue, type Credentials } from './authContextBase'
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [token, setToken] = useState<string | null>(null)
+  const [userName, setUserName] = useState<string | null>(null)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const [groups, setGroups] = useState<string[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
   const [isReady, setIsReady] = useState(false)
@@ -21,6 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   useEffect(() => {
     const existing = getToken()
     if (existing) setToken(existing)
+    const existingUserName = getUserName()
+    if (existingUserName) setUserName(existingUserName)
+    const existingUserRole = getUserRole()
+    if (existingUserRole) setUserRole(existingUserRole)
     const existingGroups = getGroups()
     if (existingGroups.length) setGroups(existingGroups)
     const existingPermissions = getPermissions()
@@ -35,17 +47,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       }
 
       const t = res.data.token
+      const uName = res.data.userName ?? ''
+      const uRole = res.data.userRole ?? ''
       const g = res.data.groups ?? []
       const p = res.data.permissions ?? []
 
       saveToken(t)
+      saveUserName(uName)
+      saveUserRole(uRole)
       saveGroups(g)
       savePermissions(p)
       setToken(t)
+      setUserName(uName)
+      setUserRole(uRole)
       setGroups(g)
       setPermissions(p)
       window.location.hash = '#/'
-    } catch (e) {
+    } catch {
       // TODO: surface error via UI state; for now, simple alert
       alert('Email atau kata sandi salah')
     }
@@ -53,9 +71,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   const logout = useCallback((): void => {
     clearToken()
+    clearUserName()
+    clearUserRole()
     clearGroups()
     clearPermissions()
     setToken(null)
+    setUserName(null)
+    setUserRole(null)
     setGroups([])
     setPermissions([])
     window.location.hash = '#/login'
@@ -71,8 +93,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   )
 
   const value = useMemo<AuthContextValue>(
-    () => ({ token, groups, permissions, isAuthenticated: !!token, isReady, login, logout, hasPermission }),
-    [token, groups, permissions, isReady, login, logout, hasPermission]
+    () => ({
+      token,
+      userName,
+      userRole,
+      groups,
+      permissions,
+      isAuthenticated: !!token,
+      isReady,
+      login,
+      logout,
+      hasPermission
+    }),
+    [token, userName, userRole, groups, permissions, isReady, login, logout, hasPermission]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
 import InputAdornment from '@mui/material/InputAdornment'
@@ -29,6 +29,15 @@ export type ProductBrowserProps = {
 export default function ProductBrowser({ products, onAdd }: ProductBrowserProps): React.JSX.Element {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus search input when component mounts (dialog opens)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   const categories = useMemo(
     () => Array.from(new Set(products.map((p) => p.category))).sort(),
@@ -63,6 +72,7 @@ export default function ProductBrowser({ products, onAdd }: ProductBrowserProps)
           placeholder="Cari berdasarkan nama atau SKU"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          inputRef={searchInputRef}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">

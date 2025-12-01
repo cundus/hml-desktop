@@ -2,6 +2,8 @@ import { Database } from 'sql.js'
 
 export interface AuthResult {
   token: string
+  userName: string
+  userRole: string
   groups: string[]
   permissions: string[]
 }
@@ -27,16 +29,24 @@ export class AuthService {
     }
 
     const userId = user.id as string
+    const userName = user.name as string
 
     // Load roles for the user
     const roleIds: string[] = []
+    const roleNames: string[] = []
     const rolesStmt = this.db.prepare(
-      'SELECT role_id FROM user_role WHERE user_id = ? AND deleted_at IS NULL'
+      `SELECT ur.role_id, r.name as role_name
+       FROM user_role ur
+       LEFT JOIN role r ON ur.role_id = r.id
+       WHERE ur.user_id = ? AND ur.deleted_at IS NULL`
     )
     rolesStmt.bind([userId])
     while (rolesStmt.step()) {
       const row = rolesStmt.getAsObject()
       roleIds.push(row.role_id as string)
+      if (row.role_name) {
+        roleNames.push(row.role_name as string)
+      }
     }
     rolesStmt.free()
 
@@ -58,6 +68,8 @@ export class AuthService {
 
     return {
       token: userId,
+      userName,
+      userRole: roleNames.join(', ') || 'User',
       groups: roleIds,
       permissions
     }

@@ -21,7 +21,7 @@ import Chip from '@mui/material/Chip'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm, Controller, useWatch } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 
@@ -39,6 +39,7 @@ interface ProductPrice extends PriceFormValues {
   id: string
   productName?: string
   storeName?: string
+  margin?: number
 }
 
 interface Product {
@@ -67,6 +68,7 @@ export default function PricingPage(): React.JSX.Element {
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors, isSubmitting }
   } = useForm<PriceFormValues>({
     resolver: zodResolver(priceSchema),
@@ -78,6 +80,30 @@ export default function PricingPage(): React.JSX.Element {
       isActive: true
     }
   })
+
+  // Watch cost and price for margin calculation
+  const watchCost = useWatch({ control, name: 'cost' })
+  const watchPrice = useWatch({ control, name: 'price' })
+
+  // Calculate current margin
+  const currentMargin = (() => {
+    const costNum = parseFloat(watchCost) || 0
+    const priceNum = parseFloat(watchPrice) || 0
+    if (costNum > 0) {
+      return ((priceNum - costNum) / costNum) * 100
+    }
+    return 0
+  })()
+
+  // Handle margin input to auto-update selling price
+  const handleMarginChange = (marginPercent: string): void => {
+    const costNum = parseFloat(watchCost) || 0
+    const marginNum = parseFloat(marginPercent) || 0
+    if (costNum > 0) {
+      const newPrice = costNum * (1 + marginNum / 100)
+      setValue('price', newPrice.toFixed(0))
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -98,11 +124,17 @@ export default function PricingPage(): React.JSX.Element {
         const productsMap = new Map(productsRes.data?.map((p) => [p.id, p.name]))
         const storesMap = new Map(storesRes.data?.map((s) => [s.id, s.name]))
 
-        const enrichedPrices = (pricesRes.data ?? []).map((price) => ({
-          ...price,
-          productName: productsMap.get(price.productId),
-          storeName: storesMap.get(price.storeId)
-        }))
+        const enrichedPrices = (pricesRes.data ?? []).map((price) => {
+          const costNum = parseFloat(price.cost) || 0
+          const priceNum = parseFloat(price.price) || 0
+          const margin = costNum > 0 ? ((priceNum - costNum) / costNum) * 100 : 0
+          return {
+            ...price,
+            productName: productsMap.get(price.productId),
+            storeName: storesMap.get(price.storeId),
+            margin: Math.round(margin * 100) / 100
+          }
+        })
 
         setItems(enrichedPrices)
         setProducts(productsRes.data ?? [])
@@ -217,8 +249,9 @@ export default function PricingPage(): React.JSX.Element {
             <TableRow>
               <TableCell>Produk</TableCell>
               <TableCell>Toko</TableCell>
-              <TableCell align="right">Harga Beli</TableCell>
+              <TableCell align="right">Harga Modal</TableCell>
               <TableCell align="right">Harga Jual</TableCell>
+              <TableCell align="right">Margin</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Aksi</TableCell>
             </TableRow>
@@ -228,8 +261,20 @@ export default function PricingPage(): React.JSX.Element {
               <TableRow key={price.id}>
                 <TableCell>{price.productName || price.productId}</TableCell>
                 <TableCell>{price.storeName || price.storeId}</TableCell>
-                <TableCell align="right">${price.cost}</TableCell>
-                <TableCell align="right">${price.price}</TableCell>
+                <TableCell align="right">
+                  {parseFloat(price.cost).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                </TableCell>
+                <TableCell align="right">
+                  {parseFloat(price.price).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                </TableCell>
+                <TableCell align="right">
+                  <Chip
+                    size="small"
+                    label={`${price.margin?.toFixed(1) ?? 0}%`}
+                    color={price.margin && price.margin > 0 ? 'success' : 'warning'}
+                    variant="outlined"
+                  />
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={price.isActive ? 'Aktif' : 'Tidak Aktif'}
@@ -249,7 +294,7 @@ export default function PricingPage(): React.JSX.Element {
             ))}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   Tidak ada harga
                 </TableCell>
               </TableRow>
@@ -310,25 +355,37 @@ export default function PricingPage(): React.JSX.Element {
 
             <TextField
               {...register('cost')}
-              label="Harga Beli"
+              label="Harga Modal"
               type="number"
               fullWidth
               margin="normal"
               error={!!errors.cost}
               helperText={errors.cost?.message}
-              inputProps={{ step: '0.01', min: '0' }}
+              inputProps={{ step: '1', min: '0' }}
             />
 
-            <TextField
-              {...register('price')}
-              label="Harga Jual"
-              type="number"
-              fullWidth
-              margin="normal"
-              error={!!errors.price}
-              helperText={errors.price?.message}
-              inputProps={{ step: '0.01', min: '0' }}
-            />
+            <Stack direction="row" spacing={2} alignItems="flex-start">
+              <TextField
+                {...register('price')}
+                label="Harga Jual"
+                type="number"
+                fullWidth
+                margin="normal"
+                error={!!errors.price}
+                helperText={errors.price?.message}
+                inputProps={{ step: '1', min: '0' }}
+              />
+              <TextField
+                label="Margin %"
+                type="number"
+                margin="normal"
+                value={currentMargin.toFixed(1)}
+                onChange={(e) => handleMarginChange(e.target.value)}
+                inputProps={{ step: '0.1' }}
+                sx={{ width: 120 }}
+                helperText="Auto-hitung"
+              />
+            </Stack>
 
             <Controller
               name="isActive"

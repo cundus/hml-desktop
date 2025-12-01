@@ -39,6 +39,8 @@ const productSchema = z.object({
   unit: z.string().min(1, 'Satuan wajib diisi'),
   cost: z.string().min(1, 'Harga pokok wajib diisi'),
   categoryId: z.string().optional(),
+  supplierId: z.string().optional(),
+  isService: z.boolean(),
   isActive: z.boolean()
 })
 
@@ -51,11 +53,19 @@ export type Product = {
   unit: string
   cost: string
   categoryId: string | null
+  supplierId: string | null
+  isService: boolean
   isActive: boolean
   categoryName?: string
+  supplierName?: string
 }
 
 type Category = {
+  id: string
+  name: string
+}
+
+type Supplier = {
   id: string
   name: string
 }
@@ -73,8 +83,9 @@ export default function ProductPage(): React.JSX.Element {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
+  const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [uoms, setUoms] = useState<Uom[]>([])
-  
+
   // Excel import/export state
   const [excelMenuAnchor, setExcelMenuAnchor] = useState<null | HTMLElement>(null)
   const [excelLoading, setExcelLoading] = useState(false)
@@ -91,7 +102,7 @@ export default function ProductPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', isActive: true }
+    defaultValues: { sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', supplierId: '', isService: false, isActive: true }
   })
 
   useEffect(() => {
@@ -99,15 +110,18 @@ export default function ProductPage(): React.JSX.Element {
       try {
         setLoading(true)
         setError(null)
-        const [productsRes, categoriesRes, uomsRes] = await Promise.all([
+        const [productsRes, categoriesRes, suppliersRes, uomsRes] = await Promise.all([
           window.api.db.products.getAll(),
           window.api.db.categories.getAll(),
+          window.api.db.suppliers.getAll(),
           window.api.db.uoms.getAll()
         ])
 
-        if (productsRes.success && categoriesRes.success && uomsRes.success) {
+        if (productsRes.success && categoriesRes.success && suppliersRes.success && uomsRes.success) {
           const categoryList = categoriesRes.data ?? []
           const categoryMap = new Map(categoryList.map((c) => [c.id, c.name]))
+          const supplierList = suppliersRes.data ?? []
+          const supplierMap = new Map(supplierList.map((s) => [s.id, s.name]))
           const uomList = uomsRes.data ?? []
           setUoms(uomList)
 
@@ -118,15 +132,19 @@ export default function ProductPage(): React.JSX.Element {
             unit: p.unit,
             cost: p.cost,
             categoryId: p.categoryId,
+            supplierId: p.supplierId,
+            isService: p.isService ?? false,
             isActive: p.isActive,
-            categoryName: p.categoryId ? (categoryMap.get(p.categoryId) ?? '') : ''
+            categoryName: p.categoryId ? (categoryMap.get(p.categoryId) ?? '') : '',
+            supplierName: p.supplierId ? (supplierMap.get(p.supplierId) ?? '') : ''
           }))
 
           setItems(products)
           setCategories(categoryList)
+          setSuppliers(supplierList)
         } else {
           setError(
-            productsRes.error ?? categoriesRes.error ?? uomsRes.error ?? 'Gagal memuat produk'
+            productsRes.error ?? categoriesRes.error ?? suppliersRes.error ?? uomsRes.error ?? 'Gagal memuat produk'
           )
         }
       } catch {
@@ -140,7 +158,7 @@ export default function ProductPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', isActive: true })
+    reset({ sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', supplierId: '', isService: false, isActive: true })
     setDialogOpen(true)
   }
 
@@ -152,6 +170,8 @@ export default function ProductPage(): React.JSX.Element {
       unit: product.unit,
       cost: product.cost,
       categoryId: product.categoryId ?? '',
+      supplierId: product.supplierId ?? '',
+      isService: product.isService,
       isActive: product.isActive
     })
     setDialogOpen(true)
@@ -171,6 +191,8 @@ export default function ProductPage(): React.JSX.Element {
         unit: values.unit,
         cost: values.cost,
         categoryId: values.categoryId || undefined,
+        supplierId: values.supplierId || undefined,
+        isService: values.isService,
         isActive: values.isActive
       }
 
@@ -179,6 +201,8 @@ export default function ProductPage(): React.JSX.Element {
         unit: values.unit,
         cost: values.cost,
         categoryId: values.categoryId || undefined,
+        supplierId: values.supplierId || undefined,
+        isService: values.isService,
         isActive: values.isActive
       }
 
@@ -188,6 +212,10 @@ export default function ProductPage(): React.JSX.Element {
           const updated = response.data
           const categoryName = updated.categoryId
             ? (categories.find((c) => c.id === updated.categoryId)?.name ?? '')
+            : ''
+
+          const supplierName = updated.supplierId
+            ? (suppliers.find((s) => s.id === updated.supplierId)?.name ?? '')
             : ''
 
           setItems((prev) =>
@@ -200,8 +228,11 @@ export default function ProductPage(): React.JSX.Element {
                     unit: updated.unit,
                     cost: updated.cost,
                     categoryId: updated.categoryId,
+                    supplierId: updated.supplierId,
+                    isService: updated.isService ?? false,
                     isActive: updated.isActive,
-                    categoryName
+                    categoryName,
+                    supplierName
                   }
                 : p
             )
@@ -218,6 +249,10 @@ export default function ProductPage(): React.JSX.Element {
             ? (categories.find((c) => c.id === created.categoryId)?.name ?? '')
             : ''
 
+          const supplierName = created.supplierId
+            ? (suppliers.find((s) => s.id === created.supplierId)?.name ?? '')
+            : ''
+
           setItems((prev) => [
             ...prev,
             {
@@ -227,8 +262,11 @@ export default function ProductPage(): React.JSX.Element {
               unit: created.unit,
               cost: created.cost,
               categoryId: created.categoryId,
+              supplierId: created.supplierId,
+              isService: created.isService ?? false,
               isActive: created.isActive,
-              categoryName
+              categoryName,
+              supplierName
             }
           ])
         } else {
@@ -427,6 +465,8 @@ export default function ProductPage(): React.JSX.Element {
                 <TableCell>SKU</TableCell>
                 <TableCell>Nama</TableCell>
                 <TableCell>Kategori</TableCell>
+                <TableCell>Supplier</TableCell>
+                <TableCell>Tipe</TableCell>
                 <TableCell>Status</TableCell>
                 <TableCell align="right">Aksi</TableCell>
               </TableRow>
@@ -434,13 +474,13 @@ export default function ProductPage(): React.JSX.Element {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={7} align="center">
                     Loading...
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={7} align="center">
                     Tidak ada produk
                   </TableCell>
                 </TableRow>
@@ -450,6 +490,15 @@ export default function ProductPage(): React.JSX.Element {
                     <TableCell>{product.sku}</TableCell>
                     <TableCell>{product.name}</TableCell>
                     <TableCell>{product.categoryName}</TableCell>
+                    <TableCell>{product.supplierName}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={product.isService ? 'Jasa' : 'Produk'}
+                        color={product.isService ? 'info' : 'default'}
+                        variant="outlined"
+                      />
+                    </TableCell>
                     <TableCell>
                       <Chip
                         size="small"
@@ -547,6 +596,26 @@ export default function ProductPage(): React.JSX.Element {
                 </MenuItem>
               ))}
             </TextField>
+            <TextField
+              margin="normal"
+              label="Supplier"
+              fullWidth
+              select
+              {...register('supplierId')}
+              error={!!errors.supplierId}
+              helperText={errors.supplierId?.message}
+            >
+              <MenuItem value="">Tanpa Supplier</MenuItem>
+              {suppliers.map((supplier) => (
+                <MenuItem key={supplier.id} value={supplier.id}>
+                  {supplier.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <FormControlLabel
+              control={<Checkbox {...register('isService')} />}
+              label="Jasa (bukan produk fisik)"
+            />
             <FormControlLabel
               control={<Checkbox {...register('isActive')} defaultChecked />}
               label="Aktif"

@@ -1,10 +1,16 @@
 import { Database } from 'sql.js'
 import { saveDb } from './localDb'
+import { randomUUID } from 'crypto'
 
 interface SeedPermission {
   id: string
   name: string
   description?: string
+}
+
+interface SeedUom {
+  code: string
+  name: string
 }
 
 const permissionCatalog: SeedPermission[] = [
@@ -106,6 +112,43 @@ export async function seedAdmin(db: Database): Promise<void> {
     db.run(
       'INSERT OR IGNORE INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
       [rpId, adminRoleId, perm.id, now, now]
+    )
+  }
+
+  saveDb(db)
+}
+
+/**
+ * Default units of measure catalog
+ */
+const uomCatalog: SeedUom[] = [
+  { code: 'PCS', name: 'Pieces' },
+  { code: 'SAK', name: 'Sak/Karung' },
+  { code: 'BOX', name: 'Box' },
+  { code: 'DUS', name: 'Dus/Karton' },
+  { code: 'PACK', name: 'Pack' },
+  { code: 'KG', name: 'Kilogram' },
+  { code: 'GR', name: 'Gram' },
+  { code: 'LTR', name: 'Liter' },
+  { code: 'ML', name: 'Mililiter' },
+  { code: 'BTL', name: 'Botol' },
+  { code: 'SET', name: 'Set' },
+  { code: 'ROLL', name: 'Roll' },
+  { code: 'MTR', name: 'Meter' }
+]
+
+/**
+ * Seed the UOM table with default units.
+ * This is idempotent: uses INSERT OR IGNORE on uom.code.
+ */
+export async function seedUoms(db: Database): Promise<void> {
+  const now = Date.now()
+
+  for (const uom of uomCatalog) {
+    const id = randomUUID()
+    db.run(
+      'INSERT OR IGNORE INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [id, uom.code, uom.name, now, now]
     )
   }
 

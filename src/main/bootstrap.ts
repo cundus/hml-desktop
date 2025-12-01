@@ -1,6 +1,6 @@
 import { getDb } from './db'
-import { seedPermissions, seedAdmin } from './seed'
-import { 
+import { seedPermissions, seedAdmin, seedUoms } from './seed'
+import {
   CategoryController,
   SupplierController,
   StoreController,
@@ -22,7 +22,7 @@ import {
   AuthController,
   UomController
 } from './controllers'
-import { 
+import {
   CategoryService,
   SupplierService,
   StoreService,
@@ -55,6 +55,7 @@ export async function bootstrap(): Promise<void> {
   // Seed static reference data
   await seedPermissions(db)
   await seedAdmin(db)
+  await seedUoms(db)
 
   // Initialize master data services
   const categoryService = new CategoryService(db)
@@ -63,7 +64,7 @@ export async function bootstrap(): Promise<void> {
   const customerCategoryService = new CustomerCategoryService(db)
   const customerService = new CustomerService(db)
   const uomService = new UomService(db)
-  
+
   // Initialize core entity services
   const userService = new UserService(db)
   const productService = new ProductService(db)
@@ -72,19 +73,19 @@ export async function bootstrap(): Promise<void> {
   const permissionService = new PermissionService(db)
   const rolePermissionService = new RolePermissionService(db)
   const authService = new AuthService(db)
-  
+
   // Initialize inventory services
   const productPriceService = new ProductPriceService(db)
   const productLocationService = new ProductLocationService(db)
   const batchService = new BatchService(db)
   const stockTransactionService = new StockTransactionService(db)
-  
+
   // Initialize sales/POS service
   const transactionService = new TransactionService(db)
-  
+
   // Initialize purchasing service
   const purchaseOrderService = new PurchaseOrderService(db)
-  
+
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
 

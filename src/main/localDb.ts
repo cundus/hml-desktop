@@ -20,7 +20,7 @@ export async function initLocalDb(): Promise<Database> {
 
   // Get database file path
   const dbPath = join(app.getPath('userData'), 'petshop-local.db')
-  
+
   // Load existing database or create new one
   if (existsSync(dbPath)) {
     const buffer = readFileSync(dbPath)
@@ -34,7 +34,7 @@ export async function initLocalDb(): Promise<Database> {
   // Create tables if they don't exist
   if (!db) throw new Error('Failed to initialize database')
   await createTables(db)
-  
+
   // Save to disk
   saveDb(db, dbPath)
 
@@ -194,6 +194,8 @@ async function createTables(database: Database): Promise<void> {
       unit TEXT NOT NULL,
       cost TEXT NOT NULL,
       category_id TEXT,
+      supplier_id TEXT,
+      is_service INTEGER NOT NULL DEFAULT 0,
       is_active INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -202,6 +204,18 @@ async function createTables(database: Database): Promise<void> {
       device_id TEXT
     )
   `)
+
+  // Add supplier_id and is_service columns if they don't exist (migration for existing DBs)
+  try {
+    database.run('ALTER TABLE product ADD COLUMN supplier_id TEXT')
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run('ALTER TABLE product ADD COLUMN is_service INTEGER NOT NULL DEFAULT 0')
+  } catch {
+    // Column already exists
+  }
 
   // Customer table
   database.run(`

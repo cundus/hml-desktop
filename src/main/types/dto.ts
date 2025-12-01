@@ -31,6 +31,8 @@ export interface CreateProductDto {
   unit: string
   cost: number
   categoryId?: string
+  supplierId?: string
+  isService?: boolean
   isActive?: boolean
 }
 
@@ -40,6 +42,8 @@ export interface UpdateProductDto {
   unit?: string
   cost?: number
   categoryId?: string
+  supplierId?: string
+  isService?: boolean
   isActive?: boolean
 }
 

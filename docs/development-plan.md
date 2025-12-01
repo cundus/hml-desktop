@@ -28,17 +28,17 @@ This document outlines the structured development plan based on client requireme
 ### 2.1 Product Enhancements
 | ID | Task | Status | Complexity |
 |----|------|--------|------------|
-| PROD-001 | Add product category labels | ⬜ TODO | Low |
-| PROD-002 | Add supplier labels | ⬜ TODO | Low |
-| PROD-003 | Add default units: PCS, SAK, BOX, DUS, PACK (extendable) | ⬜ TODO | Medium |
-| PROD-004 | Separate product vs service in reports | ⬜ TODO | Medium |
+| PROD-001 | Add product category labels | ✅ DONE | Low |
+| PROD-002 | Add supplier labels | ✅ DONE | Low |
+| PROD-003 | Add default units: PCS, SAK, BOX, DUS, PACK (extendable) | ✅ DONE | Medium |
+| PROD-004 | Separate product vs service in reports | ✅ DONE | Medium |
 
 ### 2.2 Pricing Tab
 | ID | Task | Status | Complexity |
 |----|------|--------|------------|
-| PRICE-001 | Display cost price (harga modal) & selling price (harga jual) | ⬜ TODO | Low |
-| PRICE-002 | Auto-calculate margin from prices | ⬜ TODO | Low |
-| PRICE-003 | Auto-update selling price when margin % is manually entered | ⬜ TODO | Medium |
+| PRICE-001 | Display cost price (harga modal) & selling price (harga jual) | ✅ DONE | Low |
+| PRICE-002 | Auto-calculate margin from prices | ✅ DONE | Low |
+| PRICE-003 | Auto-update selling price when margin % is manually entered | ✅ DONE | Medium |
 
 ### 2.3 Commission System
 | ID | Task | Status | Complexity |

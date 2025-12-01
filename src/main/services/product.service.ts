@@ -11,6 +11,8 @@ export interface Product {
   unit: string
   cost: string
   categoryId: string | null
+  supplierId: string | null
+  isService: boolean
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -26,17 +28,15 @@ export class ProductService {
    * Get all active (non-deleted) products
    */
   async findAll(): Promise<Product[]> {
-    const stmt = this.db.prepare(
-      'SELECT * FROM product WHERE deleted_at IS NULL ORDER BY name ASC'
-    )
+    const stmt = this.db.prepare('SELECT * FROM product WHERE deleted_at IS NULL ORDER BY name ASC')
     const results: Product[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProduct(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -48,13 +48,13 @@ export class ProductService {
       'SELECT * FROM product WHERE deleted_at IS NULL AND is_active = 1 ORDER BY name ASC'
     )
     const results: Product[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProduct(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -64,7 +64,7 @@ export class ProductService {
   async findById(id: string): Promise<Product | undefined> {
     const stmt = this.db.prepare('SELECT * FROM product WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -80,7 +80,7 @@ export class ProductService {
   async findBySku(sku: string): Promise<Product | undefined> {
     const stmt = this.db.prepare('SELECT * FROM product WHERE sku = ? AND deleted_at IS NULL')
     stmt.bind([sku])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -99,14 +99,14 @@ export class ProductService {
       'SELECT * FROM product WHERE deleted_at IS NULL AND (name LIKE ? OR sku LIKE ?) LIMIT 50'
     )
     stmt.bind([searchPattern, searchPattern])
-    
+
     const results: Product[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProduct(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -116,9 +116,9 @@ export class ProductService {
   async create(data: CreateProductDto): Promise<Product> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
-      'INSERT INTO product (id, sku, name, description, unit, cost, category_id, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO product (id, sku, name, description, unit, cost, category_id, supplier_id, is_service, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.sku,
@@ -127,14 +127,16 @@ export class ProductService {
         data.unit,
         data.cost,
         data.categoryId ?? null,
+        data.supplierId ?? null,
+        data.isService ? 1 : 0,
         data.isActive ? 1 : 0,
         now,
         now
       ]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       sku: data.sku,
@@ -143,6 +145,8 @@ export class ProductService {
       unit: data.unit,
       cost: data.cost.toString(),
       categoryId: data.categoryId ?? null,
+      supplierId: data.supplierId ?? null,
+      isService: data.isService ?? false,
       isActive: data.isActive ?? true,
       createdAt: new Date(now),
       updatedAt: new Date(now),
@@ -162,23 +166,25 @@ export class ProductService {
     }
 
     const now = Date.now()
-    
+
     this.db.run(
-      'UPDATE product SET name = ?, description = ?, unit = ?, cost = ?, category_id = ?, is_active = ?, updated_at = ? WHERE id = ?',
+      'UPDATE product SET name = ?, description = ?, unit = ?, cost = ?, category_id = ?, supplier_id = ?, is_service = ?, is_active = ?, updated_at = ? WHERE id = ?',
       [
         data.name ?? existing.name,
         data.description ?? existing.description ?? null,
         data.unit ?? existing.unit,
         data.cost ?? existing.cost,
         data.categoryId ?? existing.categoryId ?? null,
+        data.supplierId ?? existing.supplierId ?? null,
+        (data.isService ?? existing.isService) ? 1 : 0,
         (data.isActive ?? existing.isActive) ? 1 : 0,
         now,
         id
       ]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Product not found after update')
@@ -191,14 +197,11 @@ export class ProductService {
    */
   async softDelete(id: string): Promise<Product> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE product SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE product SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Product not found after delete')
@@ -211,14 +214,11 @@ export class ProductService {
    */
   async restore(id: string): Promise<Product> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE product SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE product SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Product not found after restore')
@@ -237,14 +237,15 @@ export class ProductService {
 
     const now = Date.now()
     const newActiveStatus = product.isActive ? 0 : 1
-    
-    this.db.run(
-      'UPDATE product SET is_active = ?, updated_at = ? WHERE id = ?',
-      [newActiveStatus, now, id]
-    )
-    
+
+    this.db.run('UPDATE product SET is_active = ?, updated_at = ? WHERE id = ?', [
+      newActiveStatus,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Product not found after toggle')
@@ -264,6 +265,8 @@ export class ProductService {
       unit: row.unit as string,
       cost: row.cost as string,
       categoryId: row.category_id as string | null,
+      supplierId: row.supplier_id as string | null,
+      isService: (row.is_service as number) === 1,
       isActive: (row.is_active as number) === 1,
       createdAt: new Date(row.created_at as number),
       updatedAt: new Date(row.updated_at as number),

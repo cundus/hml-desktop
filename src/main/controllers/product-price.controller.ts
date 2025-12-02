@@ -58,17 +58,20 @@ export class ProductPriceController {
     })
 
     // Get product price for specific product and store
-    ipcMain.handle('db:productPrices:getByProductAndStore', async (_, productId: string, storeId: string) => {
-      try {
-        const price = await this.productPriceService.findByProductAndStore(productId, storeId)
-        return { success: true, data: price }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:productPrices:getByProductAndStore',
+      async (_, productId: string, storeId: string) => {
+        try {
+          const price = await this.productPriceService.findByProductAndStore(productId, storeId)
+          return { success: true, data: price }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Create product price
     ipcMain.handle('db:productPrices:create', async (_, data) => {

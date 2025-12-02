@@ -789,9 +789,7 @@
         "uom_code_unique": {
           "name": "uom_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},

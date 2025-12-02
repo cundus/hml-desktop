@@ -39,13 +39,13 @@ export class CustomerService {
       'SELECT * FROM customer WHERE deleted_at IS NULL ORDER BY name ASC'
     )
     const results: Customer[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToCustomer(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -55,7 +55,7 @@ export class CustomerService {
   async findById(id: string): Promise<Customer | undefined> {
     const stmt = this.db.prepare('SELECT * FROM customer WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -74,14 +74,14 @@ export class CustomerService {
       'SELECT * FROM customer WHERE deleted_at IS NULL AND (name LIKE ? OR phone LIKE ?) LIMIT 50'
     )
     stmt.bind([searchPattern, searchPattern])
-    
+
     const results: Customer[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToCustomer(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -93,14 +93,14 @@ export class CustomerService {
       'SELECT * FROM customer WHERE category_id = ? AND deleted_at IS NULL ORDER BY name ASC'
     )
     stmt.bind([categoryId])
-    
+
     const results: Customer[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToCustomer(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -110,14 +110,14 @@ export class CustomerService {
   async create(data: CreateCustomerDto): Promise<Customer> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO customer (id, name, phone, address, category_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id, data.name, data.phone ?? null, data.address ?? null, data.categoryId ?? null, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       name: data.name,
@@ -136,14 +136,14 @@ export class CustomerService {
    */
   async update(id: string, data: UpdateCustomerDto): Promise<Customer> {
     const now = Date.now()
-    
+
     this.db.run(
       'UPDATE customer SET name = ?, phone = ?, address = ?, category_id = ?, updated_at = ? WHERE id = ?',
       [data.name, data.phone ?? null, data.address ?? null, data.categoryId ?? null, now, id]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Customer not found after update')
@@ -156,14 +156,11 @@ export class CustomerService {
    */
   async softDelete(id: string): Promise<Customer> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE customer SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE customer SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Customer not found after delete')
@@ -176,14 +173,11 @@ export class CustomerService {
    */
   async restore(id: string): Promise<Customer> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE customer SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE customer SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Customer not found after restore')

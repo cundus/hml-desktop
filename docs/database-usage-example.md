@@ -210,6 +210,7 @@ await prisma.user.update({
 ## Available Database APIs
 
 ### Users
+
 - `window.api.db.users.getAll()` - Get all active users
 - `window.api.db.users.getById(id)` - Get user by ID
 - `window.api.db.users.create(data)` - Create new user
@@ -217,6 +218,7 @@ await prisma.user.update({
 - `window.api.db.users.softDelete(id)` - Soft delete user
 
 ### Products
+
 - `window.api.db.products.getAll()` - Get all active products
 - `window.api.db.products.getById(id)` - Get product by ID
 - `window.api.db.products.create(data)` - Create new product
@@ -228,6 +230,7 @@ await prisma.user.update({
 To add a new database operation:
 
 1. **Add IPC handler in main process** (`src/main/index.ts`):
+
 ```typescript
 ipcMain.handle('db:customers:getAll', async () => {
   const prisma = getPrisma()
@@ -238,6 +241,7 @@ ipcMain.handle('db:customers:getAll', async () => {
 ```
 
 2. **Add method to preload script** (`src/preload/index.ts`):
+
 ```typescript
 db: {
   customers: {
@@ -249,6 +253,7 @@ db: {
 ```
 
 3. **Add TypeScript types** (`src/preload/index.d.ts`):
+
 ```typescript
 interface DatabaseAPI {
   customers: {
@@ -258,6 +263,7 @@ interface DatabaseAPI {
 ```
 
 4. **Use in React component**:
+
 ```typescript
 const customers = await window.api.db.customers.getAll()
 ```

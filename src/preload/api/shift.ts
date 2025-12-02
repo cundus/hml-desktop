@@ -46,6 +46,23 @@ export interface ShiftFilters {
   toDate?: number
 }
 
+export interface ShiftSummary {
+  shift: CashierShift
+  transactionCount: number
+  totalSales: string
+  totalDiscount: string
+  totalTax: string
+  netSales: string
+  expectedCash: string
+  transactions: {
+    id: string
+    code: string
+    total: string
+    createdAt: Date
+    customerName?: string
+  }[]
+}
+
 export const shiftApi = {
   getCurrentShift: (userId: string) =>
     ipcRenderer.invoke('db:shifts:getCurrentShift', userId) as Promise<
@@ -77,5 +94,8 @@ export const shiftApi = {
     >,
 
   getHistory: (shiftId: string) =>
-    ipcRenderer.invoke('db:shifts:getHistory', shiftId) as Promise<ApiResponse<ShiftHistory[]>>
+    ipcRenderer.invoke('db:shifts:getHistory', shiftId) as Promise<ApiResponse<ShiftHistory[]>>,
+
+  getSummary: (shiftId: string) =>
+    ipcRenderer.invoke('db:shifts:getSummary', shiftId) as Promise<ApiResponse<ShiftSummary | null>>
 }

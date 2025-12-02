@@ -38,13 +38,13 @@ export class ProductLocationService {
       'SELECT * FROM product_location WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: ProductLocation[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductLocation(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -54,7 +54,7 @@ export class ProductLocationService {
   async findById(id: string): Promise<ProductLocation | undefined> {
     const stmt = this.db.prepare('SELECT * FROM product_location WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -72,14 +72,14 @@ export class ProductLocationService {
       'SELECT * FROM product_location WHERE product_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([productId])
-    
+
     const results: ProductLocation[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductLocation(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -91,26 +91,29 @@ export class ProductLocationService {
       'SELECT * FROM product_location WHERE store_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([storeId])
-    
+
     const results: ProductLocation[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductLocation(row))
     }
     stmt.free()
-    
+
     return results
   }
 
   /**
    * Get product location for specific product and store
    */
-  async findByProductAndStore(productId: string, storeId: string): Promise<ProductLocation | undefined> {
+  async findByProductAndStore(
+    productId: string,
+    storeId: string
+  ): Promise<ProductLocation | undefined> {
     const stmt = this.db.prepare(
       'SELECT * FROM product_location WHERE product_id = ? AND store_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([productId, storeId])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -126,14 +129,14 @@ export class ProductLocationService {
   async create(data: CreateProductLocationDto): Promise<ProductLocation> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO product_location (id, product_id, store_id, quantity, reserved_quantity, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id, data.productId, data.storeId, data.quantity ?? 0, data.reservedQuantity ?? 0, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       productId: data.productId,
@@ -153,14 +156,14 @@ export class ProductLocationService {
    */
   async update(id: string, data: UpdateProductLocationDto): Promise<ProductLocation> {
     const now = Date.now()
-    
+
     this.db.run(
       'UPDATE product_location SET quantity = ?, reserved_quantity = ?, updated_at = ? WHERE id = ?',
       [data.quantity, data.reservedQuantity ?? 0, now, id]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Product location not found after update')
@@ -171,10 +174,14 @@ export class ProductLocationService {
   /**
    * Adjust quantity (add or subtract)
    */
-  async adjustQuantity(productId: string, storeId: string, delta: number): Promise<ProductLocation> {
+  async adjustQuantity(
+    productId: string,
+    storeId: string,
+    delta: number
+  ): Promise<ProductLocation> {
     // Find existing location
     let location = await this.findByProductAndStore(productId, storeId)
-    
+
     if (!location) {
       // Create new location if doesn't exist
       location = await this.create({
@@ -191,25 +198,29 @@ export class ProductLocationService {
         reservedQuantity: location.reservedQuantity
       })
     }
-    
+
     return location
   }
 
   /**
    * Reserve quantity
    */
-  async reserveQuantity(productId: string, storeId: string, quantity: number): Promise<ProductLocation> {
+  async reserveQuantity(
+    productId: string,
+    storeId: string,
+    quantity: number
+  ): Promise<ProductLocation> {
     const location = await this.findByProductAndStore(productId, storeId)
-    
+
     if (!location) {
       throw new Error('Product location not found')
     }
-    
+
     const availableQuantity = location.quantity - location.reservedQuantity
     if (availableQuantity < quantity) {
       throw new Error('Insufficient quantity available')
     }
-    
+
     return await this.update(location.id, {
       quantity: location.quantity,
       reservedQuantity: location.reservedQuantity + quantity
@@ -219,13 +230,17 @@ export class ProductLocationService {
   /**
    * Release reserved quantity
    */
-  async releaseReservedQuantity(productId: string, storeId: string, quantity: number): Promise<ProductLocation> {
+  async releaseReservedQuantity(
+    productId: string,
+    storeId: string,
+    quantity: number
+  ): Promise<ProductLocation> {
     const location = await this.findByProductAndStore(productId, storeId)
-    
+
     if (!location) {
       throw new Error('Product location not found')
     }
-    
+
     return await this.update(location.id, {
       quantity: location.quantity,
       reservedQuantity: Math.max(0, location.reservedQuantity - quantity)
@@ -237,14 +252,15 @@ export class ProductLocationService {
    */
   async softDelete(id: string): Promise<ProductLocation> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE product_location SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE product_location SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Product location not found after delete')

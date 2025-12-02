@@ -41,13 +41,13 @@ export class ProductPriceService {
       'SELECT * FROM product_price WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: ProductPrice[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductPrice(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -57,7 +57,7 @@ export class ProductPriceService {
   async findById(id: string): Promise<ProductPrice | undefined> {
     const stmt = this.db.prepare('SELECT * FROM product_price WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -75,14 +75,14 @@ export class ProductPriceService {
       'SELECT * FROM product_price WHERE product_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([productId])
-    
+
     const results: ProductPrice[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductPrice(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -94,26 +94,29 @@ export class ProductPriceService {
       'SELECT * FROM product_price WHERE store_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([storeId])
-    
+
     const results: ProductPrice[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToProductPrice(row))
     }
     stmt.free()
-    
+
     return results
   }
 
   /**
    * Get product price for specific product and store
    */
-  async findByProductAndStore(productId: string, storeId: string): Promise<ProductPrice | undefined> {
+  async findByProductAndStore(
+    productId: string,
+    storeId: string
+  ): Promise<ProductPrice | undefined> {
     const stmt = this.db.prepare(
       'SELECT * FROM product_price WHERE product_id = ? AND store_id = ? AND deleted_at IS NULL'
     )
     stmt.bind([productId, storeId])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -129,14 +132,14 @@ export class ProductPriceService {
   async create(data: CreateProductPriceDto): Promise<ProductPrice> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO product_price (id, product_id, store_id, price, cost, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       [id, data.productId, data.storeId, data.price, data.cost, data.isActive ? 1 : 0, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       productId: data.productId,
@@ -157,14 +160,14 @@ export class ProductPriceService {
    */
   async update(id: string, data: UpdateProductPriceDto): Promise<ProductPrice> {
     const now = Date.now()
-    
+
     this.db.run(
       'UPDATE product_price SET price = ?, cost = ?, is_active = ?, updated_at = ? WHERE id = ?',
       [data.price, data.cost, data.isActive ? 1 : 0, now, id]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Product price not found after update')
@@ -177,14 +180,15 @@ export class ProductPriceService {
    */
   async softDelete(id: string): Promise<ProductPrice> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE product_price SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE product_price SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Product price not found after delete')
@@ -197,14 +201,14 @@ export class ProductPriceService {
    */
   async restore(id: string): Promise<ProductPrice> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE product_price SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE product_price SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Product price not found after restore')

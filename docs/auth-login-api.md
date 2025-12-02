@@ -21,8 +21,8 @@ The backend should implement this contract and derive DB models (users, groups, 
 
 ```jsonc
 {
-  "email": "admin@example.com",  // required, unique user identifier
-  "password": "secret123"        // required, plain text from FE, hash/check on BE
+  "email": "admin@example.com", // required, unique user identifier
+  "password": "secret123" // required, plain text from FE, hash/check on BE
 }
 ```
 
@@ -41,17 +41,17 @@ On successful login, backend must return a **token** and the users **groups** a
 {
   "token": "<jwt-or-session-token>",
   "groups": [
-    "admin",          // machine-readable group IDs (role names)
+    "admin", // machine-readable group IDs (role names)
     "supervisor"
   ],
   "permissions": [
-    "dashboard.view",               // can view home dashboard
-    "sales.view",                   // can open and use sales screen
-    "settings.view",                // can open Settings section
-    "master.branch.manage",         // can manage branches
-    "master.user.manage",           // can manage users
-    "master.customer.manage",       // can manage customers
-    "settings.access-control.manage"// can manage roles & permissions
+    "dashboard.view", // can view home dashboard
+    "sales.view", // can open and use sales screen
+    "settings.view", // can open Settings section
+    "master.branch.manage", // can manage branches
+    "master.user.manage", // can manage users
+    "master.customer.manage", // can manage customers
+    "settings.access-control.manage" // can manage roles & permissions
   ]
 }
 ```

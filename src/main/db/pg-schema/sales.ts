@@ -17,7 +17,7 @@ export const transactions = pgTable('transactions', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })
 
 export const transactionItems = pgTable('transaction_items', {
@@ -28,5 +28,5 @@ export const transactionItems = pgTable('transaction_items', {
   price: numeric('price').notNull(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 })

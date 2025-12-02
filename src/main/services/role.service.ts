@@ -88,10 +88,12 @@ export class RoleService {
     const name = data.name ?? existing.name
     const description = data.description ?? existing.description
 
-    this.db.run(
-      'UPDATE role SET name = ?, description = ?, updated_at = ? WHERE id = ?',
-      [name, description, now, id]
-    )
+    this.db.run('UPDATE role SET name = ?, description = ?, updated_at = ? WHERE id = ?', [
+      name,
+      description,
+      now,
+      id
+    ])
 
     saveDb(this.db)
 

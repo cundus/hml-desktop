@@ -102,7 +102,16 @@ export default function ProductPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
-    defaultValues: { sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', supplierId: '', isService: false, isActive: true }
+    defaultValues: {
+      sku: '',
+      name: '',
+      unit: 'PCS',
+      cost: '',
+      categoryId: '',
+      supplierId: '',
+      isService: false,
+      isActive: true
+    }
   })
 
   useEffect(() => {
@@ -117,7 +126,12 @@ export default function ProductPage(): React.JSX.Element {
           window.api.db.uoms.getAll()
         ])
 
-        if (productsRes.success && categoriesRes.success && suppliersRes.success && uomsRes.success) {
+        if (
+          productsRes.success &&
+          categoriesRes.success &&
+          suppliersRes.success &&
+          uomsRes.success
+        ) {
           const categoryList = categoriesRes.data ?? []
           const categoryMap = new Map(categoryList.map((c) => [c.id, c.name]))
           const supplierList = suppliersRes.data ?? []
@@ -144,7 +158,11 @@ export default function ProductPage(): React.JSX.Element {
           setSuppliers(supplierList)
         } else {
           setError(
-            productsRes.error ?? categoriesRes.error ?? suppliersRes.error ?? uomsRes.error ?? 'Gagal memuat produk'
+            productsRes.error ??
+              categoriesRes.error ??
+              suppliersRes.error ??
+              uomsRes.error ??
+              'Gagal memuat produk'
           )
         }
       } catch {
@@ -158,7 +176,16 @@ export default function ProductPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ sku: '', name: '', unit: 'PCS', cost: '', categoryId: '', supplierId: '', isService: false, isActive: true })
+    reset({
+      sku: '',
+      name: '',
+      unit: 'PCS',
+      cost: '',
+      categoryId: '',
+      supplierId: '',
+      isService: false,
+      isActive: true
+    })
     setDialogOpen(true)
   }
 
@@ -441,7 +468,12 @@ export default function ProductPage(): React.JSX.Element {
               Download Template
             </MenuItem>
           </Menu>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreate}
+            disabled={loading}
+          >
             Tambah Produk
           </Button>
         </Stack>

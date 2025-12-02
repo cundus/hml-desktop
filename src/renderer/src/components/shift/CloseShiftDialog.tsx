@@ -188,7 +188,12 @@ export default function CloseShiftDialog({
             <Button onClick={() => setConfirmStep(false)} disabled={submitting}>
               Kembali
             </Button>
-            <Button onClick={handleSubmit} variant="contained" color="warning" disabled={submitting}>
+            <Button
+              onClick={handleSubmit}
+              variant="contained"
+              color="warning"
+              disabled={submitting}
+            >
               {submitting ? 'Memproses...' : 'Ya, Tutup Shift'}
             </Button>
           </>

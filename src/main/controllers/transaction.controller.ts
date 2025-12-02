@@ -97,19 +97,22 @@ export class TransactionController {
     })
 
     // Get sales summary
-    ipcMain.handle('db:transactions:getSalesSummary', async (_, storeId: string, startDate?: string, endDate?: string) => {
-      try {
-        const start = startDate ? new Date(startDate) : undefined
-        const end = endDate ? new Date(endDate) : undefined
-        const summary = await this.transactionService.getSalesSummary(storeId, start, end)
-        return { success: true, data: summary }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:transactions:getSalesSummary',
+      async (_, storeId: string, startDate?: string, endDate?: string) => {
+        try {
+          const start = startDate ? new Date(startDate) : undefined
+          const end = endDate ? new Date(endDate) : undefined
+          const summary = await this.transactionService.getSalesSummary(storeId, start, end)
+          return { success: true, data: summary }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Soft delete transaction
     ipcMain.handle('db:transactions:delete', async (_, id: string) => {

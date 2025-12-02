@@ -66,10 +66,7 @@ export class SupplierController {
   /**
    * Create new supplier
    */
-  private async create(
-    _event: IpcMainInvokeEvent,
-    data: CreateSupplierDto
-  ): Promise<ApiResponse> {
+  private async create(_event: IpcMainInvokeEvent, data: CreateSupplierDto): Promise<ApiResponse> {
     try {
       const supplier = await this.supplierService.create(data)
       return {

@@ -91,10 +91,7 @@ export class UomController {
   /**
    * Create new UOM
    */
-  private async create(
-    _event: IpcMainInvokeEvent,
-    data: CreateUomDto
-  ): Promise<ApiResponse> {
+  private async create(_event: IpcMainInvokeEvent, data: CreateUomDto): Promise<ApiResponse> {
     try {
       const uom = await this.uomService.create(data)
       return {

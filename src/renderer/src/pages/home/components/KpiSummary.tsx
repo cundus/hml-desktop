@@ -37,10 +37,7 @@ export default function KpiSummary({ items }: KpiSummaryProps): React.JSX.Elemen
   return (
     <Grid container spacing={2} sx={{ mb: 2 }}>
       {items.map((kpi) => (
-        <Grid
-          key={kpi.key}
-          size={{ xs: 12, md: kpi.key === 'inventory-value' ? 12 : 3 }}
-        >
+        <Grid key={kpi.key} size={{ xs: 12, md: kpi.key === 'inventory-value' ? 12 : 3 }}>
           <Paper
             sx={{
               p: 2,
@@ -79,7 +76,11 @@ export default function KpiSummary({ items }: KpiSummaryProps): React.JSX.Elemen
             />
             {kpi.key === 'profit-margin' && (
               <Box sx={{ mt: 1 }}>
-                <LinearProgress variant="determinate" value={24.3} sx={{ height: 6, borderRadius: 3 }} />
+                <LinearProgress
+                  variant="determinate"
+                  value={24.3}
+                  sx={{ height: 6, borderRadius: 3 }}
+                />
               </Box>
             )}
           </Paper>

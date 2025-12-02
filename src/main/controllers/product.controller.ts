@@ -18,13 +18,13 @@ const PRODUCT_EXCEL_COLUMNS: ExcelColumn[] = [
 
 // Excel header to field mapping for import
 const PRODUCT_COLUMN_MAPPING: Record<string, string> = {
-  'SKU': 'sku',
+  SKU: 'sku',
   'Nama Produk': 'name',
-  'Deskripsi': 'description',
-  'Satuan': 'unit',
+  Deskripsi: 'description',
+  Satuan: 'unit',
   'Harga Pokok': 'cost',
   'Kategori ID': 'categoryId',
-  'Aktif': 'isActive'
+  Aktif: 'isActive'
 }
 
 export class ProductController {

@@ -97,17 +97,20 @@ export class StockTransactionController {
     })
 
     // Get stock summary
-    ipcMain.handle('db:stockTransactions:getStockSummary', async (_, productId: string, storeId: string) => {
-      try {
-        const summary = await this.stockTransactionService.getStockSummary(productId, storeId)
-        return { success: true, data: summary }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:stockTransactions:getStockSummary',
+      async (_, productId: string, storeId: string) => {
+        try {
+          const summary = await this.stockTransactionService.getStockSummary(productId, storeId)
+          return { success: true, data: summary }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Soft delete stock transaction
     ipcMain.handle('db:stockTransactions:delete', async (_, id: string) => {

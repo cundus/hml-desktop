@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { AuthService } from '../services/auth.service'
 import { ApiResponse } from '../types/response'

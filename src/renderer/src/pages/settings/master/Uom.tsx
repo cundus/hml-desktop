@@ -93,7 +93,9 @@ export default function UomPage(): React.JSX.Element {
       if (editing) {
         const response = await window.api.db.uoms.update(editing.id, values)
         if (response.success) {
-          setItems((prev) => prev.map((u) => (u.id === editing.id ? { ...response.data, id: response.data.id } : u)))
+          setItems((prev) =>
+            prev.map((u) => (u.id === editing.id ? { ...response.data, id: response.data.id } : u))
+          )
         } else {
           alert(response.error)
           return

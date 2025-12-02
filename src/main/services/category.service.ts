@@ -23,13 +23,13 @@ export class CategoryService {
       'SELECT * FROM category WHERE deleted_at IS NULL ORDER BY name ASC'
     )
     const results: Category[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToCategory(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -39,7 +39,7 @@ export class CategoryService {
   async findById(id: string): Promise<Category | undefined> {
     const stmt = this.db.prepare('SELECT * FROM category WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -55,14 +55,16 @@ export class CategoryService {
   async create(data: CreateCategoryDto): Promise<Category> {
     const id = randomUUID()
     const now = Date.now()
-    
-    this.db.run(
-      'INSERT INTO category (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)',
-      [id, data.name, now, now]
-    )
-    
+
+    this.db.run('INSERT INTO category (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+      id,
+      data.name,
+      now,
+      now
+    ])
+
     saveDb(this.db)
-    
+
     return {
       id,
       name: data.name,
@@ -83,14 +85,15 @@ export class CategoryService {
     }
 
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE category SET name = ?, updated_at = ? WHERE id = ?',
-      [data.name ?? existing.name, now, id]
-    )
-    
+
+    this.db.run('UPDATE category SET name = ?, updated_at = ? WHERE id = ?', [
+      data.name ?? existing.name,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Category not found after update')
@@ -103,14 +106,11 @@ export class CategoryService {
    */
   async softDelete(id: string): Promise<Category> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE category SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE category SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Category not found after delete')
@@ -123,14 +123,11 @@ export class CategoryService {
    */
   async restore(id: string): Promise<Category> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE category SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE category SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Category not found after restore')

@@ -59,7 +59,7 @@ export class TransactionService {
       'SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: Transaction[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const transaction = this.mapRowToTransaction(row)
@@ -67,7 +67,7 @@ export class TransactionService {
       results.push(transaction)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -77,7 +77,7 @@ export class TransactionService {
   async findById(id: string): Promise<Transaction | undefined> {
     const stmt = this.db.prepare('SELECT * FROM transactions WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -95,7 +95,7 @@ export class TransactionService {
   async findByCode(code: string): Promise<Transaction | undefined> {
     const stmt = this.db.prepare('SELECT * FROM transactions WHERE code = ? AND deleted_at IS NULL')
     stmt.bind([code])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -115,7 +115,7 @@ export class TransactionService {
       'SELECT * FROM transactions WHERE store_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([storeId])
-    
+
     const results: Transaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -124,7 +124,7 @@ export class TransactionService {
       results.push(transaction)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -136,7 +136,7 @@ export class TransactionService {
       'SELECT * FROM transactions WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([customerId])
-    
+
     const results: Transaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -145,7 +145,7 @@ export class TransactionService {
       results.push(transaction)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -157,7 +157,7 @@ export class TransactionService {
       'SELECT * FROM transactions WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([userId])
-    
+
     const results: Transaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -166,7 +166,7 @@ export class TransactionService {
       results.push(transaction)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -178,14 +178,14 @@ export class TransactionService {
       'SELECT * FROM transaction_items WHERE transaction_id = ? ORDER BY created_at ASC'
     )
     stmt.bind([transactionId])
-    
+
     const results: TransactionItem[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToTransactionItem(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -195,7 +195,7 @@ export class TransactionService {
   async create(data: CreateTransactionDto): Promise<Transaction> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     // Insert transaction
     this.db.run(
       'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -213,7 +213,7 @@ export class TransactionService {
         now
       ]
     )
-    
+
     // Insert transaction items
     for (const item of data.items) {
       const itemId = randomUUID()
@@ -222,9 +222,9 @@ export class TransactionService {
         [itemId, id, item.productId, item.quantity, item.price, now, now]
       )
     }
-    
+
     saveDb(this.db)
-    
+
     const created = await this.findById(id)
     if (!created) {
       throw new Error('Transaction not found after creation')
@@ -237,14 +237,15 @@ export class TransactionService {
    */
   async softDelete(id: string): Promise<Transaction> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Transaction not found after delete')
@@ -257,14 +258,11 @@ export class TransactionService {
    */
   async restore(id: string): Promise<Transaction> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE transactions SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE transactions SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Transaction not found after restore')
@@ -275,28 +273,33 @@ export class TransactionService {
   /**
    * Get sales summary for a store
    */
-  async getSalesSummary(storeId: string, startDate?: Date, endDate?: Date): Promise<{
+  async getSalesSummary(
+    storeId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<{
     totalTransactions: number
     totalRevenue: string
     totalDiscount: string
     totalTax: string
   }> {
-    let query = 'SELECT COUNT(*) as count, SUM(CAST(total AS REAL)) as revenue, SUM(CAST(discount AS REAL)) as discount, SUM(CAST(tax AS REAL)) as tax FROM transactions WHERE store_id = ? AND deleted_at IS NULL'
+    let query =
+      'SELECT COUNT(*) as count, SUM(CAST(total AS REAL)) as revenue, SUM(CAST(discount AS REAL)) as discount, SUM(CAST(tax AS REAL)) as tax FROM transactions WHERE store_id = ? AND deleted_at IS NULL'
     const params: any[] = [storeId]
-    
+
     if (startDate) {
       query += ' AND created_at >= ?'
       params.push(startDate.getTime())
     }
-    
+
     if (endDate) {
       query += ' AND created_at <= ?'
       params.push(endDate.getTime())
     }
-    
+
     const stmt = this.db.prepare(query)
     stmt.bind(params)
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -308,7 +311,7 @@ export class TransactionService {
       }
     }
     stmt.free()
-    
+
     return {
       totalTransactions: 0,
       totalRevenue: '0',

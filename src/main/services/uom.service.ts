@@ -30,9 +30,7 @@ export class UomService {
    * Get all active (non-deleted) UOMs
    */
   async findAll(): Promise<Uom[]> {
-    const stmt = this.db.prepare(
-      'SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC'
-    )
+    const stmt = this.db.prepare('SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC')
     const results: Uom[] = []
 
     while (stmt.step()) {
@@ -83,10 +81,13 @@ export class UomService {
     const id = randomUUID()
     const now = Date.now()
 
-    this.db.run(
-      'INSERT INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, data.code.toUpperCase(), data.name, now, now]
-    )
+    this.db.run('INSERT INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
+      id,
+      data.code.toUpperCase(),
+      data.name,
+      now,
+      now
+    ])
 
     saveDb(this.db)
 
@@ -140,10 +141,7 @@ export class UomService {
   async softDelete(id: string): Promise<Uom> {
     const now = Date.now()
 
-    this.db.run(
-      'UPDATE uom SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
+    this.db.run('UPDATE uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
 
     saveDb(this.db)
 
@@ -160,10 +158,7 @@ export class UomService {
   async restore(id: string): Promise<Uom> {
     const now = Date.now()
 
-    this.db.run(
-      'UPDATE uom SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
+    this.db.run('UPDATE uom SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
 
     saveDb(this.db)
 

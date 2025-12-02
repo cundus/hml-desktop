@@ -376,8 +376,12 @@ export function CloudSync(): React.JSX.Element {
                           <td className="px-2 py-1 border-b border-gray-100 font-mono text-[11px]">
                             {entity}
                           </td>
-                          <td className="px-2 py-1 border-b border-gray-100 text-right">{stats.pulled}</td>
-                          <td className="px-2 py-1 border-b border-gray-100 text-right">{stats.pushed}</td>
+                          <td className="px-2 py-1 border-b border-gray-100 text-right">
+                            {stats.pulled}
+                          </td>
+                          <td className="px-2 py-1 border-b border-gray-100 text-right">
+                            {stats.pushed}
+                          </td>
                           <td className="px-2 py-1 border-b border-gray-100 text-right text-orange-600">
                             {stats.conflicts}
                           </td>

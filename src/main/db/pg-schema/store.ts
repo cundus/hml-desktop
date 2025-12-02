@@ -12,7 +12,7 @@ export const stores = pgTable('store', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const customers = pgTable('customer', {
@@ -25,7 +25,7 @@ export const customers = pgTable('customer', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const customerCategories = pgTable('customer_category', {
@@ -35,5 +35,5 @@ export const customerCategories = pgTable('customer_category', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })

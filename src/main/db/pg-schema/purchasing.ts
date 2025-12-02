@@ -15,7 +15,7 @@ export const purchaseOrders = pgTable('purchase_order', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const purchaseOrderItems = pgTable('purchase_order_item', {
@@ -26,5 +26,5 @@ export const purchaseOrderItems = pgTable('purchase_order_item', {
   cost: numeric('cost').notNull(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 })

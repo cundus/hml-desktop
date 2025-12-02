@@ -35,13 +35,13 @@ export class BatchService {
       'SELECT * FROM batch WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: Batch[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToBatch(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -51,7 +51,7 @@ export class BatchService {
   async findById(id: string): Promise<Batch | undefined> {
     const stmt = this.db.prepare('SELECT * FROM batch WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -67,7 +67,7 @@ export class BatchService {
   async findByCode(code: string): Promise<Batch | undefined> {
     const stmt = this.db.prepare('SELECT * FROM batch WHERE code = ? AND deleted_at IS NULL')
     stmt.bind([code])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -85,14 +85,14 @@ export class BatchService {
       'SELECT * FROM batch WHERE product_id = ? AND deleted_at IS NULL ORDER BY expiry_date ASC'
     )
     stmt.bind([productId])
-    
+
     const results: Batch[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToBatch(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -100,19 +100,19 @@ export class BatchService {
    * Get expiring batches (within specified days)
    */
   async findExpiring(days: number): Promise<Batch[]> {
-    const futureDate = Date.now() + (days * 24 * 60 * 60 * 1000)
+    const futureDate = Date.now() + days * 24 * 60 * 60 * 1000
     const stmt = this.db.prepare(
       'SELECT * FROM batch WHERE expiry_date IS NOT NULL AND expiry_date <= ? AND deleted_at IS NULL ORDER BY expiry_date ASC'
     )
     stmt.bind([futureDate])
-    
+
     const results: Batch[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToBatch(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -122,14 +122,14 @@ export class BatchService {
   async create(data: CreateBatchDto): Promise<Batch> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO batch (id, product_id, code, expiry_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       [id, data.productId, data.code, data.expiryDate ? data.expiryDate.getTime() : null, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       productId: data.productId,
@@ -147,14 +147,16 @@ export class BatchService {
    */
   async update(id: string, data: UpdateBatchDto): Promise<Batch> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE batch SET code = ?, expiry_date = ?, updated_at = ? WHERE id = ?',
-      [data.code, data.expiryDate ? data.expiryDate.getTime() : null, now, id]
-    )
-    
+
+    this.db.run('UPDATE batch SET code = ?, expiry_date = ?, updated_at = ? WHERE id = ?', [
+      data.code,
+      data.expiryDate ? data.expiryDate.getTime() : null,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Batch not found after update')
@@ -167,14 +169,11 @@ export class BatchService {
    */
   async softDelete(id: string): Promise<Batch> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE batch SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE batch SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Batch not found after delete')

@@ -77,26 +77,13 @@ export async function seedAdmin(db: Database): Promise<void> {
   // Ensure admin role exists
   db.run(
     'INSERT OR IGNORE INTO role (id, name, description, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
-    [
-      adminRoleId,
-      'Admin',
-      'Default administrator role with full access',
-      now,
-      now
-    ]
+    [adminRoleId, 'Admin', 'Default administrator role with full access', now, now]
   )
 
   // Ensure admin user exists
   db.run(
     'INSERT OR IGNORE INTO user (id, name, email, password, store_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, NULL, ?, ?, NULL, NULL, NULL)',
-    [
-      adminUserId,
-      'Admin',
-      'admin@example.com',
-      'admin123',
-      now,
-      now
-    ]
+    [adminUserId, 'Admin', 'admin@example.com', 'admin123', now, now]
   )
 
   // Ensure user_role mapping exists (admin user -> admin role)

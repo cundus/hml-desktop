@@ -75,14 +75,15 @@ export default function InventoryDashboard(): React.JSX.Element {
       setError(null)
 
       // Fetch all required data
-      const [productsRes, storesRes, locationsRes, batchesRes, transactionsRes] =
-        await Promise.all([
+      const [productsRes, storesRes, locationsRes, batchesRes, transactionsRes] = await Promise.all(
+        [
           window.api.db.products.getAll(),
           window.api.db.stores.getAll(),
           window.api.db.productLocations.getAll(),
           window.api.db.batches.getExpiring(30),
           window.api.db.stockTransactions.getAll()
-        ])
+        ]
+      )
 
       if (
         !productsRes.success ||
@@ -319,9 +320,7 @@ export default function InventoryDashboard(): React.JSX.Element {
                   <TableRow key={index}>
                     <TableCell>{item.productName}</TableCell>
                     <TableCell>{item.storeName}</TableCell>
-                    <TableCell align="right">
-                      {item.quantity - item.reservedQuantity}
-                    </TableCell>
+                    <TableCell align="right">{item.quantity - item.reservedQuantity}</TableCell>
                     <TableCell align="right">{item.reservedQuantity}</TableCell>
                   </TableRow>
                 ))}

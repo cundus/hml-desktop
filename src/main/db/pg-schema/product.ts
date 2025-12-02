@@ -16,7 +16,7 @@ export const products = pgTable('product', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const categories = pgTable('category', {
@@ -26,7 +26,7 @@ export const categories = pgTable('category', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const suppliers = pgTable('supplier', {
@@ -38,7 +38,7 @@ export const suppliers = pgTable('supplier', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const productPrices = pgTable('product_price', {
@@ -53,7 +53,7 @@ export const productPrices = pgTable('product_price', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })
 
 export const batches = pgTable('batch', {
@@ -65,7 +65,7 @@ export const batches = pgTable('batch', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const uom = pgTable('uom', {
@@ -77,5 +77,5 @@ export const uom = pgTable('uom', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })

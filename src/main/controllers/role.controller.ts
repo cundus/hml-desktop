@@ -40,10 +40,7 @@ export class RoleController {
   /**
    * Create new role
    */
-  private async create(
-    _event: IpcMainInvokeEvent,
-    data: CreateRoleDto
-  ): Promise<ApiResponse> {
+  private async create(_event: IpcMainInvokeEvent, data: CreateRoleDto): Promise<ApiResponse> {
     try {
       const role = await this.roleService.create(data)
       return {

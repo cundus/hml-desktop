@@ -11,47 +11,47 @@
 
 ### ✅ Master Data (5 Services)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 1 | **CategoryService** | `category` | CRUD, soft delete, restore | ✅ Complete |
-| 2 | **SupplierService** | `supplier` | CRUD, soft delete, restore, search | ✅ Complete |
-| 3 | **StoreService** | `store` | CRUD, soft delete, restore, search by type | ✅ Complete |
-| 4 | **CustomerCategoryService** | `customer_category` | CRUD, soft delete, restore | ✅ Complete |
-| 5 | **CustomerService** | `customer` | CRUD, soft delete, restore, search, filter by category | ✅ Complete |
+| #   | Service                     | Table               | Features                                               | Status      |
+| --- | --------------------------- | ------------------- | ------------------------------------------------------ | ----------- |
+| 1   | **CategoryService**         | `category`          | CRUD, soft delete, restore                             | ✅ Complete |
+| 2   | **SupplierService**         | `supplier`          | CRUD, soft delete, restore, search                     | ✅ Complete |
+| 3   | **StoreService**            | `store`             | CRUD, soft delete, restore, search by type             | ✅ Complete |
+| 4   | **CustomerCategoryService** | `customer_category` | CRUD, soft delete, restore                             | ✅ Complete |
+| 5   | **CustomerService**         | `customer`          | CRUD, soft delete, restore, search, filter by category | ✅ Complete |
 
 ### ✅ Core Entities (2 Services)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 6 | **UserService** | `user` | CRUD, soft delete, hard delete, restore, find by email | ✅ Complete |
-| 7 | **ProductService** | `product` | CRUD, soft delete, restore, search, find by SKU, toggle active | ✅ Complete |
+| #   | Service            | Table     | Features                                                       | Status      |
+| --- | ------------------ | --------- | -------------------------------------------------------------- | ----------- |
+| 6   | **UserService**    | `user`    | CRUD, soft delete, hard delete, restore, find by email         | ✅ Complete |
+| 7   | **ProductService** | `product` | CRUD, soft delete, restore, search, find by SKU, toggle active | ✅ Complete |
 
 ### ✅ Inventory Management (4 Services)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 8 | **ProductPriceService** | `product_price` | CRUD, soft delete, restore, find by product/store | ✅ Complete |
-| 9 | **ProductLocationService** | `product_location` | CRUD, adjust quantity, reserve/release quantity | ✅ Complete |
-| 10 | **BatchService** | `batch` | CRUD, soft delete, find by product, find expiring | ✅ Complete |
-| 11 | **StockTransactionService** | `stock_transaction` | Create, soft delete, find by type/reference, stock summary | ✅ Complete |
+| #   | Service                     | Table               | Features                                                   | Status      |
+| --- | --------------------------- | ------------------- | ---------------------------------------------------------- | ----------- |
+| 8   | **ProductPriceService**     | `product_price`     | CRUD, soft delete, restore, find by product/store          | ✅ Complete |
+| 9   | **ProductLocationService**  | `product_location`  | CRUD, adjust quantity, reserve/release quantity            | ✅ Complete |
+| 10  | **BatchService**            | `batch`             | CRUD, soft delete, find by product, find expiring          | ✅ Complete |
+| 11  | **StockTransactionService** | `stock_transaction` | Create, soft delete, find by type/reference, stock summary | ✅ Complete |
 
 ### ✅ Sales/POS (1 Service)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 12 | **TransactionService** | `transactions` + `transaction_items` | Create with items, soft delete, restore, sales summary | ✅ Complete |
+| #   | Service                | Table                                | Features                                               | Status      |
+| --- | ---------------------- | ------------------------------------ | ------------------------------------------------------ | ----------- |
+| 12  | **TransactionService** | `transactions` + `transaction_items` | Create with items, soft delete, restore, sales summary | ✅ Complete |
 
 ### ✅ Purchasing (1 Service)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 13 | **PurchaseOrderService** | `purchase_order` + `purchase_order_item` | Create with items, update status, soft delete, find by status | ✅ Complete |
+| #   | Service                  | Table                                    | Features                                                      | Status      |
+| --- | ------------------------ | ---------------------------------------- | ------------------------------------------------------------- | ----------- |
+| 13  | **PurchaseOrderService** | `purchase_order` + `purchase_order_item` | Create with items, update status, soft delete, find by status | ✅ Complete |
 
 ### ✅ System Services (1 Service)
 
-| # | Service | Table | Features | Status |
-|---|---------|-------|----------|--------|
-| 14 | **SyncService** | `sync_metadata` | Full bidirectional sync, pull/push, conflict resolution | ✅ Complete |
+| #   | Service         | Table           | Features                                                | Status      |
+| --- | --------------- | --------------- | ------------------------------------------------------- | ----------- |
+| 14  | **SyncService** | `sync_metadata` | Full bidirectional sync, pull/push, conflict resolution | ✅ Complete |
 
 ---
 
@@ -94,28 +94,34 @@ All tables created in `localDb.ts`:
 ### Advanced Features (Select Services)
 
 **ProductLocationService**:
+
 - `adjustQuantity()` - Add/subtract inventory
 - `reserveQuantity()` - Reserve stock for orders
 - `releaseReservedQuantity()` - Release reservations
 
 **StockTransactionService**:
+
 - `getStockSummary()` - Calculate total in/out/current stock
 - Support for multiple transaction types (INBOUND, OUTBOUND, TRANSFER, SALE, etc.)
 
 **TransactionService**:
+
 - `getSalesSummary()` - Revenue, discount, tax totals
 - Automatic transaction item creation
 - Date range filtering
 
 **PurchaseOrderService**:
+
 - Status workflow (DRAFT → ORDERED → RECEIVED → CANCELLED)
 - Automatic PO item creation
 
 **BatchService**:
+
 - `findExpiring()` - Get batches expiring within N days
 - Expiry date tracking
 
 **SyncService**:
+
 - Full bidirectional sync (local ↔ cloud)
 - Delta sync (only changed records)
 - Conflict resolution (last write wins)
@@ -157,7 +163,7 @@ Create IPC controllers for the 6 new services:
 // Example structure
 export class ProductPriceController {
   constructor(private service: ProductPriceService) {}
-  
+
   registerHandlers(): void {
     ipcMain.handle('db:productPrices:getAll', ...)
     ipcMain.handle('db:productPrices:getById', ...)
@@ -213,10 +219,19 @@ Add new entities to sync:
 
 ```typescript
 const entities = [
-  'category', 'supplier', 'store', 'customer_category', 'customer',
-  'user', 'product',
-  'product_price', 'product_location', 'batch', 'stock_transaction',
-  'transactions', 'purchase_order'
+  'category',
+  'supplier',
+  'store',
+  'customer_category',
+  'customer',
+  'user',
+  'product',
+  'product_price',
+  'product_location',
+  'batch',
+  'stock_transaction',
+  'transactions',
+  'purchase_order'
 ]
 ```
 

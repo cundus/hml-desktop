@@ -25,13 +25,13 @@ export class SupplierService {
       'SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC'
     )
     const results: Supplier[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToSupplier(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -41,7 +41,7 @@ export class SupplierService {
   async findById(id: string): Promise<Supplier | undefined> {
     const stmt = this.db.prepare('SELECT * FROM supplier WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -57,14 +57,14 @@ export class SupplierService {
   async create(data: CreateSupplierDto): Promise<Supplier> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO supplier (id, name, phone, address, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
       [id, data.name, data.phone ?? null, data.address ?? null, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       name: data.name,
@@ -87,14 +87,20 @@ export class SupplierService {
     }
 
     const now = Date.now()
-    
+
     this.db.run(
       'UPDATE supplier SET name = ?, phone = ?, address = ?, updated_at = ? WHERE id = ?',
-      [data.name ?? existing.name, data.phone ?? existing.phone ?? null, data.address ?? existing.address ?? null, now, id]
+      [
+        data.name ?? existing.name,
+        data.phone ?? existing.phone ?? null,
+        data.address ?? existing.address ?? null,
+        now,
+        id
+      ]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Supplier not found after update')
@@ -107,14 +113,11 @@ export class SupplierService {
    */
   async softDelete(id: string): Promise<Supplier> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE supplier SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE supplier SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Supplier not found after delete')
@@ -127,14 +130,11 @@ export class SupplierService {
    */
   async restore(id: string): Promise<Supplier> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE supplier SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE supplier SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Supplier not found after restore')

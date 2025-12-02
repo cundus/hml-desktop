@@ -9,7 +9,7 @@ const api = {
       console.error('Failed to open master customer window', error)
     })
   },
-  
+
   // Database API - organized by feature
   db
 }

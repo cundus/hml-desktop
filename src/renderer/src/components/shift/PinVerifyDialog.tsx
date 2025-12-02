@@ -124,11 +124,7 @@ export default function PinVerifyDialog({
         <Button onClick={onClose} disabled={verifying}>
           Batal
         </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={verifying || pin.length < 4}
-        >
+        <Button onClick={handleSubmit} variant="contained" disabled={verifying || pin.length < 4}>
           {verifying ? 'Memverifikasi...' : 'Verifikasi'}
         </Button>
       </DialogActions>

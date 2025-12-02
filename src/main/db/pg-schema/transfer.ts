@@ -12,7 +12,7 @@ export const transferRequests = pgTable('transfer_request', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })
 
 export const transferItems = pgTable('transfer_item', {
@@ -21,5 +21,5 @@ export const transferItems = pgTable('transfer_item', {
   productId: text('product_id').notNull(),
   quantity: integer('quantity').notNull(),
 
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })

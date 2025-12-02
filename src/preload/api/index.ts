@@ -9,7 +9,14 @@ export * from './sync'
 export * from './shift'
 
 // Re-export for convenience
-import { categoryApi, supplierApi, storeApi, customerCategoryApi, customerApi, uomApi } from './master-data'
+import {
+  categoryApi,
+  supplierApi,
+  storeApi,
+  customerCategoryApi,
+  customerApi,
+  uomApi
+} from './master-data'
 import {
   userApi,
   productApi,
@@ -39,9 +46,9 @@ export const db = {
   products: productApi,
   roles: roleApi,
   userRoles: userRoleApi,
-   permissions: permissionApi,
-   rolePermissions: rolePermissionApi,
-   auth: authApi,
+  permissions: permissionApi,
+  rolePermissions: rolePermissionApi,
+  auth: authApi,
 
   // Inventory
   productPrices: productPriceApi,

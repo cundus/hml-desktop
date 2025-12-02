@@ -31,6 +31,7 @@ The Cloud Sync system enables bidirectional synchronization between local SQLite
 ### Sync Flow
 
 #### 1. Initial Sync (First Launch)
+
 ```
 Cloud → Local (Pull Only)
 - Pull all active records from cloud
@@ -39,6 +40,7 @@ Cloud → Local (Pull Only)
 ```
 
 #### 2. Full Sync (Manual Button)
+
 ```
 Step 1: Pull (Cloud → Local)
 - Fetch records updated after last sync
@@ -52,6 +54,7 @@ Step 2: Push (Local → Cloud)
 ```
 
 #### 3. Pull Only
+
 ```
 Cloud → Local
 - Download new/updated records
@@ -59,6 +62,7 @@ Cloud → Local
 ```
 
 #### 4. Push Only
+
 ```
 Local → Cloud
 - Upload unsynced local changes
@@ -70,12 +74,14 @@ Local → Cloud
 **Strategy: Last Write Wins**
 
 When both local and cloud have changes to the same record:
+
 - Compare `updatedAt` timestamps
 - Keep the most recent version
 - Discard the older version
 - Increment conflict counter
 
 Example:
+
 ```typescript
 if (cloudRecord.updatedAt > localRecord.updatedAt) {
   // Cloud wins - update local
@@ -91,15 +97,15 @@ if (cloudRecord.updatedAt > localRecord.updatedAt) {
 ### Main Process (SyncService)
 
 #### `initCloudConnection(cloudDatabaseUrl: string)`
+
 Initialize connection to cloud PostgreSQL database.
 
 ```typescript
-await syncService.initCloudConnection(
-  'postgresql://user:pass@host:5432/db'
-)
+await syncService.initCloudConnection('postgresql://user:pass@host:5432/db')
 ```
 
 #### `fullSync()`
+
 Perform full bidirectional sync (pull + push).
 
 ```typescript
@@ -108,6 +114,7 @@ const result = await syncService.fullSync()
 ```
 
 #### `pullFromCloud()`
+
 Pull data from cloud to local.
 
 ```typescript
@@ -116,6 +123,7 @@ const result = await syncService.pullFromCloud()
 ```
 
 #### `pushToCloud()`
+
 Push local data to cloud.
 
 ```typescript
@@ -124,6 +132,7 @@ const result = await syncService.pushToCloud()
 ```
 
 #### `initialSync()`
+
 First-time sync (pull only).
 
 ```typescript
@@ -132,6 +141,7 @@ const result = await syncService.initialSync()
 ```
 
 #### `getSyncStatus()`
+
 Get current sync status.
 
 ```typescript
@@ -173,7 +183,7 @@ await window.api.db.sync.getStatus()
 useEffect(() => {
   const cloudUrl = localStorage.getItem('cloudDatabaseUrl')
   if (cloudUrl) {
-    window.api.db.sync.connect(cloudUrl).then(response => {
+    window.api.db.sync.connect(cloudUrl).then((response) => {
       if (response.success) {
         // Perform initial sync
         window.api.db.sync.initialSync()
@@ -198,7 +208,7 @@ const handleSync = async () => {
   }
 }
 
-<button onClick={handleSync} disabled={syncing}>
+;<button onClick={handleSync} disabled={syncing}>
   {syncing ? 'Syncing...' : 'Sync Now'}
 </button>
 ```
@@ -207,12 +217,15 @@ const handleSync = async () => {
 
 ```typescript
 useEffect(() => {
-  const interval = setInterval(async () => {
-    const status = await window.api.db.sync.getStatus()
-    if (status.data?.isCloudConnected) {
-      await window.api.db.sync.fullSync()
-    }
-  }, 5 * 60 * 1000) // 5 minutes
+  const interval = setInterval(
+    async () => {
+      const status = await window.api.db.sync.getStatus()
+      if (status.data?.isCloudConnected) {
+        await window.api.db.sync.fullSync()
+      }
+    },
+    5 * 60 * 1000
+  ) // 5 minutes
 
   return () => clearInterval(interval)
 }, [])
@@ -238,9 +251,7 @@ useEffect(() => {
 
 return (
   <div className="sync-badge">
-    {unsyncedCount > 0 && (
-      <span className="badge">{unsyncedCount} unsynced</span>
-    )}
+    {unsyncedCount > 0 && <span className="badge">{unsyncedCount} unsynced</span>}
   </div>
 )
 ```
@@ -316,6 +327,7 @@ console.log(`Conflicts: ${result.conflicts}`)
 ## Security Best Practices
 
 1. **Encrypt Connection Strings**
+
    ```typescript
    // Store encrypted in electron-store
    const encryptedUrl = encrypt(cloudDatabaseUrl)
@@ -323,6 +335,7 @@ console.log(`Conflicts: ${result.conflicts}`)
    ```
 
 2. **Use SSL/TLS**
+
    ```
    postgresql://user:pass@host:5432/db?sslmode=require
    ```
@@ -340,30 +353,39 @@ console.log(`Conflicts: ${result.conflicts}`)
 ### Common Issues
 
 #### 1. Connection Timeout
+
 ```
 Error: Connection timeout
 ```
+
 **Solution**: Check network connectivity, verify cloud URL
 
 #### 2. Sync Conflicts
+
 ```
 Warning: 5 conflicts detected
 ```
+
 **Solution**: Normal behavior - last write wins. Review conflict logs.
 
 #### 3. Unsynced Records Growing
+
 ```
 Status: 1000+ unsynced records
 ```
+
 **Solution**:
+
 - Check cloud connectivity
 - Perform manual sync
 - Review error logs
 
 #### 4. Device ID Mismatch
+
 ```
 Error: Device ID not found
 ```
+
 **Solution**: Device ID stored in environment. Regenerate if needed.
 
 ## Advanced Features
@@ -421,6 +443,7 @@ for (const model of models) {
 ## Support
 
 For issues or questions:
+
 1. Check error logs in console
 2. Review sync status
 3. Verify cloud connectivity

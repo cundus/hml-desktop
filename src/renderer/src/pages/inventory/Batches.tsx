@@ -96,7 +96,7 @@ export default function BatchesPage(): React.JSX.Element {
 
         setItems(enrichedBatches)
         setProducts(productsRes.data ?? [])
-        
+
         if (expiringRes.success) {
           const enrichedExpiring = (expiringRes.data ?? []).map((batch) => ({
             ...batch,

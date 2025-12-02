@@ -10,5 +10,5 @@ export const auditLogs = pgTable('audit_log', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })

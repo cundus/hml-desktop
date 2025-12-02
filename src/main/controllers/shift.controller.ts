@@ -91,4 +91,13 @@ export function registerShiftHandlers(service: ShiftService): void {
       return { success: false, error: (error as Error).message }
     }
   })
+
+  ipcMain.handle('db:shifts:getSummary', async (_, shiftId: string) => {
+    try {
+      const data = await service.getShiftSummary(shiftId)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
+  })
 }

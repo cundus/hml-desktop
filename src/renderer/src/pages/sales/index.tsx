@@ -18,7 +18,12 @@ import ProductBrowser, { type Product } from './components/ProductBrowser'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
-import { OpenShiftDialog, CloseShiftDialog, PinVerifyDialog } from '../../components/shift'
+import {
+  OpenShiftDialog,
+  CloseShiftDialog,
+  PinVerifyDialog,
+  ShiftSettlementDialog
+} from '../../components/shift'
 import { useShift } from '@renderer/hooks/useShift'
 import useAuth from '../../hooks/useAuth'
 
@@ -27,6 +32,7 @@ export default function SalesPage(): React.JSX.Element {
   const { currentShift, hasOpenShift, isLoading: shiftLoading, openShift, closeShift } = useShift()
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false)
   const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false)
+  const [settlementDialogOpen, setSettlementDialogOpen] = useState(false)
   const [pinVerified, setPinVerified] = useState(false)
   const [showPinDialog, setShowPinDialog] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -359,6 +365,9 @@ export default function SalesPage(): React.JSX.Element {
               size="small"
               variant="outlined"
             />
+            <Button variant="outlined" size="small" onClick={() => setSettlementDialogOpen(true)}>
+              Ringkasan
+            </Button>
             <Button
               variant="outlined"
               color="warning"
@@ -502,6 +511,16 @@ export default function SalesPage(): React.JSX.Element {
           onClose={() => setCloseShiftDialogOpen(false)}
           onConfirm={closeShift}
           initialCash={currentShift?.initialCash ?? '0'}
+        />
+
+        <ShiftSettlementDialog
+          open={settlementDialogOpen}
+          shiftId={currentShift?.id ?? null}
+          onClose={() => setSettlementDialogOpen(false)}
+          onProceedToClose={() => {
+            setSettlementDialogOpen(false)
+            setCloseShiftDialogOpen(true)
+          }}
         />
       </Box>
     </Box>

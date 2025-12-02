@@ -93,17 +93,13 @@ export default function CustomerPage(): React.JSX.Element {
             phone: c.phone,
             address: c.address,
             categoryId: c.categoryId,
-            categoryName: c.categoryId ? categoryMap.get(c.categoryId) ?? '' : ''
+            categoryName: c.categoryId ? (categoryMap.get(c.categoryId) ?? '') : ''
           }))
 
           setItems(customers)
           setCategories(categoryList)
         } else {
-          setError(
-            customersRes.error ??
-              categoriesRes.error ??
-              'Gagal memuat pelanggan'
-          )
+          setError(customersRes.error ?? categoriesRes.error ?? 'Gagal memuat pelanggan')
         }
       } catch {
         setError('Gagal memuat pelanggan')
@@ -148,10 +144,9 @@ export default function CustomerPage(): React.JSX.Element {
         const response = await window.api.db.customers.update(editing.id, payload)
         if (response.success && response.data) {
           const updated = response.data
-          const categoryName =
-            updated.categoryId
-              ? categories.find((c) => c.id === updated.categoryId)?.name ?? ''
-              : ''
+          const categoryName = updated.categoryId
+            ? (categories.find((c) => c.id === updated.categoryId)?.name ?? '')
+            : ''
 
           setItems((prev) =>
             prev.map((c) =>
@@ -175,10 +170,9 @@ export default function CustomerPage(): React.JSX.Element {
         const response = await window.api.db.customers.create(payload)
         if (response.success && response.data) {
           const created = response.data
-          const categoryName =
-            created.categoryId
-              ? categories.find((c) => c.id === created.categoryId)?.name ?? ''
-              : ''
+          const categoryName = created.categoryId
+            ? (categories.find((c) => c.id === created.categoryId)?.name ?? '')
+            : ''
 
           setItems((prev) => [
             ...prev,

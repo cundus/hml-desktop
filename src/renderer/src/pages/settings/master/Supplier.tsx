@@ -199,12 +199,7 @@ export default function SupplierPage(): React.JSX.Element {
               error={!!errors.name}
               helperText={errors.name?.message}
             />
-            <TextField
-              {...register('phone')}
-              label="Telepon"
-              fullWidth
-              margin="normal"
-            />
+            <TextField {...register('phone')} label="Telepon" fullWidth margin="normal" />
             <TextField
               {...register('address')}
               label="Alamat"

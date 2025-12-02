@@ -66,10 +66,7 @@ export class CategoryController {
   /**
    * Create new category
    */
-  private async create(
-    _event: IpcMainInvokeEvent,
-    data: CreateCategoryDto
-  ): Promise<ApiResponse> {
+  private async create(_event: IpcMainInvokeEvent, data: CreateCategoryDto): Promise<ApiResponse> {
     try {
       const category = await this.categoryService.create(data)
       return {

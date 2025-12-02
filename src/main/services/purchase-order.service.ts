@@ -59,7 +59,7 @@ export class PurchaseOrderService {
       'SELECT * FROM purchase_order WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: PurchaseOrder[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const po = this.mapRowToPurchaseOrder(row)
@@ -67,7 +67,7 @@ export class PurchaseOrderService {
       results.push(po)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -77,7 +77,7 @@ export class PurchaseOrderService {
   async findById(id: string): Promise<PurchaseOrder | undefined> {
     const stmt = this.db.prepare('SELECT * FROM purchase_order WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -93,9 +93,11 @@ export class PurchaseOrderService {
    * Get purchase order by code
    */
   async findByCode(code: string): Promise<PurchaseOrder | undefined> {
-    const stmt = this.db.prepare('SELECT * FROM purchase_order WHERE code = ? AND deleted_at IS NULL')
+    const stmt = this.db.prepare(
+      'SELECT * FROM purchase_order WHERE code = ? AND deleted_at IS NULL'
+    )
     stmt.bind([code])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -115,7 +117,7 @@ export class PurchaseOrderService {
       'SELECT * FROM purchase_order WHERE supplier_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([supplierId])
-    
+
     const results: PurchaseOrder[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -124,7 +126,7 @@ export class PurchaseOrderService {
       results.push(po)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -136,7 +138,7 @@ export class PurchaseOrderService {
       'SELECT * FROM purchase_order WHERE store_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([storeId])
-    
+
     const results: PurchaseOrder[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -145,7 +147,7 @@ export class PurchaseOrderService {
       results.push(po)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -157,7 +159,7 @@ export class PurchaseOrderService {
       'SELECT * FROM purchase_order WHERE status = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([status])
-    
+
     const results: PurchaseOrder[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
@@ -166,7 +168,7 @@ export class PurchaseOrderService {
       results.push(po)
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -178,14 +180,14 @@ export class PurchaseOrderService {
       'SELECT * FROM purchase_order_item WHERE po_id = ? ORDER BY created_at ASC'
     )
     stmt.bind([poId])
-    
+
     const results: PurchaseOrderItem[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToPurchaseOrderItem(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -195,22 +197,13 @@ export class PurchaseOrderService {
   async create(data: CreatePurchaseOrderDto): Promise<PurchaseOrder> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     // Insert purchase order
     this.db.run(
       'INSERT INTO purchase_order (id, code, supplier_id, store_id, status, total, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        id,
-        data.code,
-        data.supplierId,
-        data.storeId,
-        data.status ?? 'DRAFT',
-        data.total,
-        now,
-        now
-      ]
+      [id, data.code, data.supplierId, data.storeId, data.status ?? 'DRAFT', data.total, now, now]
     )
-    
+
     // Insert purchase order items
     for (const item of data.items) {
       const itemId = randomUUID()
@@ -219,9 +212,9 @@ export class PurchaseOrderService {
         [itemId, id, item.productId, item.quantity, item.cost, now, now]
       )
     }
-    
+
     saveDb(this.db)
-    
+
     const created = await this.findById(id)
     if (!created) {
       throw new Error('Purchase order not found after creation')
@@ -234,24 +227,21 @@ export class PurchaseOrderService {
    */
   async update(id: string, data: UpdatePurchaseOrderDto): Promise<PurchaseOrder> {
     const now = Date.now()
-    
+
     const fields: string[] = ['status = ?', 'updated_at = ?']
     const values: any[] = [data.status, now]
-    
+
     if (data.total !== undefined) {
       fields.unshift('total = ?')
       values.unshift(data.total)
     }
-    
+
     values.push(id)
-    
-    this.db.run(
-      `UPDATE purchase_order SET ${fields.join(', ')} WHERE id = ?`,
-      values
-    )
-    
+
+    this.db.run(`UPDATE purchase_order SET ${fields.join(', ')} WHERE id = ?`, values)
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Purchase order not found after update')
@@ -264,14 +254,15 @@ export class PurchaseOrderService {
    */
   async softDelete(id: string): Promise<PurchaseOrder> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE purchase_order SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE purchase_order SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Purchase order not found after delete')

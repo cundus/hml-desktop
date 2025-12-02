@@ -80,7 +80,6 @@ type Product = {
   category: string
 }
 
-
 let branches: Branch[] = [
   {
     id: 'b1',

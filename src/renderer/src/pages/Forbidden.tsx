@@ -12,7 +12,7 @@ export default function Forbidden(): React.JSX.Element {
         Access denied
       </Typography>
       <Typography variant="body1">You do not have permission to view this page.</Typography>
-      <Button onClick={()=> navigation(-1)}>Back</Button>
+      <Button onClick={() => navigation(-1)}>Back</Button>
     </Box>
   )
 }

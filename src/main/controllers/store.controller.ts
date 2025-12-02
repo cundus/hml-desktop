@@ -92,10 +92,7 @@ export class StoreController {
   /**
    * Create new store
    */
-  private async create(
-    _event: IpcMainInvokeEvent,
-    data: CreateStoreDto
-  ): Promise<ApiResponse> {
+  private async create(_event: IpcMainInvokeEvent, data: CreateStoreDto): Promise<ApiResponse> {
     try {
       const store = await this.storeService.create(data)
       return {

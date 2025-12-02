@@ -22,17 +22,15 @@ export class StoreService {
    * Get all active (non-deleted) stores
    */
   async findAll(): Promise<Store[]> {
-    const stmt = this.db.prepare(
-      'SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC'
-    )
+    const stmt = this.db.prepare('SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC')
     const results: Store[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStore(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -42,7 +40,7 @@ export class StoreService {
   async findById(id: string): Promise<Store | undefined> {
     const stmt = this.db.prepare('SELECT * FROM store WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -58,7 +56,7 @@ export class StoreService {
   async findByCode(code: string): Promise<Store | undefined> {
     const stmt = this.db.prepare('SELECT * FROM store WHERE code = ? AND deleted_at IS NULL')
     stmt.bind([code])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -74,14 +72,14 @@ export class StoreService {
   async create(data: CreateStoreDto): Promise<Store> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO store (id, code, name, address, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id, data.code, data.name, data.address ?? null, data.type, now, now]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       code: data.code,
@@ -105,14 +103,21 @@ export class StoreService {
     }
 
     const now = Date.now()
-    
+
     this.db.run(
       'UPDATE store SET code = ?, name = ?, address = ?, type = ?, updated_at = ? WHERE id = ?',
-      [data.code ?? existing.code, data.name ?? existing.name, data.address ?? existing.address ?? null, data.type ?? existing.type, now, id]
+      [
+        data.code ?? existing.code,
+        data.name ?? existing.name,
+        data.address ?? existing.address ?? null,
+        data.type ?? existing.type,
+        now,
+        id
+      ]
     )
-    
+
     saveDb(this.db)
-    
+
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Store not found after update')
@@ -125,14 +130,11 @@ export class StoreService {
    */
   async softDelete(id: string): Promise<Store> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE store SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE store SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Store not found after delete')
@@ -145,14 +147,11 @@ export class StoreService {
    */
   async restore(id: string): Promise<Store> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE store SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now, id]
-    )
-    
+
+    this.db.run('UPDATE store SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
+
     saveDb(this.db)
-    
+
     const restored = await this.findById(id)
     if (!restored) {
       throw new Error('Store not found after restore')

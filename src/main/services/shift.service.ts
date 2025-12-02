@@ -46,6 +46,23 @@ export interface CloseShiftDto {
   notes?: string
 }
 
+export interface ShiftSummary {
+  shift: CashierShift
+  transactionCount: number
+  totalSales: string
+  totalDiscount: string
+  totalTax: string
+  netSales: string
+  expectedCash: string
+  transactions: {
+    id: string
+    code: string
+    total: string
+    createdAt: Date
+    customerName?: string
+  }[]
+}
+
 export class ShiftService {
   constructor(private db: Database) {}
 
@@ -200,11 +217,7 @@ export class ShiftService {
   /**
    * Close a shift
    */
-  async closeShift(
-    shiftId: string,
-    userId: string,
-    data: CloseShiftDto
-  ): Promise<CashierShift> {
+  async closeShift(shiftId: string, userId: string, data: CloseShiftDto): Promise<CashierShift> {
     const shift = await this.findById(shiftId)
     if (!shift) {
       throw new Error('Shift not found')
@@ -230,15 +243,7 @@ export class ShiftService {
        closed_at = ?,
        updated_at = ?
        WHERE id = ?`,
-      [
-        data.closingCash,
-        expectedCash,
-        difference.toString(),
-        data.notes ?? null,
-        now,
-        now,
-        shiftId
-      ]
+      [data.closingCash, expectedCash, difference.toString(), data.notes ?? null, now, now, shiftId]
     )
 
     // Add to shift history
@@ -256,10 +261,7 @@ export class ShiftService {
   /**
    * Calculate expected cash based on initial cash + sales during shift
    */
-  private async calculateExpectedCash(
-    shiftId: string,
-    initialCash: string
-  ): Promise<string> {
+  private async calculateExpectedCash(shiftId: string, initialCash: string): Promise<string> {
     const shift = await this.findById(shiftId)
     if (!shift) return initialCash
 
@@ -293,15 +295,9 @@ export class ShiftService {
   /**
    * Takeover shift (backup cashier)
    */
-  async takeoverShift(
-    shiftId: string,
-    newUserId: string,
-    pin: string
-  ): Promise<CashierShift> {
+  async takeoverShift(shiftId: string, newUserId: string, pin: string): Promise<CashierShift> {
     // Verify PIN
-    const userStmt = this.db.prepare(
-      'SELECT id, pin FROM user WHERE id = ? AND deleted_at IS NULL'
-    )
+    const userStmt = this.db.prepare('SELECT id, pin FROM user WHERE id = ? AND deleted_at IS NULL')
     userStmt.bind([newUserId])
     if (!userStmt.step()) {
       userStmt.free()
@@ -325,10 +321,11 @@ export class ShiftService {
     const now = Date.now()
 
     // Update shift with new user
-    this.db.run(
-      'UPDATE cashier_shift SET user_id = ?, updated_at = ? WHERE id = ?',
-      [newUserId, now, shiftId]
-    )
+    this.db.run('UPDATE cashier_shift SET user_id = ?, updated_at = ? WHERE id = ?', [
+      newUserId,
+      now,
+      shiftId
+    ])
 
     // Add to shift history
     this.addShiftHistory(shiftId, newUserId, 'TAKEOVER', 'Shift taken over')
@@ -371,6 +368,67 @@ export class ShiftService {
     }
     stmt.free()
     return results
+  }
+
+  /**
+   * Get shift summary for settlement
+   */
+  async getShiftSummary(shiftId: string): Promise<ShiftSummary | null> {
+    const shift = await this.findById(shiftId)
+    if (!shift) return null
+
+    // Get transactions during this shift
+    const txStmt = this.db.prepare(
+      `SELECT t.id, t.code, t.subtotal, t.discount, t.tax, t.total, t.created_at,
+              c.name as customer_name
+       FROM transactions t
+       LEFT JOIN customer c ON t.customer_id = c.id
+       WHERE t.store_id = ?
+         AND t.created_at >= ?
+         AND (? IS NULL OR t.created_at <= ?)
+         AND t.deleted_at IS NULL
+       ORDER BY t.created_at ASC`
+    )
+    txStmt.bind([
+      shift.storeId,
+      shift.openedAt.getTime(),
+      shift.closedAt?.getTime() ?? null,
+      shift.closedAt?.getTime() ?? null
+    ])
+
+    const transactions: ShiftSummary['transactions'] = []
+    let totalSales = 0
+    let totalDiscount = 0
+    let totalTax = 0
+
+    while (txStmt.step()) {
+      const row = txStmt.getAsObject()
+      transactions.push({
+        id: row.id as string,
+        code: row.code as string,
+        total: row.total as string,
+        createdAt: new Date(row.created_at as number),
+        customerName: row.customer_name as string | undefined
+      })
+      totalSales += parseFloat(row.subtotal as string) || 0
+      totalDiscount += parseFloat(row.discount as string) || 0
+      totalTax += parseFloat(row.tax as string) || 0
+    }
+    txStmt.free()
+
+    const netSales = totalSales - totalDiscount + totalTax
+    const expectedCash = parseFloat(shift.initialCash) + netSales
+
+    return {
+      shift,
+      transactionCount: transactions.length,
+      totalSales: totalSales.toString(),
+      totalDiscount: totalDiscount.toString(),
+      totalTax: totalTax.toString(),
+      netSales: netSales.toString(),
+      expectedCash: expectedCash.toString(),
+      transactions
+    }
   }
 
   /**

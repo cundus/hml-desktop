@@ -26,7 +26,10 @@ export type ProductBrowserProps = {
   onAdd: (product: Product) => void
 }
 
-export default function ProductBrowser({ products, onAdd }: ProductBrowserProps): React.JSX.Element {
+export default function ProductBrowser({
+  products,
+  onAdd
+}: ProductBrowserProps): React.JSX.Element {
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)

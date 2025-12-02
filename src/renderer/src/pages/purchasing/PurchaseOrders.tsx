@@ -359,7 +359,9 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         <MenuItem onClick={() => handleStatusChange('DRAFT')}>Tandai sebagai Draft</MenuItem>
         <MenuItem onClick={() => handleStatusChange('ORDERED')}>Tandai sebagai Dipesan</MenuItem>
         <MenuItem onClick={() => handleStatusChange('RECEIVED')}>Tandai sebagai Diterima</MenuItem>
-        <MenuItem onClick={() => handleStatusChange('CANCELLED')}>Tandai sebagai Dibatalkan</MenuItem>
+        <MenuItem onClick={() => handleStatusChange('CANCELLED')}>
+          Tandai sebagai Dibatalkan
+        </MenuItem>
       </Menu>
     </Box>
   )

@@ -13,7 +13,7 @@ export const productLocations = pgTable('product_location', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })
 
 export const stockTransactionTypeEnum = [
@@ -22,7 +22,7 @@ export const stockTransactionTypeEnum = [
   'TRANSFER_IN',
   'TRANSFER_OUT',
   'ADJUSTMENT',
-  'SALE',
+  'SALE'
 ] as const
 
 export const stockTransactions = pgTable('stock_transaction', {
@@ -41,7 +41,7 @@ export const stockTransactions = pgTable('stock_transaction', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })
 
 export const stockAdjustments = pgTable('stock_adjustment', {
@@ -55,5 +55,5 @@ export const stockAdjustments = pgTable('stock_adjustment', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id'),
+  deviceId: text('device_id')
 })

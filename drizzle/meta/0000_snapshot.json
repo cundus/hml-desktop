@@ -126,9 +126,7 @@
       "indexes": {
         "permission_name_unique": {
           "name": "permission_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": true
         }
       },
@@ -266,9 +264,7 @@
       "indexes": {
         "role_name_unique": {
           "name": "role_name_unique",
-          "columns": [
-            "name"
-          ],
+          "columns": ["name"],
           "isUnique": true
         }
       },
@@ -420,9 +416,7 @@
       "indexes": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -721,9 +715,7 @@
       "indexes": {
         "product_sku_unique": {
           "name": "product_sku_unique",
-          "columns": [
-            "sku"
-          ],
+          "columns": ["sku"],
           "isUnique": true
         }
       },
@@ -987,9 +979,7 @@
       "indexes": {
         "store_code_unique": {
           "name": "store_code_unique",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": true
         }
       },
@@ -1418,9 +1408,7 @@
       "indexes": {
         "transactions_code_unique": {
           "name": "transactions_code_unique",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": true
         }
       },
@@ -1559,9 +1547,7 @@
       "indexes": {
         "purchase_order_code_unique": {
           "name": "purchase_order_code_unique",
-          "columns": [
-            "code"
-          ],
+          "columns": ["code"],
           "isUnique": true
         }
       },
@@ -1685,9 +1671,7 @@
       "indexes": {
         "transfer_request_reference_unique": {
           "name": "transfer_request_reference_unique",
-          "columns": [
-            "reference"
-          ],
+          "columns": ["reference"],
           "isUnique": true
         }
       },

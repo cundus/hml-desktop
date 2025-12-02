@@ -58,17 +58,23 @@ export class ProductLocationController {
     })
 
     // Get product location for specific product and store
-    ipcMain.handle('db:productLocations:getByProductAndStore', async (_, productId: string, storeId: string) => {
-      try {
-        const location = await this.productLocationService.findByProductAndStore(productId, storeId)
-        return { success: true, data: location }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:productLocations:getByProductAndStore',
+      async (_, productId: string, storeId: string) => {
+        try {
+          const location = await this.productLocationService.findByProductAndStore(
+            productId,
+            storeId
+          )
+          return { success: true, data: location }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Create product location
     ipcMain.handle('db:productLocations:create', async (_, data) => {
@@ -97,43 +103,64 @@ export class ProductLocationController {
     })
 
     // Adjust quantity
-    ipcMain.handle('db:productLocations:adjustQuantity', async (_, productId: string, storeId: string, delta: number) => {
-      try {
-        const location = await this.productLocationService.adjustQuantity(productId, storeId, delta)
-        return { success: true, data: location }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:productLocations:adjustQuantity',
+      async (_, productId: string, storeId: string, delta: number) => {
+        try {
+          const location = await this.productLocationService.adjustQuantity(
+            productId,
+            storeId,
+            delta
+          )
+          return { success: true, data: location }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Reserve quantity
-    ipcMain.handle('db:productLocations:reserveQuantity', async (_, productId: string, storeId: string, quantity: number) => {
-      try {
-        const location = await this.productLocationService.reserveQuantity(productId, storeId, quantity)
-        return { success: true, data: location }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:productLocations:reserveQuantity',
+      async (_, productId: string, storeId: string, quantity: number) => {
+        try {
+          const location = await this.productLocationService.reserveQuantity(
+            productId,
+            storeId,
+            quantity
+          )
+          return { success: true, data: location }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Release reserved quantity
-    ipcMain.handle('db:productLocations:releaseReservedQuantity', async (_, productId: string, storeId: string, quantity: number) => {
-      try {
-        const location = await this.productLocationService.releaseReservedQuantity(productId, storeId, quantity)
-        return { success: true, data: location }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:productLocations:releaseReservedQuantity',
+      async (_, productId: string, storeId: string, quantity: number) => {
+        try {
+          const location = await this.productLocationService.releaseReservedQuantity(
+            productId,
+            storeId,
+            quantity
+          )
+          return { success: true, data: location }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Soft delete product location
     ipcMain.handle('db:productLocations:delete', async (_, id: string) => {

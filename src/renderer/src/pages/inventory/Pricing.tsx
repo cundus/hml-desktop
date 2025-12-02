@@ -262,10 +262,16 @@ export default function PricingPage(): React.JSX.Element {
                 <TableCell>{price.productName || price.productId}</TableCell>
                 <TableCell>{price.storeName || price.storeId}</TableCell>
                 <TableCell align="right">
-                  {parseFloat(price.cost).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                  {parseFloat(price.cost).toLocaleString('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR'
+                  })}
                 </TableCell>
                 <TableCell align="right">
-                  {parseFloat(price.price).toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+                  {parseFloat(price.price).toLocaleString('id-ID', {
+                    style: 'currency',
+                    currency: 'IDR'
+                  })}
                 </TableCell>
                 <TableCell align="right">
                   <Chip

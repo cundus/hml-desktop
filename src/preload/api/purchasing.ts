@@ -25,18 +25,30 @@ export interface PurchaseOrder extends BaseEntity {
 
 // Purchase Order API
 export const purchaseOrderApi = {
-  getAll: () => ipcRenderer.invoke('db:purchaseOrders:getAll') as Promise<ApiResponse<PurchaseOrder[]>>,
-  
-  getById: (id: string) => ipcRenderer.invoke('db:purchaseOrders:getById', id) as Promise<ApiResponse<PurchaseOrder>>,
-  
-  getByCode: (code: string) => ipcRenderer.invoke('db:purchaseOrders:getByCode', code) as Promise<ApiResponse<PurchaseOrder>>,
-  
-  getBySupplierId: (supplierId: string) => ipcRenderer.invoke('db:purchaseOrders:getBySupplierId', supplierId) as Promise<ApiResponse<PurchaseOrder[]>>,
-  
-  getByStoreId: (storeId: string) => ipcRenderer.invoke('db:purchaseOrders:getByStoreId', storeId) as Promise<ApiResponse<PurchaseOrder[]>>,
-  
-  getByStatus: (status: PurchaseOrderStatus) => ipcRenderer.invoke('db:purchaseOrders:getByStatus', status) as Promise<ApiResponse<PurchaseOrder[]>>,
-  
+  getAll: () =>
+    ipcRenderer.invoke('db:purchaseOrders:getAll') as Promise<ApiResponse<PurchaseOrder[]>>,
+
+  getById: (id: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:getById', id) as Promise<ApiResponse<PurchaseOrder>>,
+
+  getByCode: (code: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:getByCode', code) as Promise<ApiResponse<PurchaseOrder>>,
+
+  getBySupplierId: (supplierId: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:getBySupplierId', supplierId) as Promise<
+      ApiResponse<PurchaseOrder[]>
+    >,
+
+  getByStoreId: (storeId: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:getByStoreId', storeId) as Promise<
+      ApiResponse<PurchaseOrder[]>
+    >,
+
+  getByStatus: (status: PurchaseOrderStatus) =>
+    ipcRenderer.invoke('db:purchaseOrders:getByStatus', status) as Promise<
+      ApiResponse<PurchaseOrder[]>
+    >,
+
   create: (data: {
     code: string
     supplierId: string
@@ -49,11 +61,16 @@ export const purchaseOrderApi = {
       cost: string
     }[]
   }) => ipcRenderer.invoke('db:purchaseOrders:create', data) as Promise<ApiResponse<PurchaseOrder>>,
-  
-  update: (id: string, data: {
-    status: PurchaseOrderStatus
-    total?: string
-  }) => ipcRenderer.invoke('db:purchaseOrders:update', id, data) as Promise<ApiResponse<PurchaseOrder>>,
-  
-  delete: (id: string) => ipcRenderer.invoke('db:purchaseOrders:delete', id) as Promise<ApiResponse<PurchaseOrder>>
+
+  update: (
+    id: string,
+    data: {
+      status: PurchaseOrderStatus
+      total?: string
+    }
+  ) =>
+    ipcRenderer.invoke('db:purchaseOrders:update', id, data) as Promise<ApiResponse<PurchaseOrder>>,
+
+  delete: (id: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:delete', id) as Promise<ApiResponse<PurchaseOrder>>
 }

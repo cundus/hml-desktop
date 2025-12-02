@@ -93,7 +93,10 @@ export class ExcelService {
    */
   async importFromExcel<T>(
     columnMapping: Record<string, string>, // Excel header -> field name
-    validateRow: (row: Record<string, unknown>, rowIndex: number) => { valid: boolean; error?: string; data?: T }
+    validateRow: (
+      row: Record<string, unknown>,
+      rowIndex: number
+    ) => { valid: boolean; error?: string; data?: T }
   ): Promise<ImportResult<T>> {
     try {
       // Show open dialog

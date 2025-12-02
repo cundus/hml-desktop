@@ -2,7 +2,13 @@ import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
 
-export type StockTransactionType = 'INBOUND' | 'OUTBOUND' | 'TRANSFER_IN' | 'TRANSFER_OUT' | 'ADJUSTMENT' | 'SALE'
+export type StockTransactionType =
+  | 'INBOUND'
+  | 'OUTBOUND'
+  | 'TRANSFER_IN'
+  | 'TRANSFER_OUT'
+  | 'ADJUSTMENT'
+  | 'SALE'
 
 export interface StockTransaction {
   id: string
@@ -45,13 +51,13 @@ export class StockTransactionService {
       'SELECT * FROM stock_transaction WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
     const results: StockTransaction[] = []
-    
+
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStockTransaction(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -61,7 +67,7 @@ export class StockTransactionService {
   async findById(id: string): Promise<StockTransaction | undefined> {
     const stmt = this.db.prepare('SELECT * FROM stock_transaction WHERE id = ?')
     stmt.bind([id])
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -79,14 +85,14 @@ export class StockTransactionService {
       'SELECT * FROM stock_transaction WHERE product_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([productId])
-    
+
     const results: StockTransaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStockTransaction(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -98,14 +104,14 @@ export class StockTransactionService {
       'SELECT * FROM stock_transaction WHERE store_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([storeId])
-    
+
     const results: StockTransaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStockTransaction(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -117,14 +123,14 @@ export class StockTransactionService {
       'SELECT * FROM stock_transaction WHERE type = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([type])
-    
+
     const results: StockTransaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStockTransaction(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -136,14 +142,14 @@ export class StockTransactionService {
       'SELECT * FROM stock_transaction WHERE reference = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
     stmt.bind([reference])
-    
+
     const results: StockTransaction[] = []
     while (stmt.step()) {
       const row = stmt.getAsObject()
       results.push(this.mapRowToStockTransaction(row))
     }
     stmt.free()
-    
+
     return results
   }
 
@@ -153,7 +159,7 @@ export class StockTransactionService {
   async create(data: CreateStockTransactionDto): Promise<StockTransaction> {
     const id = randomUUID()
     const now = Date.now()
-    
+
     this.db.run(
       'INSERT INTO stock_transaction (id, product_id, store_id, type, quantity, reference, batch_id, supplier_id, customer_id, performed_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -171,9 +177,9 @@ export class StockTransactionService {
         now
       ]
     )
-    
+
     saveDb(this.db)
-    
+
     return {
       id,
       productId: data.productId,
@@ -198,14 +204,15 @@ export class StockTransactionService {
    */
   async softDelete(id: string): Promise<StockTransaction> {
     const now = Date.now()
-    
-    this.db.run(
-      'UPDATE stock_transaction SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now, now, id]
-    )
-    
+
+    this.db.run('UPDATE stock_transaction SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
+
     saveDb(this.db)
-    
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Stock transaction not found after delete')
@@ -216,7 +223,10 @@ export class StockTransactionService {
   /**
    * Get stock summary for a product at a store
    */
-  async getStockSummary(productId: string, storeId: string): Promise<{
+  async getStockSummary(
+    productId: string,
+    storeId: string
+  ): Promise<{
     totalIn: number
     totalOut: number
     currentStock: number
@@ -226,27 +236,27 @@ export class StockTransactionService {
       "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT') AND deleted_at IS NULL"
     )
     inStmt.bind([productId, storeId])
-    
+
     let totalIn = 0
     if (inStmt.step()) {
       const row = inStmt.getAsObject()
       totalIn = (row.total as number) || 0
     }
     inStmt.free()
-    
+
     // Calculate total outbound
     const outStmt = this.db.prepare(
       "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE') AND deleted_at IS NULL"
     )
     outStmt.bind([productId, storeId])
-    
+
     let totalOut = 0
     if (outStmt.step()) {
       const row = outStmt.getAsObject()
       totalOut = (row.total as number) || 0
     }
     outStmt.free()
-    
+
     return {
       totalIn,
       totalOut,

@@ -49,21 +49,33 @@ export function ToastProvider({ children }: ToastProviderProps): React.JSX.Eleme
     setOpen(true)
   }, [])
 
-  const success = useCallback((message: string, title?: string) => {
-    showToast({ message, title, severity: 'success' })
-  }, [showToast])
+  const success = useCallback(
+    (message: string, title?: string) => {
+      showToast({ message, title, severity: 'success' })
+    },
+    [showToast]
+  )
 
-  const error = useCallback((message: string, title?: string) => {
-    showToast({ message, title, severity: 'error', duration: 6000 })
-  }, [showToast])
+  const error = useCallback(
+    (message: string, title?: string) => {
+      showToast({ message, title, severity: 'error', duration: 6000 })
+    },
+    [showToast]
+  )
 
-  const warning = useCallback((message: string, title?: string) => {
-    showToast({ message, title, severity: 'warning' })
-  }, [showToast])
+  const warning = useCallback(
+    (message: string, title?: string) => {
+      showToast({ message, title, severity: 'warning' })
+    },
+    [showToast]
+  )
 
-  const info = useCallback((message: string, title?: string) => {
-    showToast({ message, title, severity: 'info' })
-  }, [showToast])
+  const info = useCallback(
+    (message: string, title?: string) => {
+      showToast({ message, title, severity: 'info' })
+    },
+    [showToast]
+  )
 
   const handleClose = (_event?: React.SyntheticEvent | Event, reason?: string) => {
     if (reason === 'clickaway') return

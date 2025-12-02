@@ -38,7 +38,7 @@ const ENTITY_CONFIG: Record<string, {
     hasDeviceId: true
   },
   user: {
-    columns: ['id', 'name', 'email', 'password', 'store_id', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    columns: ['id', 'name', 'email', 'password', 'pin', 'store_id', 'device_id', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
     hasDeviceId: true
   },
   product: {
@@ -80,13 +80,13 @@ function pgTable(name: string): string {
  * Architecture:
  * - Local: sql.js (pure JS SQLite)
  * - Cloud: Drizzle ORM + node-postgres (PostgreSQL)
- * 
+ *
  * Strategy: Delta Sync with Conflict Resolution
  * - Only sync records that have changed since last sync
  * - Use syncedAt timestamp to track sync state per record
  * - Use deviceId to identify record origin
  * - Conflict resolution: Last write wins (based on updatedAt)
- * 
+ *
  * Sync Flow:
  * 1. Pull: Fetch cloud records updated since last pull → upsert to local
  * 2. Push: Fetch local records updated since last push → upsert to cloud
@@ -142,7 +142,7 @@ export class SyncService {
     const stmt = this.localDb.prepare(
       "SELECT device_id FROM sync_metadata WHERE entity_name = 'device' LIMIT 1"
     )
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()
@@ -264,7 +264,7 @@ export class SyncService {
 
     const lastPullAt = this.getLastSyncTime(entityName, 'last_pull_at')
     const lastPullDate = lastPullAt > 0 ? new Date(lastPullAt) : new Date(0)
-    
+
     // Fetch records from cloud that were updated since last pull
     // Only select columns that exist in both local and cloud
     const columns = config.columns.join(', ')
@@ -281,7 +281,7 @@ export class SyncService {
       // Check if record exists locally
       const localStmt = this.localDb.prepare(`SELECT * FROM ${entityName} WHERE id = ?`)
       localStmt.bind([cloudRecord.id])
-      
+
       const hasLocal = localStmt.step()
       const localRecord = hasLocal ? localStmt.getAsObject() : null
       localStmt.free()
@@ -645,7 +645,7 @@ export class SyncService {
     const stmt = this.localDb.prepare(
       'SELECT MAX(last_sync_at) as max_sync FROM sync_metadata'
     )
-    
+
     if (stmt.step()) {
       const row = stmt.getAsObject()
       stmt.free()

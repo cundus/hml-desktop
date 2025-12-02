@@ -55,9 +55,9 @@ This document outlines the structured development plan based on client requireme
 ### 3.2 Backup Cashier System
 | ID | Task | Status | Complexity |
 |----|------|--------|------------|
-| BACKUP-001 | Backup cashier must re-login (username + PIN) | ⬜ TODO | Medium |
-| BACKUP-002 | Store shift history (who worked each shift) | ⬜ TODO | Medium |
-| BACKUP-003 | Add PIN feature (in addition to ID & Password) | ⬜ TODO | Medium |
+| BACKUP-001 | Backup cashier must re-login (username + PIN) | ✅ DONE | Medium |
+| BACKUP-002 | Store shift history (who worked each shift) | ✅ DONE | Medium |
+| BACKUP-003 | Add PIN feature (in addition to ID & Password) | ✅ DONE | Medium |
 
 ---
 

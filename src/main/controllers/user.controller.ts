@@ -16,7 +16,10 @@ export class UserController {
     ipcMain.handle('db:users:create', this.create.bind(this))
     ipcMain.handle('db:users:update', this.update.bind(this))
     ipcMain.handle('db:users:softDelete', this.softDelete.bind(this))
+    ipcMain.handle('db:users:delete', this.softDelete.bind(this))
     ipcMain.handle('db:users:restore', this.restore.bind(this))
+    ipcMain.handle('db:users:updatePin', this.updatePin.bind(this))
+    ipcMain.handle('db:users:hasPin', this.hasPin.bind(this))
   }
 
   /**
@@ -172,6 +175,49 @@ export class UserController {
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to restore user'
+      }
+    }
+  }
+
+  /**
+   * Update user PIN
+   */
+  private async updatePin(
+    _event: IpcMainInvokeEvent,
+    id: string,
+    pin: string | null
+  ): Promise<ApiResponse> {
+    try {
+      const user = await this.userService.updatePin(id, pin)
+      return {
+        success: true,
+        data: user,
+        message: 'PIN updated successfully'
+      }
+    } catch (error) {
+      console.error('Error updating PIN:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update PIN'
+      }
+    }
+  }
+
+  /**
+   * Check if user has PIN
+   */
+  private async hasPin(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse<boolean>> {
+    try {
+      const hasPin = await this.userService.hasPin(id)
+      return {
+        success: true,
+        data: hasPin
+      }
+    } catch (error) {
+      console.error('Error checking PIN:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check PIN'
       }
     }
   }

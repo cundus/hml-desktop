@@ -43,8 +43,6 @@ export default function MainLayout(): React.JSX.Element {
   const { mode, toggleTheme } = useThemeMode()
   const { userName, userRole, storeName } = useAuth()
 
-  console.log('storeName', storeName)
-
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTime(new Date())

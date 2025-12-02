@@ -27,12 +27,11 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 const userSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
-  email: z.string().email('Alamat email tidak valid'),
+  email: z.email('Alamat email tidak valid'),
   // Kosongkan saat edit jika tidak ingin mengubah kata sandi
-  password: z
-    .string()
-    .min(6, 'Kata sandi minimal 6 karakter')
-    .or(z.literal('')),
+  password: z.string().min(6, 'Kata sandi minimal 6 karakter').or(z.literal('')),
+  // PIN 4-6 digit, kosongkan jika tidak ingin mengubah
+  pin: z.string().refine((val) => val === '' || /^\d{4,6}$/.test(val), 'PIN harus 4-6 digit angka'),
   storeId: z.string().optional(),
   roleIds: z.array(z.string())
 })
@@ -43,8 +42,10 @@ export type User = {
   id: string
   name: string
   email: string
+  hasPin: boolean
   storeId: string | null
   storeName?: string
+  pin?: string
   roleIds: string[]
   roleNames: string[]
 }
@@ -76,7 +77,7 @@ export default function UserPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
-    defaultValues: { name: '', email: '', password: '', storeId: '', roleIds: [] }
+    defaultValues: { name: '', email: '', password: '', pin: '', storeId: '', roleIds: [] }
   })
 
   useEffect(() => {
@@ -92,6 +93,8 @@ export default function UserPage(): React.JSX.Element {
           window.api.db.userRoles.getAll()
         ])
 
+        console.log(usersRes);
+
         if (usersRes.success && storesRes.success && rolesRes.success && userRolesRes.success) {
           const usersData = usersRes.data ?? []
           const storesData = storesRes.data ?? []
@@ -101,7 +104,7 @@ export default function UserPage(): React.JSX.Element {
           const storeMap = new Map(storesData.map((s: any) => [s.id, s.name as string]))
           const rolesMap = new Map(rolesData.map((r: any) => [r.id, r.name as string]))
 
-          const itemsWithRelations: User[] = usersData.map((user: any) => {
+          const itemsWithRelations: User[] = usersData.map((user: User) => {
             const userRoleIds = userRolesData
               .filter((ur: any) => ur.userId === user.id)
               .map((ur: any) => ur.roleId as string)
@@ -114,8 +117,11 @@ export default function UserPage(): React.JSX.Element {
               id: user.id,
               name: user.name,
               email: user.email,
+              hasPin: !!user.pin,
               storeId: user.storeId ?? null,
-              storeName: user.storeId ? (storeMap.get(user.storeId) as string | undefined) : undefined,
+              storeName: user.storeId
+                ? (storeMap.get(user.storeId) as string | undefined)
+                : undefined,
               roleIds: userRoleIds,
               roleNames
             }
@@ -144,16 +150,19 @@ export default function UserPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ name: '', email: '', password: '', storeId: '', roleIds: [] })
+    reset({ name: '', email: '', password: '', pin: '', storeId: '', roleIds: [] })
     setDialogOpen(true)
   }
 
   const openEdit = (user: User): void => {
+    console.log(user);
+
     setEditing(user)
     reset({
       name: user.name,
       email: user.email,
       password: '',
+      pin: '',
       storeId: user.storeId ?? '',
       roleIds: user.roleIds ?? []
     })
@@ -172,10 +181,18 @@ export default function UserPage(): React.JSX.Element {
         return
       }
 
+      console.log(values);
+
+
       const selectedRoleIds = values.roleIds ?? []
 
       if (editing) {
-        const updatePayload: { name?: string; email?: string; password?: string; storeId?: string } = {
+        const updatePayload: {
+          name?: string
+          email?: string
+          password?: string
+          storeId?: string
+        } = {
           name: values.name,
           email: values.email
         }
@@ -190,9 +207,19 @@ export default function UserPage(): React.JSX.Element {
         }
 
         const response = await window.api.db.users.update(editing.id, updatePayload)
+        console.log('update', response)
 
         if (response.success && response.data) {
           const updated = response.data
+
+          // Update PIN if provided
+          if (values.pin) {
+            const pinResponse = await window.api.db.users.updatePin(editing.id, values.pin)
+            if (!pinResponse.success) {
+              setError(pinResponse.error ?? 'Gagal menyimpan PIN')
+              return
+            }
+          }
 
           const rolesResponse = await window.api.db.userRoles.setForUser(
             editing.id,
@@ -219,6 +246,7 @@ export default function UserPage(): React.JSX.Element {
                     id: updated.id,
                     name: updated.name,
                     email: updated.email,
+                    hasPin: !!values.pin || u.hasPin,
                     storeId: updated.storeId,
                     storeName,
                     roleIds: selectedRoleIds,
@@ -241,6 +269,16 @@ export default function UserPage(): React.JSX.Element {
 
         if (response.success && response.data) {
           const created = response.data
+
+          // Set PIN if provided
+          if (values.pin) {
+            const pinResponse = await window.api.db.users.updatePin(created.id, values.pin)
+            if (!pinResponse.success) {
+              setError(pinResponse.error ?? 'Gagal menyimpan PIN')
+              return
+            }
+          }
+
           const rolesResponse = await window.api.db.userRoles.setForUser(
             created.id,
             selectedRoleIds
@@ -265,6 +303,7 @@ export default function UserPage(): React.JSX.Element {
               id: created.id,
               name: created.name,
               email: created.email,
+              hasPin: !!values.pin,
               storeId: created.storeId,
               storeName,
               roleIds: selectedRoleIds,
@@ -325,19 +364,20 @@ export default function UserPage(): React.JSX.Element {
                 <TableCell>Email</TableCell>
                 <TableCell>Toko</TableCell>
                 <TableCell>Peran</TableCell>
+                <TableCell>PIN</TableCell>
                 <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={6} align="center">
                     Sedang memuat...
                   </TableCell>
                 </TableRow>
               ) : items?.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={6} align="center">
                     Tidak ada pengguna
                   </TableCell>
                 </TableRow>
@@ -348,9 +388,15 @@ export default function UserPage(): React.JSX.Element {
                     <TableCell>{user.email}</TableCell>
                     <TableCell>{user.storeName ?? '-'}</TableCell>
                     <TableCell>
-                      {user.roleNames.length === 0
-                        ? '-'
-                        : user.roleNames.join(', ')}
+                      {user.roleNames.length === 0 ? '-' : user.roleNames.join(', ')}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={user.hasPin ? 'Aktif' : 'Belum'}
+                        color={user.hasPin ? 'success' : 'default'}
+                        variant="outlined"
+                      />
                     </TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => openEdit(user)}>
@@ -375,7 +421,12 @@ export default function UserPage(): React.JSX.Element {
       <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
         <DialogTitle>{editing ? 'Ubah Pengguna' : 'Buat Pengguna'}</DialogTitle>
         <DialogContent>
-          <Box component="form" id="user-form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          <Box
+            component="form"
+            id="user-form"
+            onSubmit={handleSubmit(onSubmit, (e) => console.log(e))}
+            sx={{ mt: 1 }}
+          >
             <TextField
               margin="normal"
               label="Nama"
@@ -399,7 +450,22 @@ export default function UserPage(): React.JSX.Element {
               type="password"
               {...register('password')}
               error={!!errors.password}
-              helperText={errors.password?.message}
+              helperText={
+                errors.password?.message || (editing ? 'Kosongkan jika tidak ingin mengubah' : '')
+              }
+            />
+            <TextField
+              margin="normal"
+              label="PIN (4-6 digit)"
+              fullWidth
+              type="password"
+              inputProps={{ maxLength: 6, inputMode: 'numeric', pattern: '[0-9]*' }}
+              {...register('pin')}
+              error={!!errors.pin}
+              helperText={
+                errors.pin?.message ||
+                'PIN untuk verifikasi kasir. Kosongkan jika tidak ingin mengubah.'
+              }
             />
             <TextField
               margin="normal"
@@ -440,11 +506,7 @@ export default function UserPage(): React.JSX.Element {
                   value={field.value || []}
                   onChange={(e) => {
                     const value = e.target.value
-                    const next = Array.isArray(value)
-                      ? value
-                      : value
-                        ? [value as string]
-                        : []
+                    const next = Array.isArray(value) ? value : value ? [value as string] : []
                     field.onChange(next)
                   }}
                   error={!!errors.roleIds}

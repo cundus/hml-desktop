@@ -18,13 +18,17 @@ import ProductBrowser, { type Product } from './components/ProductBrowser'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
-import { OpenShiftDialog, CloseShiftDialog } from '../../components/shift'
+import { OpenShiftDialog, CloseShiftDialog, PinVerifyDialog } from '../../components/shift'
 import { useShift } from '@renderer/hooks/useShift'
+import useAuth from '../../hooks/useAuth'
 
 export default function SalesPage(): React.JSX.Element {
+  const { token, userName } = useAuth()
   const { currentShift, hasOpenShift, isLoading: shiftLoading, openShift, closeShift } = useShift()
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false)
   const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false)
+  const [pinVerified, setPinVerified] = useState(false)
+  const [showPinDialog, setShowPinDialog] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
@@ -287,6 +291,48 @@ export default function SalesPage(): React.JSX.Element {
           open={openShiftDialogOpen}
           onClose={() => setOpenShiftDialogOpen(false)}
           onSubmit={openShift}
+        />
+      </Box>
+    )
+  }
+
+  // Show PIN verification if shift is open but PIN not verified
+  if (!pinVerified) {
+    const handleVerifyPin = async (pin: string): Promise<boolean> => {
+      if (!token) return false
+      const response = await window.api.db.auth.verifyPin(token, pin)
+      if (response.success && response.data) {
+        setPinVerified(true)
+        return true
+      }
+      return false
+    }
+
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+          gap: 3
+        }}
+      >
+        <Typography variant="h5" color="text.secondary">
+          Verifikasi PIN
+        </Typography>
+        <Typography variant="body1" color="text.secondary" textAlign="center">
+          Masukkan PIN untuk melanjutkan ke halaman kasir.
+        </Typography>
+        <Button variant="contained" size="large" onClick={() => setShowPinDialog(true)}>
+          Masukkan PIN
+        </Button>
+        <PinVerifyDialog
+          open={showPinDialog}
+          userName={userName ?? undefined}
+          onVerify={handleVerifyPin}
+          onClose={() => setShowPinDialog(false)}
         />
       </Box>
     )

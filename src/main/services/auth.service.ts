@@ -77,8 +77,6 @@ export class AuthService {
     }
     storeStmt.free()
 
-    console.log(store)
-
     return {
       token: userId,
       userName,
@@ -89,5 +87,23 @@ export class AuthService {
       permissions
     }
   }
-}
 
+  async verifyPin(userId: string, pin: string): Promise<boolean> {
+    const stmt = this.db.prepare('SELECT pin FROM user WHERE id = ? AND deleted_at IS NULL')
+    stmt.bind([userId])
+
+    let userPin: string | null = null
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      userPin = (row.pin as string) || null
+    }
+    stmt.free()
+
+    // If user has no PIN set, any PIN is valid (for backward compatibility)
+    if (!userPin) {
+      return true
+    }
+
+    return userPin === pin
+  }
+}

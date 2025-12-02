@@ -6,6 +6,7 @@ export * from './inventory'
 export * from './sales'
 export * from './purchasing'
 export * from './sync'
+export * from './shift'
 
 // Re-export for convenience
 import { categoryApi, supplierApi, storeApi, customerCategoryApi, customerApi, uomApi } from './master-data'
@@ -22,6 +23,7 @@ import { productPriceApi, productLocationApi, batchApi, stockTransactionApi } fr
 import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
 import { syncApi } from './sync'
+import { shiftApi } from './shift'
 
 export const db = {
   // Master Data
@@ -31,7 +33,7 @@ export const db = {
   customerCategories: customerCategoryApi,
   customers: customerApi,
   uoms: uomApi,
-  
+
   // Core
   users: userApi,
   products: productApi,
@@ -40,19 +42,22 @@ export const db = {
    permissions: permissionApi,
    rolePermissions: rolePermissionApi,
    auth: authApi,
-  
+
   // Inventory
   productPrices: productPriceApi,
   productLocations: productLocationApi,
   batches: batchApi,
   stockTransactions: stockTransactionApi,
-  
+
   // Sales
   transactions: transactionApi,
-  
+
   // Purchasing
   purchaseOrders: purchaseOrderApi,
-  
+
   // Sync
-  sync: syncApi
+  sync: syncApi,
+
+  // Shift
+  shifts: shiftApi
 }

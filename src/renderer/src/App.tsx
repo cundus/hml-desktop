@@ -1,5 +1,6 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import { ToastProvider } from './contexts/ToastContext'
+import { ShiftProvider } from './contexts/ShiftContext'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
 import MainLayout from './layouts/MainLayout'
@@ -44,11 +45,12 @@ const router = createHashRouter([
           { path: 'pets', element: <Pets /> },
           { path: 'sales', element: <SalesPage /> },
           {
-            element: <RoleGuard requiredPermissions={['sales.manage']} />,
-            children: [
-              { path: 'sales/pos', element: <SalesPage /> },
-              { path: 'sales/reports', element: <SalesReportsPage /> }
-            ]
+            element: <RoleGuard requiredPermissions={['sales.pos']} />,
+            children: [{ path: 'sales/pos', element: <SalesPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['sales.reports']} />,
+            children: [{ path: 'sales/reports', element: <SalesReportsPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.view']} />,
@@ -126,7 +128,9 @@ const router = createHashRouter([
 function App(): React.JSX.Element {
   return (
     <ToastProvider>
-      <RouterProvider router={router} />
+      <ShiftProvider>
+        <RouterProvider router={router} />
+      </ShiftProvider>
     </ToastProvider>
   )
 }

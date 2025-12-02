@@ -40,12 +40,6 @@ This document outlines the structured development plan based on client requireme
 | PRICE-002 | Auto-calculate margin from prices | ✅ DONE | Low |
 | PRICE-003 | Auto-update selling price when margin % is manually entered | ✅ DONE | Medium |
 
-### 2.3 Commission System
-| ID | Task | Status | Complexity |
-|----|------|--------|------------|
-| COMM-001 | Add commission per product feature | ⬜ TODO | Medium |
-| COMM-002 | Create commission settings tab with conditions | ⬜ TODO | High |
-
 ---
 
 ## Phase 3: Cashier & Shift Management (Priority: HIGH)
@@ -53,9 +47,9 @@ This document outlines the structured development plan based on client requireme
 ### 3.1 Shift System
 | ID | Task | Status | Complexity |
 |----|------|--------|------------|
-| SHIFT-001 | Require initial cash input on cashier login | ⬜ TODO | Medium |
-| SHIFT-002 | End shift: require cash-on-hand input, auto-calculate difference | ⬜ TODO | Medium |
-| SHIFT-003 | Add confirmation popup "Are you sure you want to end shift?" | ⬜ TODO | Low |
+| SHIFT-001 | Require initial cash input on cashier login | ✅ DONE | Medium |
+| SHIFT-002 | End shift: require cash-on-hand input, auto-calculate difference | ✅ DONE | Medium |
+| SHIFT-003 | Add confirmation popup "Are you sure you want to end shift?" | ✅ DONE | Low |
 | SHIFT-004 | Settlement / Close Cashier feature | ⬜ TODO | High |
 
 ### 3.2 Backup Cashier System
@@ -129,6 +123,17 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
+## Phase 8: Commission System (Priority: LOW)
+
+| ID | Task | Status | Complexity |
+|----|------|--------|-----------|
+| COMM-001 | Add commission per product feature | ⬜ TODO | Medium |
+| COMM-002 | Create commission settings tab with conditions | ⬜ TODO | High |
+
+**Note**: This is a new feature requiring new database tables (ProductCommission, CommissionCondition), service layer, and dedicated UI. Confirm with user before implementation.
+
+---
+
 ## Database Schema Changes Required
 
 ### New Tables/Models
@@ -164,8 +169,9 @@ This document outlines the structured development plan based on client requireme
 | Phase 5: Delivery System | 1 week | MEDIUM |
 | Phase 6: Dashboard Alerts | 1-2 weeks | MEDIUM |
 | Phase 7: Reports & Analytics | 2 weeks | MEDIUM |
+| Phase 8: Commission System | 1-2 weeks | LOW |
 
-**Total Estimated: 9-12 weeks**
+**Total Estimated: 10-14 weeks**
 
 ---
 
@@ -173,8 +179,9 @@ This document outlines the structured development plan based on client requireme
 
 | Priority | Count | Status |
 |----------|-------|--------|
-| HIGH | 19 tasks | ⬜ TODO |
+| HIGH | 17 tasks | ⬜ TODO |
 | MEDIUM | 18 tasks | ⬜ TODO |
+| LOW | 2 tasks | ⬜ TODO |
 | **Total** | **37 tasks** | |
 
 ---

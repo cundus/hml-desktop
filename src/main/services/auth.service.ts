@@ -4,6 +4,8 @@ export interface AuthResult {
   token: string
   userName: string
   userRole: string
+  storeId: string | null
+  storeName: string | null
   groups: string[]
   permissions: string[]
 }
@@ -30,6 +32,7 @@ export class AuthService {
 
     const userId = user.id as string
     const userName = user.name as string
+    const storeId = (user.store_id as string) || null
 
     // Load roles for the user
     const roleIds: string[] = []
@@ -66,12 +69,25 @@ export class AuthService {
 
     const permissions = Array.from(permSet)
 
+    const storeStmt = this.db.prepare('SELECT * FROM store WHERE id = ? AND deleted_at IS NULL')
+    storeStmt.bind([storeId])
+    let store: any | null = null
+    if (storeStmt.step()) {
+      store = storeStmt.getAsObject()
+    }
+    storeStmt.free()
+
+    console.log(store)
+
     return {
       token: userId,
       userName,
       userRole: roleNames.join(', ') || 'User',
+      storeId,
+      storeName: store?.name || null,
       groups: roleIds,
       permissions
     }
   }
 }
+

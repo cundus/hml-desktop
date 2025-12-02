@@ -1,15 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Box, Grid, Dialog, DialogTitle, DialogContent, DialogActions, Snackbar, Alert } from '@mui/material'
+import {
+  Box,
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Snackbar,
+  Alert
+} from '@mui/material'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
 import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
+import Chip from '@mui/material/Chip'
 import ProductBrowser, { type Product } from './components/ProductBrowser'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
+import { OpenShiftDialog, CloseShiftDialog } from '../../components/shift'
+import { useShift } from '@renderer/hooks/useShift'
 
 export default function SalesPage(): React.JSX.Element {
+  const { currentShift, hasOpenShift, isLoading: shiftLoading, openShift, closeShift } = useShift()
+  const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false)
+  const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [cartItems, setCartItems] = useState<CartItem[]>([])
   const [discount, setDiscount] = useState(0)
@@ -20,7 +35,11 @@ export default function SalesPage(): React.JSX.Element {
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [, setCheckoutLoading] = useState(false)
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({ open: false, message: '', severity: 'success' })
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean
+    message: string
+    severity: 'success' | 'error'
+  }>({ open: false, message: '', severity: 'success' })
 
   // For transaction: we need a default store. In real app, this would come from user context.
   const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null)
@@ -41,16 +60,18 @@ export default function SalesPage(): React.JSX.Element {
 
         // Load categories for mapping
         const categoriesRes = await window.api.db.categories.getAll()
-        const categoriesMap = new Map((categoriesRes.data ?? []).map(c => [c.id, c.name]))
+        const categoriesMap = new Map((categoriesRes.data ?? []).map((c) => [c.id, c.name]))
 
         // Load product prices
         const pricesRes = await window.api.db.productPrices.getAll()
-        const pricesMap = new Map((pricesRes.data ?? []).map(p => [p.productId, parseFloat(p.price)]))
+        const pricesMap = new Map(
+          (pricesRes.data ?? []).map((p) => [p.productId, parseFloat(p.price)])
+        )
 
         // Map DB products to Product type for ProductBrowser
         const mappedProducts: Product[] = dbProducts
-          .filter(p => p.isActive)
-          .map(p => ({
+          .filter((p) => p.isActive)
+          .map((p) => ({
             id: p.id,
             name: p.name,
             sku: p.sku,
@@ -63,7 +84,7 @@ export default function SalesPage(): React.JSX.Element {
         // Load customers
         const customersRes = await window.api.db.customers.getAll()
         const dbCustomers = customersRes.data ?? []
-        const mappedCustomers: Customer[] = dbCustomers.map(c => ({
+        const mappedCustomers: Customer[] = dbCustomers.map((c) => ({
           id: c.id,
           name: c.name,
           phone: c.phone ?? undefined
@@ -124,7 +145,11 @@ export default function SalesPage(): React.JSX.Element {
   const handleCheckout = useCallback(async (): Promise<void> => {
     if (cartItems.length === 0) return
     if (!defaultStoreId) {
-      setSnackbar({ open: true, message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.', severity: 'error' })
+      setSnackbar({
+        open: true,
+        message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
+        severity: 'error'
+      })
       return
     }
 
@@ -140,7 +165,7 @@ export default function SalesPage(): React.JSX.Element {
       const totalValue = subtotalValue - discountValue
 
       // Prepare transaction items
-      const items = cartItems.map(item => ({
+      const items = cartItems.map((item) => ({
         productId: item.id,
         quantity: item.quantity,
         price: item.price.toString()
@@ -159,7 +184,11 @@ export default function SalesPage(): React.JSX.Element {
       })
 
       if (result.success) {
-        setSnackbar({ open: true, message: `Transaksi ${code} berhasil disimpan!`, severity: 'success' })
+        setSnackbar({
+          open: true,
+          message: `Transaksi ${code} berhasil disimpan!`,
+          severity: 'success'
+        })
         setCartItems([])
         setDiscount(0)
         setPaidAmount(0)
@@ -224,7 +253,7 @@ export default function SalesPage(): React.JSX.Element {
     }
   }, [cartItems.length, handleCheckout])
 
-  if (loading) {
+  if (loading || shiftLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <CircularProgress />
@@ -232,16 +261,67 @@ export default function SalesPage(): React.JSX.Element {
     )
   }
 
+  // Show open shift prompt if no active shift
+  if (!hasOpenShift) {
+    return (
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          height: '100%',
+          gap: 3
+        }}
+      >
+        <Typography variant="h5" color="text.secondary">
+          Belum ada shift aktif
+        </Typography>
+        <Typography variant="body1" color="text.secondary" textAlign="center">
+          Anda harus membuka shift terlebih dahulu sebelum dapat melakukan transaksi.
+        </Typography>
+        <Button variant="contained" size="large" onClick={() => setOpenShiftDialogOpen(true)}>
+          Buka Shift
+        </Button>
+        <OpenShiftDialog
+          open={openShiftDialogOpen}
+          onClose={() => setOpenShiftDialogOpen(false)}
+          onSubmit={openShift}
+        />
+      </Box>
+    )
+  }
+
   return (
     <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
       <Box sx={{ width: '100%', borderRadius: 2, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ mb: 2 }}>
-          <Typography variant="h5" fontWeight="600">
-            Penjualan
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Buat transaksi baru dengan memilih produk dan menyelesaikan pembayaran.
-          </Typography>
+        <Box
+          sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
+        >
+          <Box>
+            <Typography variant="h5" fontWeight="600">
+              Penjualan
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Buat transaksi baru dengan memilih produk dan menyelesaikan pembayaran.
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Chip
+              label={`Shift: ${currentShift?.userName ?? 'Kasir'}`}
+              color="success"
+              size="small"
+              variant="outlined"
+            />
+            <Button
+              variant="outlined"
+              color="warning"
+              size="small"
+              onClick={() => setCloseShiftDialogOpen(true)}
+            >
+              Tutup Shift
+            </Button>
+          </Box>
         </Box>
 
         <Divider sx={{ mb: 2 }} />
@@ -359,17 +439,24 @@ export default function SalesPage(): React.JSX.Element {
         <Snackbar
           open={snackbar.open}
           autoHideDuration={4000}
-          onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
         >
           <Alert
-            onClose={() => setSnackbar(s => ({ ...s, open: false }))}
+            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
             severity={snackbar.severity}
             sx={{ width: '100%' }}
           >
             {snackbar.message}
           </Alert>
         </Snackbar>
+
+        <CloseShiftDialog
+          open={closeShiftDialogOpen}
+          onClose={() => setCloseShiftDialogOpen(false)}
+          onConfirm={closeShift}
+          initialCash={currentShift?.initialCash ?? '0'}
+        />
       </Box>
     </Box>
   )

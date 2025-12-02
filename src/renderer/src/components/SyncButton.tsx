@@ -127,11 +127,16 @@ export default function SyncButton(): React.JSX.Element {
     const diff = now.getTime() - date.getTime()
     const minutes = Math.floor(diff / 60000)
     const hours = Math.floor(diff / 3600000)
-    
+
     if (minutes < 1) return 'Baru saja'
     if (minutes < 60) return `${minutes} menit lalu`
     if (hours < 24) return `${hours} jam lalu`
-    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+    return date.toLocaleDateString('id-ID', {
+      day: 'numeric',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const isConnected = status?.isCloudConnected ?? false
@@ -140,19 +145,11 @@ export default function SyncButton(): React.JSX.Element {
   return (
     <>
       <Tooltip title={isConnected ? 'Cloud Sync' : 'Offline'}>
-        <IconButton
-          color="inherit"
-          onClick={handleClick}
-          disabled={syncing}
-        >
+        <IconButton color="inherit" onClick={handleClick} disabled={syncing}>
           {syncing ? (
             <CircularProgress size={24} color="inherit" />
           ) : (
-            <Badge 
-              badgeContent={unsyncedCount > 0 ? unsyncedCount : null} 
-              color="warning"
-              max={99}
-            >
+            <Badge badgeContent={unsyncedCount > 0 ? unsyncedCount : null} color="warning" max={99}>
               {isConnected ? <CloudIcon /> : <CloudOffIcon />}
             </Badge>
           )}
@@ -194,26 +191,26 @@ export default function SyncButton(): React.JSX.Element {
         <Divider />
 
         {isConnected ? (
-          <>
-            <MenuItem onClick={handleFullSync} disabled={syncing}>
+          [
+            <MenuItem key="full-sync" onClick={handleFullSync} disabled={syncing}>
               <ListItemIcon>
                 <SyncIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Sinkronisasi Penuh" secondary="Pull & Push semua data" />
-            </MenuItem>
-            <MenuItem onClick={handlePull} disabled={syncing}>
+            </MenuItem>,
+            <MenuItem key="pull" onClick={handlePull} disabled={syncing}>
               <ListItemIcon>
                 <CloudDownloadIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Tarik dari Cloud" secondary="Download data terbaru" />
-            </MenuItem>
-            <MenuItem onClick={handlePush} disabled={syncing}>
+            </MenuItem>,
+            <MenuItem key="push" onClick={handlePush} disabled={syncing}>
               <ListItemIcon>
                 <CloudUploadIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Kirim ke Cloud" secondary="Upload perubahan lokal" />
             </MenuItem>
-          </>
+          ]
         ) : (
           <Box sx={{ px: 2, py: 2, textAlign: 'center' }}>
             <Typography variant="body2" color="text.secondary">

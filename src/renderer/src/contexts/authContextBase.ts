@@ -6,6 +6,8 @@ export type AuthContextValue = {
   token: string | null
   userName: string | null
   userRole: string | null
+  storeId: string | null
+  storeName: string | null
   groups: string[]
   permissions: string[]
   isAuthenticated: boolean

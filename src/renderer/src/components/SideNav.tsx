@@ -44,13 +44,13 @@ const menus: MenuItem[] = [
         key: 'sales-pos',
         label: 'Kasir',
         path: '/sales/pos',
-        permissions: ['sales.manage']
+        permissions: ['sales.pos']
       },
       {
         key: 'sales-reports',
         label: 'Laporan Penjualan',
         path: '/sales/reports',
-        permissions: ['sales.view']
+        permissions: ['sales.reports']
       }
     ]
   },

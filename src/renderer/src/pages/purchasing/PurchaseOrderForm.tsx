@@ -248,7 +248,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   }
 
   const handleReceive = async (): Promise<void> => {
-    if (!confirm('Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.')) return
+    if (!confirm('Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.'))
+      return
 
     try {
       setSaving(true)
@@ -373,9 +374,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             getOptionLabel={(option) => `${option.name} (${option.sku})`}
             value={selectedProduct}
             onChange={(_, newValue) => setSelectedProduct(newValue)}
-            renderInput={(params) => (
-              <TextField {...params} label="Cari Produk..." />
-            )}
+            renderInput={(params) => <TextField {...params} label="Cari Produk..." />}
             sx={{ flex: 1 }}
             disabled={status === 'RECEIVED'}
           />

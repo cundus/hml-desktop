@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import Avatar from '@mui/material/Avatar'
 import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Paper from '@mui/material/Paper'
 import Box from '@mui/material/Box'
+import Alert from '@mui/material/Alert'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import Typography from '@mui/material/Typography'
 import { useForm } from 'react-hook-form'
@@ -19,6 +21,7 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function Login(): React.JSX.Element {
   const { login } = useAuth()
+  const [error, setError] = useState<string | null>(null)
 
   const {
     register,
@@ -30,7 +33,12 @@ export default function Login(): React.JSX.Element {
   })
 
   const onSubmit = handleSubmit(async (values: LoginFormValues): Promise<void> => {
-    await login(values)
+    try {
+      setError(null)
+      await login(values)
+    } catch (err) {
+      setError((err as Error).message || 'Login gagal')
+    }
   })
 
   return (
@@ -48,6 +56,11 @@ export default function Login(): React.JSX.Element {
           </Typography>
         </Box>
         <Box component="form" noValidate onSubmit={onSubmit}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          )}
           <TextField
             margin="normal"
             required

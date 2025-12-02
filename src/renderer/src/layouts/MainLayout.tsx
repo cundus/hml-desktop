@@ -41,7 +41,9 @@ export default function MainLayout(): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
   const { mode, toggleTheme } = useThemeMode()
-  const { userName, userRole } = useAuth()
+  const { userName, userRole, storeName } = useAuth()
+
+  console.log('storeName', storeName)
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -82,7 +84,7 @@ export default function MainLayout(): React.JSX.Element {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Chip
               icon={<PersonIcon />}
-              label={`${userName || 'User'} • ${userRole || 'Guest'}`}
+              label={`${userName || 'User'} • ${userRole || 'Guest'} • ${storeName || 'Store'}`}
               size="small"
               color="default"
               sx={{
@@ -92,11 +94,8 @@ export default function MainLayout(): React.JSX.Element {
               }}
             />
           </Box>
-          <Typography variant="h6" noWrap component="div" sx={{ flexGrow: 1, textAlign: 'center' }}>
-            Petshop Management
-          </Typography>
           {/* Date/time on the right */}
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2, ml: 'auto' }}>
             <Typography variant="body2" sx={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
               {day}, {date} • {time}
             </Typography>

@@ -112,13 +112,14 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
-  // s table
+  // Users table
   database.run(`
     CREATE TABLE IF NOT EXISTS user (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
       password TEXT NOT NULL,
+      pin TEXT,
       store_id TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -127,6 +128,13 @@ async function createTables(database: Database): Promise<void> {
       device_id TEXT
     )
   `)
+
+  // Add PIN column if not exists (for existing databases)
+  try {
+    database.run('ALTER TABLE user ADD COLUMN pin TEXT')
+  } catch {
+    // Column already exists
+  }
 
   // Roles table
   database.run(`
@@ -370,6 +378,41 @@ async function createTables(database: Database): Promise<void> {
       last_sync_at INTEGER,
       last_pull_at INTEGER,
       last_push_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Cashier Shift table - tracks cashier shifts
+  database.run(`
+    CREATE TABLE IF NOT EXISTS cashier_shift (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'OPEN',
+      initial_cash TEXT NOT NULL DEFAULT '0',
+      closing_cash TEXT,
+      expected_cash TEXT,
+      difference TEXT,
+      notes TEXT,
+      opened_at INTEGER NOT NULL,
+      closed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Shift History table - tracks backup cashier changes
+  database.run(`
+    CREATE TABLE IF NOT EXISTS shift_history (
+      id TEXT PRIMARY KEY,
+      shift_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      action TEXT NOT NULL,
+      notes TEXT,
+      created_at INTEGER NOT NULL,
       device_id TEXT
     )
   `)

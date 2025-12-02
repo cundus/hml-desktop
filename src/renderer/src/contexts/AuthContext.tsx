@@ -14,7 +14,13 @@ import {
   clearUserName,
   getUserRole,
   setUserRole as saveUserRole,
-  clearUserRole
+  clearUserRole,
+  getStoreId,
+  setStoreId as saveStoreId,
+  setStoreName as saveStoreName,
+  clearStoreId,
+  getStoreName,
+  clearStoreName
 } from '../lib/authStorage'
 import { AuthContext, type AuthContextValue, type Credentials } from './authContextBase'
 
@@ -22,6 +28,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
   const [token, setToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
+  const [storeId, setStoreId] = useState<string | null>(null)
+  const [storeName, setStoreName] = useState<string | null>(null)
   const [groups, setGroups] = useState<string[]>([])
   const [permissions, setPermissions] = useState<string[]>([])
   const [isReady, setIsReady] = useState(false)
@@ -33,12 +41,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     if (existingUserName) setUserName(existingUserName)
     const existingUserRole = getUserRole()
     if (existingUserRole) setUserRole(existingUserRole)
+    const existingStoreId = getStoreId()
+    if (existingStoreId) setStoreId(existingStoreId)
+    const existingStoreName = getStoreName()
+    if (existingStoreName) setStoreName(existingStoreName)
     const existingGroups = getGroups()
     if (existingGroups.length) setGroups(existingGroups)
     const existingPermissions = getPermissions()
     if (existingPermissions.length) setPermissions(existingPermissions)
     setIsReady(true)
   }, [])
+
   const login = useCallback(async (creds: Credentials): Promise<void> => {
     try {
       const res = await window.api.db.auth.login(creds.identifier, creds.password)
@@ -49,23 +62,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       const t = res.data.token
       const uName = res.data.userName ?? ''
       const uRole = res.data.userRole ?? ''
+      const sId = res.data.storeId ?? null
+      const sName = res.data.storeName ?? null
       const g = res.data.groups ?? []
       const p = res.data.permissions ?? []
 
       saveToken(t)
       saveUserName(uName)
       saveUserRole(uRole)
+      if (sId) saveStoreId(sId)
+      if (sName) saveStoreName(sName)
       saveGroups(g)
       savePermissions(p)
       setToken(t)
       setUserName(uName)
       setUserRole(uRole)
+      setStoreId(sId)
+      setStoreName(sName)
       setGroups(g)
       setPermissions(p)
       window.location.hash = '#/'
-    } catch {
-      // TODO: surface error via UI state; for now, simple alert
-      alert('Email atau kata sandi salah')
+    } catch (err) {
+      throw new Error((err as Error).message || 'Email atau kata sandi salah')
     }
   }, [])
 
@@ -73,11 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     clearToken()
     clearUserName()
     clearUserRole()
+    clearStoreId()
+    clearStoreName()
     clearGroups()
     clearPermissions()
     setToken(null)
     setUserName(null)
     setUserRole(null)
+    setStoreId(null)
     setGroups([])
     setPermissions([])
     window.location.hash = '#/login'
@@ -94,9 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
   const value = useMemo<AuthContextValue>(
     () => ({
+      storeName,
       token,
       userName,
       userRole,
+      storeId,
       groups,
       permissions,
       isAuthenticated: !!token,
@@ -105,7 +128,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       logout,
       hasPermission
     }),
-    [token, userName, userRole, groups, permissions, isReady, login, logout, hasPermission]
+    [
+      token,
+      userName,
+      userRole,
+      storeId,
+      storeName,
+      groups,
+      permissions,
+      isReady,
+      login,
+      logout,
+      hasPermission
+    ]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

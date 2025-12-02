@@ -44,6 +44,8 @@ import {
   AuthService,
   UomService
 } from './services'
+import { ShiftService } from './services/shift.service'
+import { registerShiftHandlers } from './controllers/shift.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -85,6 +87,9 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize purchasing service
   const purchaseOrderService = new PurchaseOrderService(db)
+
+  // Initialize shift service
+  const shiftService = new ShiftService(db)
 
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
@@ -144,6 +149,7 @@ export async function bootstrap(): Promise<void> {
   rolePermissionController.registerHandlers()
   authController.registerHandlers()
   uomController.registerHandlers()
+  registerShiftHandlers(shiftService)
 
-  console.log('✓ All 20 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 21 services and controllers initialized (sql.js local + cloud sync ready)')
 }

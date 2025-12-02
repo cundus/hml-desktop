@@ -3,6 +3,8 @@ const GROUPS_KEY = 'auth_groups'
 const PERMISSIONS_KEY = 'auth_permissions'
 const USER_NAME_KEY = 'auth_user_name'
 const USER_ROLE_KEY = 'auth_user_role'
+const STORE_ID_KEY = 'auth_store_id'
+const STORE_NAME_KEY = 'auth_store_name'
 
 export function getToken(): string | null {
   try {
@@ -125,6 +127,54 @@ export function setUserRole(role: string): void {
 export function clearUserRole(): void {
   try {
     localStorage.removeItem(USER_ROLE_KEY)
+  } catch {
+    return
+  }
+}
+
+export function getStoreId(): string | null {
+  try {
+    return localStorage.getItem(STORE_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setStoreId(storeId: string): void {
+  try {
+    localStorage.setItem(STORE_ID_KEY, storeId)
+  } catch {
+    return
+  }
+}
+
+export function clearStoreId(): void {
+  try {
+    localStorage.removeItem(STORE_ID_KEY)
+  } catch {
+    return
+  }
+}
+
+export function getStoreName(): string | null {
+  try {
+    return localStorage.getItem(STORE_NAME_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setStoreName(storeName: string): void {
+  try {
+    localStorage.setItem(STORE_NAME_KEY, storeName)
+  } catch {
+    return
+  }
+}
+
+export function clearStoreName(): void {
+  try {
+    localStorage.removeItem(STORE_NAME_KEY)
   } catch {
     return
   }

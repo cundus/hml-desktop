@@ -15,6 +15,7 @@ import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import ProductBrowser, { type Product } from './components/ProductBrowser'
+import ProductSelectModal, { type ProductSelectResult } from './components/ProductSelectModal'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
@@ -43,6 +44,8 @@ export default function SalesPage(): React.JSX.Element {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
   const [paidAmount, setPaidAmount] = useState(0)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [, setCheckoutLoading] = useState(false)
   const [snackbar, setSnackbar] = useState<{
@@ -86,6 +89,8 @@ export default function SalesPage(): React.JSX.Element {
             name: p.name,
             sku: p.sku,
             category: p.categoryId ? (categoriesMap.get(p.categoryId) ?? 'Lainnya') : 'Lainnya',
+            unit: p.unit ?? 'PCS',
+            cost: p.cost ?? '0',
             price: pricesMap.get(p.id) ?? parseFloat(p.cost) ?? 0
           }))
 
@@ -128,16 +133,49 @@ export default function SalesPage(): React.JSX.Element {
     return Math.max(0, subtotal - discountAmount)
   }, [subtotal, discount])
 
-  const handleAddToCart = (product: Product): void => {
+  // Open product selection modal when clicking a product
+  const handleProductClick = (product: Product): void => {
+    setSelectedProduct(product)
+    setProductSelectModalOpen(true)
+  }
+
+  // Handle confirmed selection from modal
+  const handleProductSelectConfirm = (result: ProductSelectResult): void => {
+    const { product, selectedUom, quantity, unitPrice } = result
+
+    // Create a unique cart item ID based on product + UOM + price category
+    const cartItemId = `${product.id}-${selectedUom.code}-${result.selectedPrice.id}`
+
     setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === product.id)
+      const existing = prev.find((item) => item.id === cartItemId)
       if (existing) {
         return prev.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
         )
       }
-      return [...prev, { ...product, quantity: 1 }]
+      return [
+        ...prev,
+        {
+          id: cartItemId,
+          name: `${product.name} (${selectedUom.code})`,
+          sku: product.sku,
+          category: product.category,
+          unit: selectedUom.code,
+          cost: product.cost,
+          price: unitPrice,
+          quantity
+        }
+      ]
     })
+
+    setProductSelectModalOpen(false)
+    setSelectedProduct(null)
+  }
+
+  // Legacy direct add (for quick add without modal if needed)
+  const handleAddToCart = (product: Product): void => {
+    // Open modal instead of direct add
+    handleProductClick(product)
   }
 
   const handleQuantityChange = (id: string, quantity: number): void => {
@@ -490,6 +528,16 @@ export default function SalesPage(): React.JSX.Element {
             <Button onClick={() => setProductDialogOpen(false)}>Tutup</Button>
           </DialogActions>
         </Dialog>
+
+        <ProductSelectModal
+          open={productSelectModalOpen}
+          product={selectedProduct}
+          onClose={() => {
+            setProductSelectModalOpen(false)
+            setSelectedProduct(null)
+          }}
+          onConfirm={handleProductSelectConfirm}
+        />
 
         <Snackbar
           open={snackbar.open}

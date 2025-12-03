@@ -205,6 +205,12 @@ const menus: MenuItem[] = [
         label: 'Peran & Izin',
         path: '/access-control',
         permissions: ['settings.access-control.manage']
+      },
+      {
+        key: 'app-config',
+        label: 'Konfigurasi Aplikasi',
+        path: '/settings/app-config',
+        permissions: ['settings.app-config.manage']
       }
     ]
   },

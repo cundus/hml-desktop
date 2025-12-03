@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -153,33 +154,36 @@ export default function BatchesPage(): React.JSX.Element {
         if (response.success) {
           await loadData()
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan batch')
+          return
         }
       } else {
         const response = await window.api.db.batches.create(data)
         if (response.success) {
           await loadData()
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan batch')
+          return
         }
       }
       closeDialog()
-    } catch (err) {
-      alert('Operasi gagal')
+    } catch {
+      globalAlert.error('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus batch ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus batch ini?')
+    if (!confirmed) return
     try {
       const response = await window.api.db.batches.delete(id)
       if (response.success) {
         await loadData()
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal menghapus batch')
       }
-    } catch (err) {
-      alert('Gagal menghapus')
+    } catch {
+      globalAlert.error('Gagal menghapus batch')
     }
   }
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -308,8 +309,9 @@ export default function ProductPage(): React.JSX.Element {
   }
 
   const handleDelete = async (product: Product): Promise<void> => {
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus produk ini?')
+    if (!confirmed) return
     try {
-      if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
       const response = await window.api.db.products.delete(product.id)
       if (!response.success) {
         setError(response.error ?? 'Gagal menghapus produk')

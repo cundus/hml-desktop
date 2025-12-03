@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { globalAlert } from '../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -160,25 +161,26 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         await loadData()
         handleMenuClose()
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal memperbarui status')
       }
     } catch {
-      alert('Gagal memperbarui status')
+      globalAlert.error('Gagal memperbarui status')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus pesanan pembelian ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus pesanan pembelian ini?')
+    if (!confirmed) return
 
     try {
       const response = await window.api.db.purchaseOrders.delete(id)
       if (response.success) {
         await loadData()
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal menghapus')
       }
     } catch {
-      alert('Gagal menghapus')
+      globalAlert.error('Gagal menghapus')
     }
   }
 

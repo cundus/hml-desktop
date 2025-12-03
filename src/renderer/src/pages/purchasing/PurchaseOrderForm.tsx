@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { globalAlert } from '../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -137,7 +138,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
   const addItem = (): void => {
     if (!selectedProduct) {
-      alert('Silakan pilih produk')
+      globalAlert.warning('Silakan pilih produk')
       return
     }
 
@@ -197,12 +198,12 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
   const handleSave = async (saveStatus: PurchaseOrderStatus): Promise<void> => {
     if (!supplierId || !storeId) {
-      alert('Silakan isi semua field yang diperlukan')
+      globalAlert.warning('Silakan isi semua field yang diperlukan')
       return
     }
 
     if (items.length === 0) {
-      alert('Silakan tambahkan minimal satu item')
+      globalAlert.warning('Silakan tambahkan minimal satu item')
       return
     }
 
@@ -234,13 +235,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       }
 
       if (response.success) {
-        alert('Pesanan pembelian disimpan sebagai draft!')
+        globalAlert.success('Pesanan pembelian berhasil disimpan!')
         navigate('/purchasing/orders')
       } else {
-        alert(response.error || 'Gagal menyimpan pesanan pembelian')
+        globalAlert.error(response.error || 'Gagal menyimpan pesanan pembelian')
       }
     } catch (err) {
-      alert('Gagal menyimpan pesanan pembelian')
+      globalAlert.error('Gagal menyimpan pesanan pembelian')
       console.error(err)
     } finally {
       setSaving(false)
@@ -248,8 +249,10 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   }
 
   const handleReceive = async (): Promise<void> => {
-    if (!confirm('Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.'))
-      return
+    const confirmed = await globalAlert.confirm(
+      'Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.'
+    )
+    if (!confirmed) return
 
     try {
       setSaving(true)
@@ -272,10 +275,10 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         await window.api.db.productLocations.adjustQuantity(item.productId, storeId, item.quantity)
       }
 
-      alert('Pesanan pembelian diterima! Inventori diperbarui.')
+      globalAlert.success('Pesanan pembelian diterima! Inventori diperbarui.')
       navigate('/purchasing/orders')
     } catch (err) {
-      alert('Gagal menerima pesanan pembelian')
+      globalAlert.error('Gagal menerima pesanan pembelian')
       console.error(err)
     } finally {
       setSaving(false)

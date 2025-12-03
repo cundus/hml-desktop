@@ -1,6 +1,7 @@
 import { createHashRouter, RouterProvider } from 'react-router-dom'
 import { ToastProvider } from './contexts/ToastContext'
 import { ShiftProvider } from './contexts/ShiftContext'
+import GlobalAlertModal from './components/GlobalAlertModal'
 import RequireAuth from './components/RequireAuth'
 import RoleGuard from './components/RoleGuard'
 import MainLayout from './layouts/MainLayout'
@@ -130,6 +131,7 @@ function App(): React.JSX.Element {
     <ToastProvider>
       <ShiftProvider>
         <RouterProvider router={router} />
+        <GlobalAlertModal />
       </ShiftProvider>
     </ToastProvider>
   )

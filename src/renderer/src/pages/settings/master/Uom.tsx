@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -97,7 +98,7 @@ export default function UomPage(): React.JSX.Element {
             prev.map((u) => (u.id === editing.id ? { ...response.data, id: response.data.id } : u))
           )
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan satuan')
           return
         }
       } else {
@@ -105,27 +106,28 @@ export default function UomPage(): React.JSX.Element {
         if (response.success) {
           setItems((prev) => [...prev, response.data])
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan satuan')
           return
         }
       }
       closeDialog()
     } catch (err) {
-      alert('Operasi gagal')
+      globalAlert.error('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus satuan ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus satuan ini?')
+    if (!confirmed) return
     try {
       const response = await window.api.db.uoms.delete(id)
       if (response.success) {
         setItems((prev) => prev.filter((u) => u.id !== id))
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal menghapus satuan')
       }
     } catch (err) {
-      alert('Gagal menghapus')
+      globalAlert.error('Gagal menghapus satuan')
     }
   }
 

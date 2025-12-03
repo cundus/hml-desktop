@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -70,7 +71,7 @@ export default function StorePage(): React.JSX.Element {
       } else {
         setError(response.error ?? 'Gagal memuat toko')
       }
-    } catch (err) {
+    } catch {
       setError('Gagal memuat toko')
     } finally {
       setLoading(false)
@@ -105,33 +106,36 @@ export default function StorePage(): React.JSX.Element {
         if (response.success) {
           setItems((prev) => prev.map((s) => (s.id === editing.id ? response.data : s)))
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan toko')
+          return
         }
       } else {
         const response = await window.api.db.stores.create(values)
         if (response.success) {
           setItems((prev) => [...prev, response.data])
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan toko')
+          return
         }
       }
       closeDialog()
-    } catch (err) {
-      alert('Operasi gagal')
+    } catch {
+      globalAlert.error('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus toko ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus toko ini?')
+    if (!confirmed) return
     try {
-      const response = await window.api.db.stores.softDelete(id)
+      const response = await window.api.db.stores.delete(id)
       if (response.success) {
         setItems((prev) => prev.filter((s) => s.id !== id))
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal menghapus toko')
       }
     } catch {
-      alert('Gagal menghapus')
+      globalAlert.error('Gagal menghapus toko')
     }
   }
   return (

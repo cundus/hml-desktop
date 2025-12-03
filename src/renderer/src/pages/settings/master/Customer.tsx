@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -197,8 +198,9 @@ export default function CustomerPage(): React.JSX.Element {
   }
 
   const handleDelete = async (customer: Customer): Promise<void> => {
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus pelanggan ini?')
+    if (!confirmed) return
     try {
-      if (!confirm('Apakah Anda yakin ingin menghapus pelanggan ini?')) return
       const response = await window.api.db.customers.delete(customer.id)
       if (!response.success) {
         setError(response.error ?? 'Gagal menghapus pelanggan')

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -94,33 +95,36 @@ export default function CustomerCategoryPage(): React.JSX.Element {
         if (response.success) {
           setItems((prev) => prev.map((c) => (c.id === editing.id ? response.data : c)))
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan kategori')
+          return
         }
       } else {
         const response = await window.api.db.customerCategories.create(values)
         if (response.success) {
           setItems((prev) => [...prev, response.data])
         } else {
-          alert(response.error)
+          globalAlert.error(response.error ?? 'Gagal menyimpan kategori')
+          return
         }
       }
       closeDialog()
-    } catch (err) {
-      alert('Operasi gagal')
+    } catch {
+      globalAlert.error('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus kategori pelanggan ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus kategori pelanggan ini?')
+    if (!confirmed) return
     try {
-      const response = await window.api.db.customerCategories.softDelete(id)
+      const response = await window.api.db.customerCategories.delete(id)
       if (response.success) {
         setItems((prev) => prev.filter((c) => c.id !== id))
       } else {
-        alert(response.error)
+        globalAlert.error(response.error ?? 'Gagal menghapus kategori')
       }
-    } catch (err) {
-      alert('Gagal menghapus')
+    } catch {
+      globalAlert.error('Gagal menghapus kategori')
     }
   }
   return (

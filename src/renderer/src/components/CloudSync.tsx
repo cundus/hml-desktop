@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { globalAlert } from '../lib/globalAlert'
 import {
   Cloud,
   CloudOff,
@@ -67,7 +68,7 @@ export function CloudSync(): React.JSX.Element {
 
   const handleConnect = async (): Promise<void> => {
     if (!cloudUrl.trim()) {
-      alert('Please enter a cloud database URL')
+      globalAlert.warning('Please enter a cloud database URL')
       return
     }
 
@@ -81,10 +82,10 @@ export function CloudSync(): React.JSX.Element {
         // Perform initial sync
         await handleInitialSync()
       } else {
-        alert(`Connection failed: ${response.error}`)
+        globalAlert.error(`Connection failed: ${response.error}`)
       }
     } catch (error) {
-      alert(`Connection error: ${error}`)
+      globalAlert.error(`Connection error: ${error}`)
     } finally {
       setSyncing(false)
     }
@@ -140,10 +141,10 @@ export function CloudSync(): React.JSX.Element {
           setLastProgressPercent(null)
         }
       } else {
-        alert(`Sync failed: ${response.error}`)
+        globalAlert.error(`Sync failed: ${response.error}`)
       }
     } catch (error) {
-      alert(`Sync error: ${error}`)
+      globalAlert.error(`Sync error: ${error}`)
     } finally {
       setSyncing(false)
     }

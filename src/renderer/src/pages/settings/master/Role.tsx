@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -116,7 +117,8 @@ export default function RolePage(): React.JSX.Element {
             )
           )
         } else {
-          alert(response.error ?? 'Gagal menyimpan role')
+          globalAlert.error(response.error ?? 'Gagal menyimpan role')
+          return
         }
       } else {
         const response = await window.api.db.roles.create({
@@ -134,26 +136,28 @@ export default function RolePage(): React.JSX.Element {
             }
           ])
         } else {
-          alert(response.error ?? 'Gagal menyimpan role')
+          globalAlert.error(response.error ?? 'Gagal menyimpan role')
+          return
         }
       }
       closeDialog()
-    } catch (err) {
-      alert('Operasi gagal')
+    } catch {
+      globalAlert.error('Operasi gagal')
     }
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus role ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus role ini?')
+    if (!confirmed) return
     try {
       const response = await window.api.db.roles.delete(id)
       if (response.success) {
         setItems((prev) => prev.filter((r) => r.id !== id))
       } else {
-        alert(response.error ?? 'Gagal menghapus role')
+        globalAlert.error(response.error ?? 'Gagal menghapus role')
       }
-    } catch (err) {
-      alert('Gagal menghapus')
+    } catch {
+      globalAlert.error('Gagal menghapus role')
     }
   }
 

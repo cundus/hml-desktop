@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { globalAlert } from '../../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -321,8 +322,9 @@ export default function UserPage(): React.JSX.Element {
   }
 
   const handleDelete = async (user: User): Promise<void> => {
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus pengguna ini?')
+    if (!confirmed) return
     try {
-      if (!confirm('Apakah Anda yakin ingin menghapus pengguna ini?')) return
       const response = await window.api.db.users.delete(user.id)
       if (!response.success) {
         setError(response.error ?? 'Gagal menghapus pengguna')

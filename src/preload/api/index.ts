@@ -7,6 +7,7 @@ export * from './sales'
 export * from './purchasing'
 export * from './sync'
 export * from './shift'
+export * from './app-config'
 
 // Re-export for convenience
 import {
@@ -31,6 +32,7 @@ import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
 import { syncApi } from './sync'
 import { shiftApi } from './shift'
+import { appConfigApi } from './app-config'
 
 export const db = {
   // Master Data
@@ -66,5 +68,8 @@ export const db = {
   sync: syncApi,
 
   // Shift
-  shifts: shiftApi
+  shifts: shiftApi,
+
+  // App Config
+  appConfig: appConfigApi
 }

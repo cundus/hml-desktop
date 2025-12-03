@@ -32,8 +32,10 @@ import WarehousePricingPage from './pages/warehouse/Pricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
 import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
+import SetupPage from './pages/Setup'
 
 const router = createHashRouter([
+  { path: '/setup', element: <SetupPage /> },
   { path: '/login', element: <Login /> },
   {
     element: <RequireAuth />,

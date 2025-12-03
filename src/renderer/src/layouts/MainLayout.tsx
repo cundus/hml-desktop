@@ -13,6 +13,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import PersonIcon from '@mui/icons-material/Person'
+import StorefrontIcon from '@mui/icons-material/Storefront'
 import SideNav from '../components/SideNav'
 import SyncButton from '../components/SyncButton'
 import useThemeMode from '../hooks/useThemeMode'
@@ -40,6 +41,8 @@ function formatDateTime(date: Date): { date: string; time: string; day: string }
 export default function MainLayout(): React.JSX.Element {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [currentTime, setCurrentTime] = useState(new Date())
+  const [branchName, setBranchName] = useState<string | null>(null)
+  const [isHeadBranch, setIsHeadBranch] = useState(false)
   const { mode, toggleTheme } = useThemeMode()
   const { userName, userRole, storeName } = useAuth()
 
@@ -48,6 +51,21 @@ export default function MainLayout(): React.JSX.Element {
       setCurrentTime(new Date())
     }, 1000)
     return () => clearInterval(timer)
+  }, [])
+
+  useEffect(() => {
+    const loadBranchInfo = async (): Promise<void> => {
+      try {
+        const res = await window.api.db.appConfig.get()
+        if (res.success && res.data) {
+          setBranchName(res.data.branchName)
+          setIsHeadBranch(res.data.isHeadBranch)
+        }
+      } catch (err) {
+        console.error('Failed to load branch info:', err)
+      }
+    }
+    loadBranchInfo()
   }, [])
 
   const { date, time, day } = formatDateTime(currentTime)
@@ -78,11 +96,21 @@ export default function MainLayout(): React.JSX.Element {
           >
             <MenuIcon />
           </IconButton>
+          {/* Branch info */}
+          {branchName && (
+            <Chip
+              icon={<StorefrontIcon />}
+              label={`${branchName}${isHeadBranch ? ' (HQ)' : ''}`}
+              size="small"
+              color="primary"
+              sx={{ mr: 1 }}
+            />
+          )}
           {/* User info on the left */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Chip
               icon={<PersonIcon />}
-              label={`${userName || 'User'} • ${userRole || 'Guest'} • ${storeName || 'Store'}`}
+              label={`${userName || 'User'} • ${userRole || 'Guest'}${storeName ? ` • ${storeName}` : ''}`}
               size="small"
               color="default"
               sx={{

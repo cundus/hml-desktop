@@ -1,68 +1,184 @@
-TODO LIST – PETSHOP MANAGEMENT SYSTEM
-(Requirement Draft from Client)
+PETSHOP MANAGEMENT SYSTEM – MASTER TODO LIST (COMBINED REQUIREMENTS) (Updated 2025-12-03)
 
-1. Produk & Supplier
-   - Tambahkan label kategori produk.
-   - Tambahkan label supplier.
-   - Tambahkan fitur satuan default: PCS, SAK, BOX, DUS, PACK (dapat ditambah jika diperlukan).
-   - Tab Harga:
-     • Tampilkan harga modal & harga jual.
-     • Otomatis hitung margin.
-     • Jika margin (%) diisi manual, otomatis update harga jual.
+----------------------------------------------------
+1. PRODUK & SUPPLIER
+----------------------------------------------------
+- Tambahkan label kategori produk.
+- Tambahkan label supplier.
+- Tambahkan fitur satuan default: PCS, SAK, BOX, DUS, PACK (extendable).
+- Tab Harga:
+  - Tampilkan harga modal & harga jual.
+  - Hitung margin otomatis.
+  - Jika margin (%) diisi manual → update harga jual otomatis.
+- Produk grosir: tampilkan harga terakhir + tanggal terakhir beli.
+- Pembelian produk grosir: tampilkan riwayat pembelian singkat customer.
+- Alur pemilihan produk kasir:
+  - Pilih produk → pilih kategori harga → pilih satuan.
 
-2. UX / UI Improvement
-   - Bug fixing: masalah pada fitur "Tambah Pelanggan".
-   - Auto-fullscreen saat aplikasi dibuka.
-   - Fitur auto-focus & auto-type ketika membuka modal “Tambah Produk” (shortcut F2).
-   - Tampilkan tanggal, hari, dan jam pada pojok kanan atas.
-   - Tampilkan nama user + role pada pojok kiri atas.
+----------------------------------------------------
+2. UX / UI IMPROVEMENT
+----------------------------------------------------
+- Bug fixing: fitur “Tambah Pelanggan”.
+- Auto-fullscreen saat aplikasi dibuka.
+- Auto-focus & auto-type pada modal “Tambah Produk” (F2).
+- Tampilkan tanggal, hari, dan jam di pojok kanan atas.
+- Tampilkan nama user + role di pojok kiri atas.
+- Full hotkey navigation untuk kasir (arrow navigation, auto numeric).
+- Hilangkan angka desimal .00 pada jumlah uang.
 
-3. Penjualan & Pembelian
-   - Tambahkan tab “Laporan Pengeluaran” (rekap uang keluar harian).
-   - Tambahkan fitur “Settlement / Tutup Kasir”.
-   - Pembelian:
-     • Autocomplete dropdown pada Purchasing.
-     • Tampilkan detail pemesanan.
-     • Tambahkan tab khusus untuk Pembelian.
-   - Tambahkan fitur Print & Export PDF untuk laporan dan summary.
+----------------------------------------------------
+3. PENJUALAN & PEMBELIAN
+----------------------------------------------------
+- Tambahkan tab “Laporan Pengeluaran” (expense summary).
+- Tambahkan fitur “Settlement / Tutup Kasir”.
+- Pembelian:
+  - Autocomplete dropdown.
+  - Tampilkan detail pesanan.
+  - Tambahkan tab khusus Pembelian.
+- Print & Export PDF untuk laporan dan summary.
+- Flow kasir:
+  - Pilih produk → popup → pilih satuan → pilih harga → input qty.
 
-4. Sistem Kasir (Shift Management)
-   - Saat kasir login, wajib input modal awal kas.
-   - Saat tutup kasir: wajib input cash on hand → hitung selisih otomatis.
-   - Tambahkan pop-up konfirmasi “Apakah Anda yakin mengakhiri shift?”.
-   - Tambahkan fitur Kasir Backup:
-     • Kasir pengganti harus login ulang (username + PIN).
-     • Sistem menyimpan riwayat siapa yang berjaga pada setiap shift.
-   - Tambahkan fitur PIN tambahan selain ID & Password.
+----------------------------------------------------
+4. SISTEM KASIR (SHIFT MANAGEMENT)
+----------------------------------------------------
+- Login kasir: wajib input modal awal kas.
+- Tutup kasir: wajib input cash-on-hand → hitung selisih otomatis.
+- Pop-up konfirmasi “Apakah Anda yakin mengakhiri shift?”.
+- Tambahkan fitur Backup Cashier:
+  - Kasir pengganti wajib login ulang (username + PIN).
+  - Simpan riwayat kasir setiap shift.
+- Tambahkan fitur PIN tambahan.
+- Ringkasan shift:
+  - Total penjualan.
+  - Penjualan bersih.
+  - Expected cash.
+  - Pengeluaran.
 
-5. Dashboard Alerts & Actions
-   - Stock 0 (produk kosong):
-     • Dapat di-klik → muncul pilihan tindakan:
-       - Barang tidak disediakan lagi → reminder tiap 7 hari.
-       - Barang kosong dari supplier → reminder tiap 3 jam.
-     • Semua barang kosong dapat dirangkum dalam bentuk PDF untuk owner.
-   - Piutang pelanggan:
-     • Muncul pop-up reminder tiap 3–4 jam.
-     • Dapat dirangkum dalam bentuk PDF.
+----------------------------------------------------
+5. SETTLEMENT PRINTOUT (SHIFT SUMMARY)
+----------------------------------------------------
+- Total omset.
+- Kategori pemasukan per metode pembayaran.
+- Daftar pelanggan kredit (jika ada).
+- Selisih kas.
+- Cash awal & cash akhir.
+- Pengeluaran harian.
+- Nominal setoran yang harus diberikan.
+- Nama kasir yang melakukan settlement.
+- Auto-sync ke cloud.
 
-6. Produk vs Jasa
-   - Pisahkan laporan untuk produk dan jasa.
+----------------------------------------------------
+6. DASHBOARD ALERTS & ACTIONS
+----------------------------------------------------
+STOCK 0:
+- Klik → pilihan aksi:
+  - “Barang tidak disediakan lagi” → reminder tiap 7 hari.
+  - “Barang kosong dari supplier” → reminder tiap 3 jam.
+- Export PDF untuk owner.
 
-7. Sistem Delivery
-   - Tambahkan jenis transaksi: Take Away / Delivery.
-   - Jika Delivery:
-     • Cantumkan nama kurir yang mengantar.
-     • Input ongkos kirim → masuk ke laporan delivery.
+PIUTANG PELANGGAN:
+- Popup reminder tiap 3–4 jam.
+- Export PDF ringkasan piutang.
 
-8. Sistem Komisi
-   - Tambahkan fitur komisi per produk.
-   - Buat tab baru khusus pengaturan komisi + kondisi komisinya.
+----------------------------------------------------
+7. PRODUK VS JASA
+----------------------------------------------------
+- Laporan produk dan laporan jasa dipisahkan.
 
-9. Laporan & Analitik
-   - Tambahkan tab “Laporan” / “Summary”.
-   - Fitur perbandingan omset: bandingkan dengan bulan lalu atau bulan tertentu.
-   - Supplier Summary:
-     • Total pembelian ke supplier A.
-     • Status piutang ke supplier (jika ada).
-     • Menampilkan historical nota & nota yang belum lunas.
+----------------------------------------------------
+8. SISTEM DELIVERY
+----------------------------------------------------
+- Tambahkan jenis transaksi: Take Away / Delivery.
+- Jika Delivery:
+  - Input nama kurir.
+  - Input ongkir → masuk laporan delivery.
+  - Jika belum ada kurir → tampil di “Belum Terkirim”.
+- Future:
+  - Kurir mengambil barang.
+  - Barang dikirim.
+  - Customer menerima (dengan bukti foto).
 
+----------------------------------------------------
+9. SISTEM KOMISI
+----------------------------------------------------
+- Komisi per produk.
+- Komisi nominal atau persen margin.
+- Berlaku untuk kategori pelanggan tertentu atau semua.
+- Berlaku untuk cabang tertentu.
+- Bisa tentukan masa berlaku.
+- Tambahkan tab pengaturan komisi.
+
+----------------------------------------------------
+10. DYNAMIC PROMOTION SYSTEM
+----------------------------------------------------
+- Promosi per produk.
+- Input promosi: nominal atau persen margin.
+- Berlaku untuk kategori pelanggan tertentu atau all.
+- Berlaku untuk cabang tertentu.
+- Atur masa berlaku promo.
+- Modul konfigurasi promosi harus dinamis.
+
+----------------------------------------------------
+11. TARGET OMSET
+----------------------------------------------------
+- Target omset per branch.
+- Target omset per produk.
+- Ditampilkan saat tutup shift.
+- Target memiliki deadline.
+
+----------------------------------------------------
+12. USER MANAGEMENT
+----------------------------------------------------
+- Tambahkan detail user (employee profile).
+- Dynamic role & permission system.
+
+----------------------------------------------------
+13. STOCK OPNAME (BACKEND)
+----------------------------------------------------
+- Hanya role tertentu dapat membuat opname.
+- Wajib memilih branch.
+- Bisa pilih produk tertentu atau ALL.
+- Sinkron web ↔ aplikasi cabang.
+- Setelah opname selesai → prompt penyesuaian stok.
+
+----------------------------------------------------
+14. APP CONFIGURATION (INITIAL SETUP)
+----------------------------------------------------
+- First-time setup:
+  - Pilih branch + head branch.
+  - Branch info tersimpan di local device.
+- Validasi database cloud sebelum digunakan.
+
+----------------------------------------------------
+15. WAREHOUSE / HQ PRICING SYSTEM
+----------------------------------------------------
+- Harga dikontrol oleh HQ.
+- Harga per satuan (UoM).
+- Jika harga modal berubah → harga jual ikut berubah.
+- Menggunakan FIFO.
+- Bonus sales / komisi per product.
+- Komisi nominal / persen margin.
+- Berlaku untuk cabang tertentu.
+- Bisa tentukan masa berlaku.
+
+----------------------------------------------------
+16. TODO LIST KARYAWAN
+----------------------------------------------------
+- Dibuat oleh top-level user.
+- Assign ke karyawan tertentu.
+- Tombol Todo List di app bar.
+- Saat login → popup jika ada tugas.
+- Staff dapat checklist.
+- Tugas bisa berulang (daily recurring).
+- Creator dapat update isi todo.
+
+----------------------------------------------------
+17. MENU PENGELUARAN (EXPENSE)
+----------------------------------------------------
+- Nama item / jenis.
+- Qty.
+- Harga.
+- Total.
+- Description.
+- Semua pengeluaran harus CASH.

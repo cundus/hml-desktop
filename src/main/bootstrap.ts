@@ -46,6 +46,8 @@ import {
 } from './services'
 import { ShiftService } from './services/shift.service'
 import { registerShiftHandlers } from './controllers/shift.controller'
+import { AppConfigService } from './services/app-config.service'
+import { registerAppConfigHandlers } from './controllers/app-config.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -90,6 +92,9 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize shift service
   const shiftService = new ShiftService(db)
+
+  // Initialize app config service
+  const appConfigService = new AppConfigService(db)
 
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
@@ -150,6 +155,7 @@ export async function bootstrap(): Promise<void> {
   authController.registerHandlers()
   uomController.registerHandlers()
   registerShiftHandlers(shiftService)
+  registerAppConfigHandlers(appConfigService)
 
-  console.log('✓ All 21 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 22 services and controllers initialized (sql.js local + cloud sync ready)')
 }

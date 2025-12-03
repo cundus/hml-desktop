@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Box, Grid, Typography, CircularProgress } from '@mui/material'
+import useAuth from '../../hooks/useAuth'
 import KpiSummary, { type KpiItem } from './components/KpiSummary'
 import SalesPerformanceCard from './components/SalesPerformanceCard'
 import TopProductsList, { type TopProduct } from './components/TopProductsList'
@@ -120,8 +121,11 @@ const quickNavItems: QuickNavItem[] = [
 function Home(): React.JSX.Element {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const { hasPermission } = useAuth()
+  const canViewDashboard = hasPermission('dashboard.view')
 
   const loadDashboardStats = useCallback(async () => {
+    if (!canViewDashboard) return
     try {
       setLoading(true)
       const response = await window.api.db.transactions.getDashboardStats()
@@ -133,16 +137,17 @@ function Home(): React.JSX.Element {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [canViewDashboard])
 
   useEffect(() => {
+    if (!canViewDashboard) return
     void loadDashboardStats()
     // Refresh every 60 seconds
     const interval = setInterval(() => {
       void loadDashboardStats()
     }, 60000)
     return () => clearInterval(interval)
-  }, [loadDashboardStats])
+  }, [canViewDashboard, loadDashboardStats])
 
   const handleNavigate = (path: string): void => {
     window.location.hash = `#${path}`
@@ -190,6 +195,37 @@ function Home(): React.JSX.Element {
       type: 'inventory'
     }
   ]
+
+  // If user cannot view dashboard, show simple welcome screen instead
+  if (!canViewDashboard) {
+    return (
+      <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
+        <Box sx={{ width: '100%', p: 2 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h5" fontWeight={600} gutterBottom>
+              Selamat Datang di Petshop POS
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Gunakan menu navigasi cepat di bawah ini untuk mengakses fitur yang Anda miliki
+              izin untuk mengelola.
+            </Typography>
+          </Box>
+
+          <Grid container spacing={2} sx={{ height: '100%' }}>
+            <Grid
+              size={{ xs: 12, md: 8 }}
+              sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0 }}
+            >
+              <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                Navigasi Cepat
+              </Typography>
+              <QuickNavigation items={quickNavItems} onNavigate={handleNavigate} />
+            </Grid>
+          </Grid>
+        </Box>
+      </Box>
+    )
+  }
 
   if (loading) {
     return (

@@ -67,16 +67,33 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
-## Phase 4: Sales & Purchasing (Priority: MEDIUM)
+## Phase 4: App Configuration (Priority: HIGH)
 
-### 4.1 Sales Enhancements
+### 4.1 Initial Setup
+
+| ID       | Task                                                                                      | Status  | Complexity |
+| -------- | ----------------------------------------------------------------------------------------- | ------- | ---------- |
+| CONF-001 | Initial App Config: Setup branch di local device, setup head branch, validasi cloud DB   | ✅ DONE | High       |
+| CONF-002 | Branch info muncul di App Bar                                                             | ✅ DONE | Low        |
+
+### 4.2 Cloud Sync
+
+| ID       | Task                                          | Status  | Complexity |
+| -------- | --------------------------------------------- | ------- | ---------- |
+| CONF-003 | Cloud DB Sync: Data lokal terhubung dan sinkron ke cloud | ⬜ TODO | High       |
+
+---
+
+## Phase 5: Sales & Purchasing (Priority: MEDIUM)
+
+### 5.1 Sales Enhancements
 
 | ID        | Task                                            | Status  | Complexity |
 | --------- | ----------------------------------------------- | ------- | ---------- |
 | SALES-001 | Add "Expense Report" tab (daily cash out recap) | ⬜ TODO | Medium     |
 | SALES-002 | Print & Export PDF for reports and summaries    | ⬜ TODO | High       |
 
-### 4.2 Purchasing Improvements
+### 5.2 Purchasing Improvements
 
 | ID        | Task                                | Status  | Complexity |
 | --------- | ----------------------------------- | ------- | ---------- |
@@ -86,7 +103,7 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
-## Phase 5: Delivery System (Priority: MEDIUM)
+## Phase 6: Delivery System (Priority: MEDIUM)
 
 | ID        | Task                                                           | Status  | Complexity |
 | --------- | -------------------------------------------------------------- | ------- | ---------- |
@@ -96,9 +113,9 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
-## Phase 6: Dashboard Alerts & Notifications (Priority: MEDIUM)
+## Phase 7: Dashboard Alerts & Notifications (Priority: MEDIUM)
 
-### 6.1 Stock Alerts
+### 7.1 Stock Alerts
 
 | ID        | Task                                                          | Status  | Complexity |
 | --------- | ------------------------------------------------------------- | ------- | ---------- |
@@ -107,7 +124,7 @@ This document outlines the structured development plan based on client requireme
 | ALERT-003 | Action: "Out of stock from supplier" → reminder every 3 hours | ⬜ TODO | Medium     |
 | ALERT-004 | Export all out-of-stock products to PDF for owner             | ⬜ TODO | Medium     |
 
-### 6.2 Receivables Alerts
+### 7.2 Receivables Alerts
 
 | ID        | Task                                                | Status  | Complexity |
 | --------- | --------------------------------------------------- | ------- | ---------- |
@@ -116,16 +133,16 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
-## Phase 7: Reports & Analytics (Priority: MEDIUM)
+## Phase 8: Reports & Analytics (Priority: MEDIUM)
 
-### 7.1 General Reports
+### 8.1 General Reports
 
 | ID         | Task                                                          | Status  | Complexity |
 | ---------- | ------------------------------------------------------------- | ------- | ---------- |
 | REPORT-001 | Add "Reports" / "Summary" tab                                 | ⬜ TODO | Medium     |
 | REPORT-002 | Revenue comparison: compare with last month or specific month | ⬜ TODO | High       |
 
-### 7.2 Supplier Summary
+### 8.2 Supplier Summary
 
 | ID         | Task                                          | Status  | Complexity |
 | ---------- | --------------------------------------------- | ------- | ---------- |
@@ -135,7 +152,7 @@ This document outlines the structured development plan based on client requireme
 
 ---
 
-## Phase 8: Commission System (Priority: LOW)
+## Phase 9: Commission System (Priority: LOW)
 
 | ID       | Task                                           | Status  | Complexity |
 | -------- | ---------------------------------------------- | ------- | ---------- |
@@ -174,18 +191,19 @@ This document outlines the structured development plan based on client requireme
 
 ## Development Timeline (Suggested)
 
-| Phase                        | Duration  | Priority |
-| ---------------------------- | --------- | -------- |
-| Phase 1: Core Fixes & UX     | 1 week    | HIGH     |
-| Phase 2: Product & Supplier  | 1-2 weeks | HIGH     |
-| Phase 3: Cashier & Shift     | 2 weeks   | HIGH     |
-| Phase 4: Sales & Purchasing  | 1-2 weeks | MEDIUM   |
-| Phase 5: Delivery System     | 1 week    | MEDIUM   |
-| Phase 6: Dashboard Alerts    | 1-2 weeks | MEDIUM   |
-| Phase 7: Reports & Analytics | 2 weeks   | MEDIUM   |
-| Phase 8: Commission System   | 1-2 weeks | LOW      |
+| Phase                         | Duration  | Priority |
+| ----------------------------- | --------- | -------- |
+| Phase 1: Core Fixes & UX      | 1 week    | HIGH     |
+| Phase 2: Product & Supplier   | 1-2 weeks | HIGH     |
+| Phase 3: Cashier & Shift      | 2 weeks   | HIGH     |
+| Phase 4: App Configuration    | 1-2 weeks | HIGH     |
+| Phase 5: Sales & Purchasing   | 1-2 weeks | MEDIUM   |
+| Phase 6: Delivery System      | 1 week    | MEDIUM   |
+| Phase 7: Dashboard Alerts     | 1-2 weeks | MEDIUM   |
+| Phase 8: Reports & Analytics  | 2 weeks   | MEDIUM   |
+| Phase 9: Commission System    | 1-2 weeks | LOW      |
 
-**Total Estimated: 10-14 weeks**
+**Total Estimated: 12-17 weeks**
 
 ---
 
@@ -193,10 +211,10 @@ This document outlines the structured development plan based on client requireme
 
 | Priority  | Count        | Status  |
 | --------- | ------------ | ------- |
-| HIGH      | 17 tasks     | ⬜ TODO |
+| HIGH      | 20 tasks     | ⬜ TODO |
 | MEDIUM    | 18 tasks     | ⬜ TODO |
 | LOW       | 2 tasks      | ⬜ TODO |
-| **Total** | **37 tasks** |         |
+| **Total** | **40 tasks** |         |
 
 ---
 

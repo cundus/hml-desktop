@@ -8,6 +8,7 @@ import {
   TextField,
   Typography
 } from '@mui/material'
+import { formatCurrency } from '../../../utils/currency'
 
 export type PaymentMethod = 'cash' | 'card' | 'qris'
 
@@ -60,7 +61,7 @@ export default function PaymentSection({
           <Typography variant="body2" color="text.secondary">
             Kembalian:{' '}
             <Typography component="span" fontWeight="600">
-              {change.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+              {formatCurrency(change)}
             </Typography>
           </Typography>
         </Stack>

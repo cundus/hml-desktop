@@ -14,6 +14,7 @@ import Divider from '@mui/material/Divider'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import { formatCurrency } from '../../../utils/currency'
 import type { Product } from './ProductBrowser'
 
 export type CartItem = Product & {
@@ -88,10 +89,7 @@ export default function CartPanel({
                     </Typography>
                   </TableCell>
                   <TableCell align="right">
-                    {item.price.toLocaleString('id-ID', {
-                      style: 'currency',
-                      currency: 'IDR'
-                    })}
+                    {formatCurrency(item.price)}
                   </TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
@@ -115,10 +113,7 @@ export default function CartPanel({
                     </Stack>
                   </TableCell>
                   <TableCell align="right">
-                    {(item.price * item.quantity).toLocaleString('id-ID', {
-                      style: 'currency',
-                      currency: 'IDR'
-                    })}
+                    {formatCurrency(item.price * item.quantity)}
                   </TableCell>
                   <TableCell align="center">
                     <IconButton
@@ -145,7 +140,7 @@ export default function CartPanel({
             Subtotal
           </Typography>
           <Typography variant="body2" fontWeight="500">
-            {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+            {formatCurrency(subtotal)}
           </Typography>
         </Stack>
 
@@ -167,7 +162,7 @@ export default function CartPanel({
         <Stack direction="row" justifyContent="space-between">
           <Typography variant="subtitle1">Total</Typography>
           <Typography variant="subtitle1" fontWeight="700">
-            {total.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+            {formatCurrency(total)}
           </Typography>
         </Stack>
 

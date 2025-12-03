@@ -14,6 +14,7 @@ import IconButton from '@mui/material/IconButton'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import Kbd from '../../../components/Kbd'
+import { formatCurrency } from '../../../utils/currency'
 
 export interface ProductForSelection {
   id: string
@@ -52,16 +53,6 @@ interface ProductSelectModalProps {
   product: ProductForSelection | null
   onClose: () => void
   onConfirm: (result: ProductSelectResult) => void
-}
-
-// Format currency without decimals
-const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('id-ID', {
-    style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)
 }
 
 export default function ProductSelectModal({

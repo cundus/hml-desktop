@@ -27,6 +27,7 @@ import {
 } from '../../components/shift'
 import { useShift } from '@renderer/hooks/useShift'
 import useAuth from '../../hooks/useAuth'
+import { formatCurrency } from '@renderer/utils/currency'
 
 export default function SalesPage(): React.JSX.Element {
   const { token, userName } = useAuth()
@@ -437,7 +438,7 @@ export default function SalesPage(): React.JSX.Element {
               Total Pembayaran
             </Typography>
             <Typography variant="h3" fontWeight={700} color="primary.main">
-              {total.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+              {formatCurrency(total)}
             </Typography>
           </Box>
           <Box sx={{ textAlign: 'right' }}>
@@ -445,7 +446,7 @@ export default function SalesPage(): React.JSX.Element {
               Item: {cartItems.length}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Subtotal: {subtotal.toLocaleString('id-ID', { style: 'currency', currency: 'IDR' })}
+              Subtotal: {formatCurrency(subtotal)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Diskon: {discount}%

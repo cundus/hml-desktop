@@ -105,8 +105,8 @@ const quickNavItems: QuickNavItem[] = [
   },
   {
     key: 'suppliers',
-    label: 'Pemasok',
-    description: 'Kelola data pemasok',
+    label: 'Supplier',
+    description: 'Kelola data supplier',
     path: '/master-supplier'
   },
   {

@@ -89,7 +89,7 @@ export default function CloseShiftDialog({
               Masukkan jumlah kas akhir untuk menutup shift Anda.
             </Typography>
 
-            <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.100', borderRadius: 1 }}>
+            <Box sx={{ mb: 2, p: 2, borderRadius: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Kas Awal
               </Typography>

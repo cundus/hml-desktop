@@ -316,7 +316,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
           <TextField
             select
-            label="Pemasok"
+            label="Supplier"
             value={supplierId}
             onChange={(e) => setSupplierId(e.target.value)}
             fullWidth

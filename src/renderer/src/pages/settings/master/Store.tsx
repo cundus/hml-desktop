@@ -130,7 +130,7 @@ export default function StorePage(): React.JSX.Element {
       } else {
         alert(response.error)
       }
-    } catch (err) {
+    } catch {
       alert('Gagal menghapus')
     }
   }

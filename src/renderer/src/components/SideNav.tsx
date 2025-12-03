@@ -170,13 +170,13 @@ const menus: MenuItem[] = [
           },
           {
             key: 'master-category',
-            label: 'Kategori',
+            label: 'Kategori Produk',
             path: '/master-category',
             permissions: ['master.category.manage']
           },
           {
             key: 'master-supplier',
-            label: 'Pemasok',
+            label: 'Supplier',
             path: '/master-supplier',
             permissions: ['master.supplier.manage']
           },

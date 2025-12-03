@@ -154,22 +154,17 @@ export default function ShiftSettlementDialog({
                   gridTemplateColumns: 'repeat(2, 1fr)',
                   gap: 2,
                   p: 2,
-                  bgcolor: 'grey.50',
                   borderRadius: 1
                 }}
               >
                 <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Kasir
-                  </Typography>
+                  <Typography variant="caption">Kasir</Typography>
                   <Typography variant="body2" fontWeight={500}>
                     {summary.shift.userName ?? '-'}
                   </Typography>
                 </Box>
                 <Box>
-                  <Typography variant="caption" color="text.secondary">
-                    Waktu Buka
-                  </Typography>
+                  <Typography variant="caption">Waktu Buka</Typography>
                   <Typography variant="body2" fontWeight={500}>
                     {formatDateTime(summary.shift.openedAt)}
                   </Typography>

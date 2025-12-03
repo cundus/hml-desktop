@@ -104,7 +104,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
       } else {
         setError('Gagal memuat data')
       }
-    } catch (err) {
+    } catch {
       setError('Gagal memuat data')
     } finally {
       setLoading(false)
@@ -162,7 +162,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
       } else {
         alert(response.error)
       }
-    } catch (err) {
+    } catch {
       alert('Gagal memperbarui status')
     }
   }
@@ -177,7 +177,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
       } else {
         alert(response.error)
       }
-    } catch (err) {
+    } catch {
       alert('Gagal menghapus')
     }
   }
@@ -249,12 +249,12 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
           <Stack direction="row" spacing={2} flexWrap="wrap">
             <TextField
               select
-              label="Pemasok"
+              label="Supplier"
               value={filters.supplierId}
               onChange={(e) => setFilters({ ...filters, supplierId: e.target.value })}
               sx={{ minWidth: 200 }}
             >
-              <MenuItem value="">Semua Pemasok</MenuItem>
+              <MenuItem value="">Semua Supplier</MenuItem>
               {suppliers.map((supplier) => (
                 <MenuItem key={supplier.id} value={supplier.id}>
                   {supplier.name}
@@ -304,7 +304,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
             <TableRow>
               <TableCell>Kode PO</TableCell>
               <TableCell>Tanggal</TableCell>
-              <TableCell>Pemasok</TableCell>
+              <TableCell>Supplier</TableCell>
               <TableCell>Toko</TableCell>
               <TableCell>Status</TableCell>
               <TableCell align="right">Total</TableCell>

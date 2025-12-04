@@ -16,6 +16,26 @@ interface SeedUom {
 const permissionCatalog: SeedPermission[] = [
   { id: 'dashboard.view', name: 'View dashboard' },
   { id: 'sales.view', name: 'Use sales screen' },
+  { id: 'sales.pos', name: 'Use point of sale' },
+  { id: 'sales.reports', name: 'View sales reports' },
+  { id: 'sales.manage', name: 'Manage sales' },
+  { id: 'inventory.manage', name: 'Manage inventory' },
+  { id: 'inventory.dashboard', name: 'View inventory dashboard' },
+  { id: 'inventory.stocks', name: 'Manage stocks' },
+  { id: 'inventory.stock-opname', name: 'Manage stock opname' },
+  { id: 'inventory.batches', name: 'Manage batches' },
+  { id: 'inventory.transactions', name: 'Manage stock transactions' },
+  { id: 'purchasing.manage', name: 'Manage purchasing' },
+  { id: 'operations.manage', name: 'Manage operations' },
+  { id: 'operations.expenses', name: 'Manage expenses' },
+  { id: 'operations.supplies', name: 'Manage supplies purchasing' },
+  { id: 'pricing.manage', name: 'Manage pricing' },
+  { id: 'pricing.products', name: 'Manage product pricing' },
+  { id: 'pricing.categories', name: 'Manage pricing categories' },
+  { id: 'finance.view', name: 'View finance module' },
+  { id: 'finance.cashflow', name: 'View cash flow reports' },
+  { id: 'finance.reports', name: 'View financial reports' },
+  { id: 'finance.profit-loss', name: 'View profit & loss reports' },
   { id: 'settings.view', name: 'View settings' },
   { id: 'master.branch.manage', name: 'Manage branches' },
   { id: 'master.user.manage', name: 'Manage users' },
@@ -27,22 +47,40 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'master.customer-category.manage', name: 'Manage customer categories' },
   { id: 'master.uom.manage', name: 'Manage units of measure' },
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
-  { id: 'settings.app-config.manage', name: 'Manage app configuration' },
-  { id: 'warehouse.manage', name: 'Manage warehouse & stocks' },
-  { id: 'inventory.dashboard', name: 'View inventory dashboard' },
-  { id: 'inventory.pricing', name: 'Manage product pricing' },
-  { id: 'inventory.batches', name: 'Manage batches' },
-  { id: 'inventory.transactions', name: 'Manage stock transactions' },
-  { id: 'sales.pos', name: 'Use point of sale' },
-  { id: 'sales.reports', name: 'View sales reports' },
-  { id: 'sales.manage', name: 'Manage sales' },
-  { id: 'warehouse.stock-opname', name: 'Manage stock opname' },
-  { id: 'warehouse.purchasing', name: 'Manage purchasing' },
-  { id: 'warehouse.pricing', name: 'Manage pricing' },
-  { id: 'warehouse.stocks', name: 'View stocks' },
-  { id: 'warehouse.shipping', name: 'Manage shipping' },
-  { id: 'warehouse.transfers', name: 'Manage transfers' }
+  { id: 'settings.app-config.manage', name: 'Manage app configuration' }
 ]
+
+/**
+ * Reset and reseed permissions - deletes existing permissions and role_permissions, then reseeds.
+ * Use this to fix duplicate permissions or permission catalog changes.
+ */
+export async function resetAndReseedPermissions(db: Database): Promise<void> {
+  const now = Date.now()
+
+  // Delete existing permissions and role mappings
+  db.run('DELETE FROM role_permission')
+  db.run('DELETE FROM permission')
+
+  // Insert fresh permissions
+  for (const perm of permissionCatalog) {
+    db.run(
+      'INSERT INTO permission (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [perm.id, perm.name, perm.description ?? null, now, now]
+    )
+  }
+
+  // Re-grant all permissions to admin role
+  const adminRoleId = 'role-admin'
+  for (const perm of permissionCatalog) {
+    const rpId = `role-admin:${perm.id}`
+    db.run(
+      'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+      [rpId, adminRoleId, perm.id, now, now]
+    )
+  }
+
+  saveDb(db)
+}
 
 /**
  * Seed the permission table with the default catalog.

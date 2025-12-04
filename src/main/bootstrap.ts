@@ -1,5 +1,5 @@
 import { getDb } from './db'
-import { seedPermissions, seedAdmin, seedUoms } from './seed'
+import { resetAndReseedPermissions, seedAdmin, seedUoms } from './seed'
 import {
   CategoryController,
   SupplierController,
@@ -57,7 +57,7 @@ export async function bootstrap(): Promise<void> {
   const db = await getDb()
 
   // Seed static reference data
-  await seedPermissions(db)
+  await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
   await seedAdmin(db)
   await seedUoms(db)
 

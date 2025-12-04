@@ -3,10 +3,12 @@ import HomeIcon from '@mui/icons-material/Home'
 import LogoutIcon from '@mui/icons-material/Logout'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
-import StoreIcon from '@mui/icons-material/Store'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import DashboardIcon from '@mui/icons-material/Dashboard'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
+import ReceiptIcon from '@mui/icons-material/Receipt'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
+import LocalOfferIcon from '@mui/icons-material/LocalOffer'
 import Collapse from '@mui/material/Collapse'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -55,38 +57,6 @@ const menus: MenuItem[] = [
     ]
   },
   {
-    key: 'warehouse',
-    label: 'Gudang',
-    icon: <StoreIcon fontSize="small" />,
-    permissions: ['warehouse.manage'],
-    children: [
-      {
-        key: 'warehouse-stocks',
-        label: 'Stok',
-        path: '/warehouse/stocks',
-        permissions: ['warehouse.manage']
-      },
-      {
-        key: 'warehouse-purchasing',
-        label: 'Pembelian',
-        path: '/warehouse/purchasing',
-        permissions: ['warehouse.manage']
-      },
-      {
-        key: 'warehouse-stock-opname',
-        label: 'Stok Opname',
-        path: '/warehouse/stock-opname',
-        permissions: ['warehouse.manage']
-      },
-      {
-        key: 'warehouse-pricing',
-        label: 'Harga',
-        path: '/warehouse/pricing',
-        permissions: ['warehouse.manage']
-      }
-    ]
-  },
-  {
     key: 'inventory',
     label: 'Inventori',
     icon: <InventoryIcon fontSize="small" />,
@@ -100,9 +70,15 @@ const menus: MenuItem[] = [
         permissions: ['inventory.manage']
       },
       {
-        key: 'inventory-pricing',
-        label: 'Harga Produk',
-        path: '/inventory/pricing',
+        key: 'inventory-stocks',
+        label: 'Stok',
+        path: '/inventory/stocks',
+        permissions: ['inventory.manage']
+      },
+      {
+        key: 'inventory-stock-opname',
+        label: 'Stok Opname',
+        path: '/inventory/stock-opname',
         permissions: ['inventory.manage']
       },
       {
@@ -136,6 +112,59 @@ const menus: MenuItem[] = [
         label: 'Buat PO',
         path: '/purchasing/order-form',
         permissions: ['purchasing.manage']
+      }
+    ]
+  },
+  {
+    key: 'operations',
+    label: 'Pengeluaran Harian',
+    icon: <ReceiptIcon fontSize="small" />,
+    path: '/operations/expenses',
+    permissions: ['operations.expenses']
+  },
+  {
+    key: 'pricing',
+    label: 'Manajemen Harga',
+    icon: <LocalOfferIcon fontSize="small" />,
+    permissions: ['pricing.manage'],
+    children: [
+      {
+        key: 'pricing-products',
+        label: 'Harga Produk',
+        path: '/pricing/products',
+        permissions: ['pricing.products']
+      },
+      {
+        key: 'pricing-categories',
+        label: 'Kategori Harga',
+        path: '/pricing/categories',
+        permissions: ['pricing.categories']
+      }
+    ]
+  },
+  {
+    key: 'finance',
+    label: 'Keuangan',
+    icon: <AccountBalanceIcon fontSize="small" />,
+    permissions: ['finance.view'],
+    children: [
+      {
+        key: 'finance-cashflow',
+        label: 'Arus Kas',
+        path: '/finance/cashflow',
+        permissions: ['finance.cashflow']
+      },
+      {
+        key: 'finance-reports',
+        label: 'Laporan Keuangan',
+        path: '/finance/reports',
+        permissions: ['finance.reports']
+      },
+      {
+        key: 'finance-profit-loss',
+        label: 'Laporan Laba Rugi',
+        path: '/finance/profit-loss',
+        permissions: ['finance.profit-loss']
       }
     ]
   },

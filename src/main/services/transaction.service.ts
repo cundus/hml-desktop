@@ -10,6 +10,9 @@ export interface Transaction {
   discount: string
   tax: string
   total: string
+  paymentMethod: string
+  paymentDeadline: Date | null
+  receiptPrinted: boolean
   customerId: string | null
   userId: string | null
   createdAt: Date
@@ -37,6 +40,9 @@ export interface CreateTransactionDto {
   discount?: string
   tax?: string
   total: string
+  paymentMethod?: string
+  paymentDeadline?: Date
+  receiptPrinted?: boolean
   customerId?: string
   userId?: string
   items: CreateTransactionItemDto[]
@@ -198,7 +204,7 @@ export class TransactionService {
 
     // Insert transaction
     this.db.run(
-      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, payment_method, payment_deadline, receipt_printed, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.code,
@@ -207,6 +213,9 @@ export class TransactionService {
         data.discount ?? '0',
         data.tax ?? '0',
         data.total,
+        data.paymentMethod ?? 'cash',
+        data.paymentDeadline ? data.paymentDeadline.getTime() : null,
+        (data.receiptPrinted ?? false) ? 1 : 0,
         data.customerId ?? null,
         data.userId ?? null,
         now,
@@ -251,6 +260,27 @@ export class TransactionService {
       throw new Error('Transaction not found after delete')
     }
     return deleted
+  }
+
+  /**
+   * Update receipt printed status
+   */
+  async updateReceiptPrinted(id: string, printed: boolean): Promise<Transaction> {
+    const now = Date.now()
+
+    this.db.run('UPDATE transactions SET receipt_printed = ?, updated_at = ? WHERE id = ?', [
+      printed ? 1 : 0,
+      now,
+      id
+    ])
+
+    saveDb(this.db)
+
+    const updated = await this.findById(id)
+    if (!updated) {
+      throw new Error('Transaction not found after update')
+    }
+    return updated
   }
 
   /**
@@ -443,6 +473,9 @@ export class TransactionService {
       discount: row.discount as string,
       tax: row.tax as string,
       total: row.total as string,
+      paymentMethod: (row.payment_method as string) ?? 'cash', // Backward compatibility
+      paymentDeadline: row.payment_deadline ? new Date(row.payment_deadline as number) : null,
+      receiptPrinted: (row.receipt_printed as number) === 1, // Convert SQLite boolean
       customerId: row.customer_id as string | null,
       userId: row.user_id as string | null,
       createdAt: new Date(row.created_at as number),

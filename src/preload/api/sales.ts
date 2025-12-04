@@ -19,6 +19,9 @@ export interface Transaction extends BaseEntity {
   discount: string
   tax: string
   total: string
+  paymentMethod: string
+  paymentDeadline: Date | null
+  receiptPrinted: boolean
   customerId: string | null
   userId: string | null
   deviceId: string | null
@@ -76,6 +79,9 @@ export const transactionApi = {
     discount?: string
     tax?: string
     total: string
+    paymentMethod?: string
+    paymentDeadline?: Date
+    receiptPrinted?: boolean
     customerId?: string
     userId?: string
     items: {
@@ -97,5 +103,11 @@ export const transactionApi = {
     ipcRenderer.invoke('db:transactions:restore', id) as Promise<ApiResponse<Transaction>>,
 
   getDashboardStats: () =>
-    ipcRenderer.invoke('db:transactions:getDashboardStats') as Promise<ApiResponse<DashboardStats>>
+    ipcRenderer.invoke('db:transactions:getDashboardStats') as Promise<ApiResponse<DashboardStats>>,
+
+  printReceipt: (transaction: Transaction) =>
+    ipcRenderer.invoke('receipt:print', transaction) as Promise<ApiResponse<{ success: boolean; error?: string }>>,
+
+  updateReceiptPrinted: (transactionId: string, printed: boolean) =>
+    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed) as Promise<ApiResponse<Transaction>>
 }

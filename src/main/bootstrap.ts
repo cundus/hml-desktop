@@ -1,53 +1,55 @@
-import { getDb } from './db'
-import { resetAndReseedPermissions, seedAdmin, seedUoms } from './seed'
 import {
+  AuthController,
+  BatchController,
   CategoryController,
-  SupplierController,
-  StoreController,
   CustomerCategoryController,
   CustomerController,
-  UserController,
-  ProductController,
-  ProductPriceController,
-  ProductLocationController,
-  BatchController,
-  StockTransactionController,
-  TransactionController,
-  PurchaseOrderController,
-  SyncController,
-  RoleController,
-  UserRoleController,
   PermissionController,
+  ProductController,
+  ProductLocationController,
+  ProductPriceController,
+  PurchaseOrderController,
+  RoleController,
   RolePermissionController,
-  AuthController,
-  UomController
+  StockTransactionController,
+  StoreController,
+  SupplierController,
+  SyncController,
+  TransactionController,
+  UomController,
+  UserController,
+  UserRoleController
 } from './controllers'
+import { registerAppConfigHandlers } from './controllers/app-config.controller'
+import { registerShiftHandlers } from './controllers/shift.controller'
+import { ReceiptController } from './controllers/receipt.controller'
+import { getDb } from './db'
+import { seedAdmin, seedUoms } from './seed'
 import {
+  AuthService,
+  BatchService,
   CategoryService,
-  SupplierService,
-  StoreService,
   CustomerCategoryService,
   CustomerService,
-  UserService,
-  ProductService,
-  ProductPriceService,
-  ProductLocationService,
-  BatchService,
-  StockTransactionService,
-  TransactionService,
-  PurchaseOrderService,
-  SyncService,
-  RoleService,
-  UserRoleService,
   PermissionService,
+  ProductLocationService,
+  ProductPriceService,
+  ProductService,
+  PurchaseOrderService,
+  ReceiptService,
   RolePermissionService,
-  AuthService,
-  UomService
+  RoleService,
+  StockTransactionService,
+  StoreService,
+  SupplierService,
+  SyncService,
+  TransactionService,
+  UomService,
+  UserRoleService,
+  UserService
 } from './services'
-import { ShiftService } from './services/shift.service'
-import { registerShiftHandlers } from './controllers/shift.controller'
 import { AppConfigService } from './services/app-config.service'
-import { registerAppConfigHandlers } from './controllers/app-config.controller'
+import { ShiftService } from './services/shift.service'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -57,7 +59,7 @@ export async function bootstrap(): Promise<void> {
   const db = await getDb()
 
   // Seed static reference data
-  await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
+  // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
   await seedAdmin(db)
   await seedUoms(db)
 
@@ -96,6 +98,9 @@ export async function bootstrap(): Promise<void> {
   // Initialize app config service
   const appConfigService = new AppConfigService(db)
 
+  // Initialize receipt service
+  const receiptService = new ReceiptService(appConfigService, productService)
+
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
 
@@ -132,6 +137,7 @@ export async function bootstrap(): Promise<void> {
   const rolePermissionController = new RolePermissionController(rolePermissionService)
   const authController = new AuthController(authService)
   const uomController = new UomController(uomService)
+  const receiptController = new ReceiptController(receiptService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -154,6 +160,7 @@ export async function bootstrap(): Promise<void> {
   rolePermissionController.registerHandlers()
   authController.registerHandlers()
   uomController.registerHandlers()
+  receiptController.registerHandlers()
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
 

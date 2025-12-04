@@ -7,6 +7,7 @@ export {}
 declare global {
   interface Window {
     electron: typeof import('@electron-toolkit/preload').electronAPI
+    electronAPI: typeof import('@electron-toolkit/preload').electronAPI
     api: {
       openMasterCustomerWindow: () => void
       db: DatabaseAPI

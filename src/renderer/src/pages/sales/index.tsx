@@ -19,6 +19,7 @@ import ProductSelectModal, { type ProductSelectResult } from './components/Produ
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
+import PaymentMethodDialog, { type PaymentMethod as DialogPaymentMethod } from './components/PaymentMethodDialog'
 import {
   OpenShiftDialog,
   CloseShiftDialog,
@@ -47,6 +48,7 @@ export default function SalesPage(): React.JSX.Element {
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
+  const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [, setCheckoutLoading] = useState(false)
   const [snackbar, setSnackbar] = useState<{
@@ -151,22 +153,22 @@ export default function SalesPage(): React.JSX.Element {
       const existing = prev.find((item) => item.id === cartItemId)
       if (existing) {
         return prev.map((item) =>
-          item.id === cartItemId ? { ...item, quantity: item.quantity + quantity } : item
+          item.id === cartItemId
+            ? { ...item, quantity: item.quantity + quantity, total: (item.quantity + quantity) * unitPrice }
+            : item
         )
+      } else {
+        return [
+          ...prev,
+          {
+            ...product,
+            id: cartItemId,
+            price: unitPrice,
+            quantity,
+            total: unitPrice * quantity
+          }
+        ]
       }
-      return [
-        ...prev,
-        {
-          id: cartItemId,
-          name: `${product.name} (${selectedUom.code})`,
-          sku: product.sku,
-          category: product.category,
-          unit: selectedUom.code,
-          cost: product.cost,
-          price: unitPrice,
-          quantity
-        }
-      ]
     })
 
     setProductSelectModalOpen(false)
@@ -191,7 +193,22 @@ export default function SalesPage(): React.JSX.Element {
     setDiscount(Math.max(0, Math.min(100, value)))
   }
 
-  const handleCheckout = useCallback(async (): Promise<void> => {
+  const handleCheckout = useCallback((): void => {
+    if (cartItems.length === 0) return
+    if (!defaultStoreId) {
+      setSnackbar({
+        open: true,
+        message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
+        severity: 'error'
+      })
+      return
+    }
+
+    // Show payment method dialog instead of creating transaction directly
+    setPaymentMethodDialogOpen(true)
+  }, [cartItems.length, defaultStoreId])
+
+  const handleConfirmPayment = useCallback(async (paymentMethod: DialogPaymentMethod, paymentDeadline?: Date): Promise<void> => {
     if (cartItems.length === 0) return
     if (!defaultStoreId) {
       setSnackbar({
@@ -209,41 +226,75 @@ export default function SalesPage(): React.JSX.Element {
       const code = `TRX-${Date.now()}`
 
       // Calculate values
-      const subtotalValue = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-      const discountValue = (subtotalValue * discount) / 100
-      const totalValue = subtotalValue - discountValue
+      const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0)
+      const total = subtotal - discount
 
       // Prepare transaction items
-      const items = cartItems.map((item) => ({
-        productId: item.id,
+      const transactionItems = cartItems.map(item => ({
+        productId: item.id, // CartItem uses 'id' property from Product
         quantity: item.quantity,
         price: item.price.toString()
       }))
 
-      // Create transaction in DB
+      // Create transaction via IPC with payment method
       const result = await window.api.db.transactions.create({
         code,
         storeId: defaultStoreId,
-        subtotal: subtotalValue.toString(),
-        discount: discountValue.toString(),
+        subtotal: subtotal.toString(),
+        discount: discount.toString(),
         tax: '0',
-        total: totalValue.toString(),
-        customerId: selectedCustomerId ?? undefined,
-        items
+        total: total.toString(),
+        paymentMethod,
+        paymentDeadline,
+        receiptPrinted: false,
+        customerId: selectedCustomerId,
+        userId: userName,
+        items: transactionItems
       })
 
       if (result.success) {
-        setSnackbar({
-          open: true,
-          message: `Transaksi ${code} berhasil disimpan!`,
-          severity: 'success'
-        })
+        // Print receipt after successful transaction
+        try {
+          const printResult = await window.api.db.receipt.printReceipt(result.data)
+
+          if (printResult.success) {
+            // Update receipt printed status
+            await window.api.db.receipt.updateReceiptPrinted(result.data.id, true)
+
+            setSnackbar({
+              open: true,
+              message: 'Transaksi berhasil disimpan dan struk dicetak',
+              severity: 'success'
+            })
+          } else {
+            // Receipt printing failed but transaction succeeded
+            setSnackbar({
+              open: true,
+              message: `Transaksi berhasil disimpan, cetak struk gagal: ${printResult.error || 'Printer error'}`,
+              severity: 'error'
+            })
+          }
+        } catch (printError) {
+          console.error('Receipt printing error:', printError)
+          setSnackbar({
+            open: true,
+            message: 'Transaksi berhasil disimpan, cetak struk gagal',
+            severity: 'error'
+          })
+        }
+
+        // Clear cart and reset form (after printing attempt)
         setCartItems([])
         setDiscount(0)
-        setPaidAmount(0)
         setSelectedCustomerId(null)
+        setPaidAmount(0)
+        setPaymentMethodDialogOpen(false)
       } else {
-        throw new Error(result.error ?? 'Unknown error')
+        setSnackbar({
+          open: true,
+          message: result.error || 'Gagal menyimpan transaksi',
+          severity: 'error'
+        })
       }
     } catch (err) {
       console.error('Checkout failed:', err)
@@ -251,7 +302,7 @@ export default function SalesPage(): React.JSX.Element {
     } finally {
       setCheckoutLoading(false)
     }
-  }, [cartItems, discount, defaultStoreId, selectedCustomerId])
+  }, [cartItems, discount, defaultStoreId, selectedCustomerId, userName])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -540,17 +591,19 @@ export default function SalesPage(): React.JSX.Element {
           onConfirm={handleProductSelectConfirm}
         />
 
+        <PaymentMethodDialog
+          open={paymentMethodDialogOpen}
+          total={cartItems.reduce((sum, item) => sum + item.total, 0) - discount}
+          onClose={() => setPaymentMethodDialogOpen(false)}
+          onConfirm={handleConfirmPayment}
+        />
+
         <Snackbar
           open={snackbar.open}
-          autoHideDuration={4000}
-          onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+          autoHideDuration={3000}
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
         >
-          <Alert
-            onClose={() => setSnackbar((s) => ({ ...s, open: false }))}
-            severity={snackbar.severity}
-            sx={{ width: '100%' }}
-          >
+          <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
             {snackbar.message}
           </Alert>
         </Snackbar>

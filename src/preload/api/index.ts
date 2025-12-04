@@ -1,3 +1,5 @@
+import { ipcRenderer } from 'electron'
+
 // Export all API modules
 export * from './types'
 export * from './master-data'
@@ -33,6 +35,13 @@ import { purchaseOrderApi } from './purchasing'
 import { syncApi } from './sync'
 import { shiftApi } from './shift'
 import { appConfigApi } from './app-config'
+
+// Receipt printing API
+const receiptApi = {
+  printReceipt: (transaction: Transaction) => ipcRenderer.invoke('receipt:print', transaction),
+  updateReceiptPrinted: (transactionId: string, printed: boolean) =>
+    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed)
+}
 
 export const db = {
   // Master Data
@@ -71,5 +80,8 @@ export const db = {
   shifts: shiftApi,
 
   // App Config
-  appConfig: appConfigApi
+  appConfig: appConfigApi,
+
+  // Receipt
+  receipt: receiptApi
 }

@@ -318,6 +318,9 @@ async function createTables(database: Database): Promise<void> {
       discount TEXT NOT NULL DEFAULT '0',
       tax TEXT NOT NULL DEFAULT '0',
       total TEXT NOT NULL,
+      payment_method TEXT NOT NULL DEFAULT 'cash',
+      payment_deadline INTEGER,
+      receipt_printed INTEGER NOT NULL DEFAULT 0,
       customer_id TEXT,
       user_id TEXT,
       created_at INTEGER NOT NULL,
@@ -327,6 +330,23 @@ async function createTables(database: Database): Promise<void> {
       device_id TEXT
     )
   `)
+
+  // Add payment columns to existing transactions table (migration)
+  try {
+    database.run(`ALTER TABLE transactions ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cash'`)
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transactions ADD COLUMN payment_deadline INTEGER`)
+  } catch (e) {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transactions ADD COLUMN receipt_printed INTEGER NOT NULL DEFAULT 0`)
+  } catch (e) {
+    // Column already exists
+  }
 
   // Transaction Items table - sales line items
   database.run(`

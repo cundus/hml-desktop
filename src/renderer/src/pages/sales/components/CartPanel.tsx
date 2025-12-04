@@ -19,6 +19,7 @@ import type { Product } from './ProductBrowser'
 
 export type CartItem = Product & {
   quantity: number
+  total: number
 }
 
 export type CartPanelProps = {

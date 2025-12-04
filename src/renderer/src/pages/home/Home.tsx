@@ -206,8 +206,8 @@ function Home(): React.JSX.Element {
               Selamat Datang di Petshop POS
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Gunakan menu navigasi cepat di bawah ini untuk mengakses fitur yang Anda miliki
-              izin untuk mengelola.
+              Gunakan menu navigasi cepat di bawah ini untuk mengakses fitur yang Anda miliki izin
+              untuk mengelola.
             </Typography>
           </Box>
 

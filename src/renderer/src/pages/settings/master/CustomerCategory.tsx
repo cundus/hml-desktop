@@ -114,7 +114,9 @@ export default function CustomerCategoryPage(): React.JSX.Element {
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus kategori pelanggan ini?')
+    const confirmed = await globalAlert.confirm(
+      'Apakah Anda yakin ingin menghapus kategori pelanggan ini?'
+    )
     if (!confirmed) return
     try {
       const response = await window.api.db.customerCategories.delete(id)

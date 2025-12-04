@@ -30,3 +30,19 @@ export const transactionItems = pgTable('transaction_items', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 })
+
+export const expenses = pgTable('expenses', {
+  id: text('id').primaryKey(),
+  shiftId: text('shift_id').notNull(),
+  item: text('item').notNull(),
+  quantity: integer('quantity').notNull().default(1),
+  price: numeric('price').notNull(),
+  total: numeric('total').notNull(),
+  description: text('description'),
+  createdBy: text('created_by'),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
+})

@@ -71,15 +71,15 @@ This document outlines the structured development plan based on client requireme
 
 ### 4.1 Initial Setup
 
-| ID       | Task                                                                                      | Status  | Complexity |
-| -------- | ----------------------------------------------------------------------------------------- | ------- | ---------- |
-| CONF-001 | Initial App Config: Setup branch di local device, setup head branch, validasi cloud DB   | ✅ DONE | High       |
-| CONF-002 | Branch info muncul di App Bar                                                             | ✅ DONE | Low        |
+| ID       | Task                                                                                   | Status  | Complexity |
+| -------- | -------------------------------------------------------------------------------------- | ------- | ---------- |
+| CONF-001 | Initial App Config: Setup branch di local device, setup head branch, validasi cloud DB | ✅ DONE | High       |
+| CONF-002 | Branch info muncul di App Bar                                                          | ✅ DONE | Low        |
 
 ### 4.2 Cloud Sync
 
-| ID       | Task                                          | Status  | Complexity |
-| -------- | --------------------------------------------- | ------- | ---------- |
+| ID       | Task                                                     | Status  | Complexity |
+| -------- | -------------------------------------------------------- | ------- | ---------- |
 | CONF-003 | Cloud DB Sync: Data lokal terhubung dan sinkron ke cloud | ⬜ TODO | High       |
 
 ---
@@ -191,17 +191,17 @@ This document outlines the structured development plan based on client requireme
 
 ## Development Timeline (Suggested)
 
-| Phase                         | Duration  | Priority |
-| ----------------------------- | --------- | -------- |
-| Phase 1: Core Fixes & UX      | 1 week    | HIGH     |
-| Phase 2: Product & Supplier   | 1-2 weeks | HIGH     |
-| Phase 3: Cashier & Shift      | 2 weeks   | HIGH     |
-| Phase 4: App Configuration    | 1-2 weeks | HIGH     |
-| Phase 5: Sales & Purchasing   | 1-2 weeks | MEDIUM   |
-| Phase 6: Delivery System      | 1 week    | MEDIUM   |
-| Phase 7: Dashboard Alerts     | 1-2 weeks | MEDIUM   |
-| Phase 8: Reports & Analytics  | 2 weeks   | MEDIUM   |
-| Phase 9: Commission System    | 1-2 weeks | LOW      |
+| Phase                        | Duration  | Priority |
+| ---------------------------- | --------- | -------- |
+| Phase 1: Core Fixes & UX     | 1 week    | HIGH     |
+| Phase 2: Product & Supplier  | 1-2 weeks | HIGH     |
+| Phase 3: Cashier & Shift     | 2 weeks   | HIGH     |
+| Phase 4: App Configuration   | 1-2 weeks | HIGH     |
+| Phase 5: Sales & Purchasing  | 1-2 weeks | MEDIUM   |
+| Phase 6: Delivery System     | 1 week    | MEDIUM   |
+| Phase 7: Dashboard Alerts    | 1-2 weeks | MEDIUM   |
+| Phase 8: Reports & Analytics | 2 weeks   | MEDIUM   |
+| Phase 9: Commission System   | 1-2 weeks | LOW      |
 
 **Total Estimated: 12-17 weeks**
 

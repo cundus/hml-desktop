@@ -59,7 +59,7 @@ export function useStoreFilter(): {
   const { config, loading } = useBranchConfig()
 
   return {
-    storeId: config?.isHeadBranch ? null : config?.branchId ?? null,
+    storeId: config?.isHeadBranch ? null : (config?.branchId ?? null),
     isHeadBranch: config?.isHeadBranch ?? false,
     loading
   }

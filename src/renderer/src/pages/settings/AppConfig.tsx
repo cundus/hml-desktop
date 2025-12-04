@@ -178,9 +178,7 @@ export default function AppConfigPage(): React.JSX.Element {
   }
 
   if (!config) {
-    return (
-      <Alert severity="error">Gagal memuat konfigurasi aplikasi</Alert>
-    )
+    return <Alert severity="error">Gagal memuat konfigurasi aplikasi</Alert>
   }
 
   const currentStore = stores.find((s) => s.id === config.branchId)
@@ -237,9 +235,7 @@ export default function AppConfigPage(): React.JSX.Element {
                 <Typography variant="body1" fontWeight={500}>
                   {currentStore?.name ?? config.branchName ?? '-'}
                 </Typography>
-                {config.isHeadBranch && (
-                  <Chip label="HQ" size="small" color="primary" />
-                )}
+                {config.isHeadBranch && <Chip label="HQ" size="small" color="primary" />}
               </Box>
 
               {!config.isHeadBranch && (
@@ -324,11 +320,7 @@ export default function AppConfigPage(): React.JSX.Element {
         <Grid size={{ xs: 12 }}>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={loadConfig}
-            >
+            <Button variant="outlined" startIcon={<RefreshIcon />} onClick={loadConfig}>
               Refresh Konfigurasi
             </Button>
             <Button
@@ -344,7 +336,12 @@ export default function AppConfigPage(): React.JSX.Element {
       </Grid>
 
       {/* Edit Manager Dialog */}
-      <Dialog open={editManagerOpen} onClose={() => setEditManagerOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={editManagerOpen}
+        onClose={() => setEditManagerOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Ubah Manager Toko</DialogTitle>
         <DialogContent>
           <TextField
@@ -371,7 +368,12 @@ export default function AppConfigPage(): React.JSX.Element {
       </Dialog>
 
       {/* Edit Cloud URL Dialog */}
-      <Dialog open={editCloudUrlOpen} onClose={() => setEditCloudUrlOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={editCloudUrlOpen}
+        onClose={() => setEditCloudUrlOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Ubah Cloud Database URL</DialogTitle>
         <DialogContent>
           <TextField

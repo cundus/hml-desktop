@@ -97,17 +97,23 @@ export class TransactionController {
     })
 
     // Update receipt printed status
-    ipcMain.handle('db:transactions:updateReceiptPrinted', async (_, transactionId: string, printed: boolean) => {
-      try {
-        const transaction = await this.transactionService.updateReceiptPrinted(transactionId, printed)
-        return { success: true, data: transaction }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'db:transactions:updateReceiptPrinted',
+      async (_, transactionId: string, printed: boolean) => {
+        try {
+          const transaction = await this.transactionService.updateReceiptPrinted(
+            transactionId,
+            printed
+          )
+          return { success: true, data: transaction }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Get sales summary
     ipcMain.handle(

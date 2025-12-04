@@ -81,8 +81,8 @@ export class ReceiptService {
     const maxWaitTime = 5000 // 5 seconds max wait
     const startTime = Date.now()
 
-    while (!this.printerInitialized && (Date.now() - startTime) < maxWaitTime) {
-      await new Promise(resolve => setTimeout(resolve, 100))
+    while (!this.printerInitialized && Date.now() - startTime < maxWaitTime) {
+      await new Promise((resolve) => setTimeout(resolve, 100))
     }
 
     if (!this.printerInitialized) {
@@ -91,12 +91,14 @@ export class ReceiptService {
     }
   }
 
-  private async fetchItemsWithProductNames(items: TransactionItem[]): Promise<Array<{
-    name: string
-    quantity: number
-    price: string
-    total: string
-  }>> {
+  private async fetchItemsWithProductNames(items: TransactionItem[]): Promise<
+    Array<{
+      name: string
+      quantity: number
+      price: string
+      total: string
+    }>
+  > {
     const itemsWithNames: Array<{
       name: string
       quantity: number
@@ -169,7 +171,9 @@ export class ReceiptService {
     lines.push(`Bayar: ${paymentMethodMap[transaction.paymentMethod] || transaction.paymentMethod}`)
 
     if (transaction.paymentMethod === 'credit' && transaction.paymentDeadline) {
-      lines.push(`Jatuh Tempo: ${new Date(transaction.paymentDeadline).toLocaleDateString('id-ID')}`)
+      lines.push(
+        `Jatuh Tempo: ${new Date(transaction.paymentDeadline).toLocaleDateString('id-ID')}`
+      )
     }
 
     lines.push(''.padEnd(32, '-'))
@@ -178,11 +182,13 @@ export class ReceiptService {
     lines.push('RINCIAN PEMBELANJAAN')
     lines.push(''.padEnd(32, '-'))
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const nameLines = this.wrapText(item.name, 20)
       nameLines.forEach((line, index) => {
         if (index === 0) {
-          lines.push(`${line.padEnd(20)} ${item.quantity.toString().padStart(3)} ${this.formatCurrency(item.price).padStart(9)}`)
+          lines.push(
+            `${line.padEnd(20)} ${item.quantity.toString().padStart(3)} ${this.formatCurrency(item.price).padStart(9)}`
+          )
         } else {
           lines.push(`${line.padEnd(20)}   ${this.formatCurrency(item.price).padStart(9)}`)
         }
@@ -229,7 +235,7 @@ export class ReceiptService {
     const lines: string[] = []
     let currentLine = ''
 
-    words.forEach(word => {
+    words.forEach((word) => {
       if ((currentLine + ' ' + word).length <= maxLength) {
         currentLine = currentLine ? currentLine + ' ' + word : word
       } else {
@@ -281,7 +287,9 @@ export class ReceiptService {
     }
   }
 
-  private async printWithThermalPrinter(data: ReceiptData): Promise<{ success: boolean; error?: string }> {
+  private async printWithThermalPrinter(
+    data: ReceiptData
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const receiptText = this.generateReceiptText(data)
 
@@ -304,7 +312,9 @@ export class ReceiptService {
     }
   }
 
-  private async printWithElectronAPI(data: ReceiptData): Promise<{ success: boolean; error?: string }> {
+  private async printWithElectronAPI(
+    data: ReceiptData
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       // This would be implemented using Electron's print API
       // For now, return success as placeholder

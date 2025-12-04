@@ -8,15 +8,15 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ### 1.1 Customer Requirements
 
-| ID             | Task                                                                                        | Status | Complexity |
-| -------------- | ------------------------------------------------------------------------------------------- | ------ | ---------- |
+| ID             | Task                                                                                        | Status  | Complexity |
+| -------------- | ------------------------------------------------------------------------------------------- | ------- | ---------- |
 | SALES-CUST-001 | Show brief purchase history for wholesale customers                                         | ⬜ TODO | Medium     |
 | SALES-CUST-002 | Display previous price + last purchase date if wholesale customer bought the product before | ⬜ TODO | Medium     |
 
 ### 1.2 Product Flow Enhancements
 
-| ID             | Task                                                         | Status | Complexity |
-| -------------- | ------------------------------------------------------------ | ------ | ---------- |
+| ID             | Task                                                         | Status  | Complexity |
+| -------------- | ------------------------------------------------------------ | ------- | ---------- |
 | SALES-PROD-001 | After selecting product → choose price category → choose UoM | ⬜ TODO | Medium     |
 | SALES-PROD-002 | Ask default price category                                   | ⬜ TODO | Medium     |
 
@@ -26,8 +26,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ### 2.1 Main Cashier Workflow
 
-| ID          | Task                                                              | Status | Complexity |
-| ----------- | ----------------------------------------------------------------- | ------ | ---------- |
+| ID          | Task                                                              | Status  | Complexity |
+| ----------- | ----------------------------------------------------------------- | ------- | ---------- |
 | CASHIER-001 | Product selection popup → choose UoM → choose price → input qty   | ⬜ TODO | High       |
 | CASHIER-002 | Full hotkey UX (arrow selection, auto numeric input)              | ⬜ TODO | High       |
 | CASHIER-003 | Remove decimal tailing zeroes                                     | ⬜ TODO | Low        |
@@ -40,8 +40,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ### 2.2 Payment Workflow
 
-| ID          | Task                                            | Status | Complexity |
-| ----------- | ----------------------------------------------- | ------ | ---------- |
+| ID          | Task                                            | Status  | Complexity |
+| ----------- | ----------------------------------------------- | ------- | ---------- |
 | PAYMENT-001 | Payment method popup (Cash, Card, QRIS, Credit) | ⬜ TODO | Medium     |
 | PAYMENT-002 | Credit payments require deadline                | ⬜ TODO | Medium     |
 
@@ -51,15 +51,15 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ### 3.1 Shift Summary Enhancements
 
-| ID        | Task                                                         | Status | Complexity |
-| --------- | ------------------------------------------------------------ | ------ | ---------- |
+| ID        | Task                                                         | Status  | Complexity |
+| --------- | ------------------------------------------------------------ | ------- | ---------- |
 | SHIFT-005 | Updated shift summary: total sales, net sales, expected cash | ⬜ TODO | Medium     |
 | SHIFT-006 | Expense input during shift closing                           | ⬜ TODO | Medium     |
 
 ### 3.2 Settlement Printout
 
-| ID         | Task                                  | Status | Complexity |
-| ---------- | ------------------------------------- | ------ | ---------- |
+| ID         | Task                                  | Status  | Complexity |
+| ---------- | ------------------------------------- | ------- | ---------- |
 | SETTLE-001 | Print settlement (auto-sync)          | ⬜ TODO | High       |
 | SETTLE-002 | Include total turnover (omset)        | ⬜ TODO | Low        |
 | SETTLE-003 | Categorise income by payment method   | ⬜ TODO | Medium     |
@@ -74,16 +74,16 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 4: Dynamic Access Control (Priority: HIGH)
 
-| ID         | Task                                              | Status | Complexity |
-| ---------- | ------------------------------------------------- | ------ | ---------- |
+| ID         | Task                                              | Status  | Complexity |
+| ---------- | ------------------------------------------------- | ------- | ---------- |
 | ACCESS-001 | Create fully dynamic role & permission management | ⬜ TODO | High       |
 
 ---
 
 ## Phase 5: Dynamic Promotions System (Priority: HIGH)
 
-| ID        | Task                                                        | Status | Complexity |
-| --------- | ----------------------------------------------------------- | ------ | ---------- |
+| ID        | Task                                                        | Status  | Complexity |
+| --------- | ----------------------------------------------------------- | ------- | ---------- |
 | PROMO-001 | Create dynamic promotion module                             | ⬜ TODO | High       |
 | PROMO-002 | Promotions per product                                      | ⬜ TODO | Medium     |
 | PROMO-003 | Promo input types: nominal / margin‑percentage              | ⬜ TODO | Medium     |
@@ -95,8 +95,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 6: Target Revenue (Omset) System (Priority: MEDIUM)
 
-| ID         | Task                                        | Status | Complexity |
-| ---------- | ------------------------------------------- | ------ | ---------- |
+| ID         | Task                                        | Status  | Complexity |
+| ---------- | ------------------------------------------- | ------- | ---------- |
 | TARGET-001 | Omset targets per branch                    | ⬜ TODO | Medium     |
 | TARGET-002 | Omset targets per product                   | ⬜ TODO | Medium     |
 | TARGET-003 | Show target progress in shift closing popup | ⬜ TODO | Medium     |
@@ -106,16 +106,16 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 7: User Management (Priority: MEDIUM)
 
-| ID       | Task                           | Status | Complexity |
-| -------- | ------------------------------ | ------ | ---------- |
+| ID       | Task                           | Status  | Complexity |
+| -------- | ------------------------------ | ------- | ---------- |
 | USER-001 | Detailed employee profile page | ⬜ TODO | Low        |
 
 ---
 
 ## Phase 8: Stock Opname Backend (Priority: HIGH)
 
-| ID       | Task                                             | Status | Complexity |
-| -------- | ------------------------------------------------ | ------ | ---------- |
+| ID       | Task                                             | Status  | Complexity |
+| -------- | ------------------------------------------------ | ------- | ---------- |
 | STOK-001 | Stock opname assignable only by authorised roles | ⬜ TODO | Medium     |
 | STOK-002 | Must choose branch                               | ⬜ TODO | Medium     |
 | STOK-003 | Select products or "ALL"                         | ⬜ TODO | Medium     |
@@ -126,8 +126,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 9: App Configuration System (Priority: HIGH)
 
-| ID       | Task                                        | Status | Complexity |
-| -------- | ------------------------------------------- | ------ | ---------- |
+| ID       | Task                                        | Status  | Complexity |
+| -------- | ------------------------------------------- | ------- | ---------- |
 | CONF-004 | First‑time setup: branch + head branch      | ⬜ TODO | High       |
 | CONF-005 | Local device stores branch info for app bar | ⬜ TODO | Medium     |
 | CONF-006 | Insert cloud DB after setup                 | ⬜ TODO | Medium     |
@@ -136,8 +136,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 10: Warehouse / HQ Pricing System (Priority: HIGH)
 
-| ID           | Task                                                             | Status | Complexity |
-| ------------ | ---------------------------------------------------------------- | ------ | ---------- |
+| ID           | Task                                                             | Status  | Complexity |
+| ------------ | ---------------------------------------------------------------- | ------- | ---------- |
 | WH-PRICE-001 | HQ-controlled pricing                                            | ⬜ TODO | High       |
 | WH-PRICE-002 | Pricing per UoM                                                  | ⬜ TODO | Medium     |
 | WH-PRICE-003 | Cost price change → auto calculate selling price (FIFO required) | ⬜ TODO | High       |
@@ -151,8 +151,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 11: Todo List System (Priority: HIGH)
 
-| ID       | Task                               | Status | Complexity |
-| -------- | ---------------------------------- | ------ | ---------- |
+| ID       | Task                               | Status  | Complexity |
+| -------- | ---------------------------------- | ------- | ---------- |
 | TODO-001 | Todo created by top-level users    | ⬜ TODO | Medium     |
 | TODO-002 | Assign todo to employees           | ⬜ TODO | Medium     |
 | TODO-003 | Todo button in app bar             | ⬜ TODO | Low        |
@@ -165,8 +165,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 12: Expense Menu (Priority: MEDIUM)
 
-| ID      | Task                                                      | Status | Complexity |
-| ------- | --------------------------------------------------------- | ------ | ---------- |
+| ID      | Task                                                      | Status  | Complexity |
+| ------- | --------------------------------------------------------- | ------- | ---------- |
 | EXP-001 | Expense fields: item name, qty, price, total, description | ⬜ TODO | Medium     |
 | EXP-002 | Expenses must be cash-only                                | ⬜ TODO | Low        |
 
@@ -174,8 +174,8 @@ This is the **cleaned and expanded development plan** based on the complete requ
 
 ## Phase 13: Bugs
 
-| ID      | Bug              | Status | Complexity |
-| ------- | ---------------- | ------ | ---------- |
+| ID      | Bug              | Status  | Complexity |
+| ------- | ---------------- | ------- | ---------- |
 | BUG-002 | Delete store bug | ⬜ TODO | Medium     |
 
 ---
@@ -207,4 +207,3 @@ User → extend profile
 Transaction → add delivery, promo, commission
 Product → link HQ pricing, multi‑UoM
 ```
-

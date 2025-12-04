@@ -152,11 +152,7 @@ export default function PaymentMethodDialog({
         <Button onClick={onClose} color="inherit">
           Batal
         </Button>
-        <Button
-          onClick={handleConfirm}
-          variant="contained"
-          disabled={isConfirmDisabled}
-        >
+        <Button onClick={handleConfirm} variant="contained" disabled={isConfirmDisabled}>
           Konfirmasi
         </Button>
       </DialogActions>

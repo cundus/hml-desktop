@@ -19,7 +19,9 @@ import ProductSelectModal, { type ProductSelectResult } from './components/Produ
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
-import PaymentMethodDialog, { type PaymentMethod as DialogPaymentMethod } from './components/PaymentMethodDialog'
+import PaymentMethodDialog, {
+  type PaymentMethod as DialogPaymentMethod
+} from './components/PaymentMethodDialog'
 import {
   OpenShiftDialog,
   CloseShiftDialog,
@@ -154,7 +156,11 @@ export default function SalesPage(): React.JSX.Element {
       if (existing) {
         return prev.map((item) =>
           item.id === cartItemId
-            ? { ...item, quantity: item.quantity + quantity, total: (item.quantity + quantity) * unitPrice }
+            ? {
+                ...item,
+                quantity: item.quantity + quantity,
+                total: (item.quantity + quantity) * unitPrice
+              }
             : item
         )
       } else {
@@ -208,101 +214,104 @@ export default function SalesPage(): React.JSX.Element {
     setPaymentMethodDialogOpen(true)
   }, [cartItems.length, defaultStoreId])
 
-  const handleConfirmPayment = useCallback(async (paymentMethod: DialogPaymentMethod, paymentDeadline?: Date): Promise<void> => {
-    if (cartItems.length === 0) return
-    if (!defaultStoreId) {
-      setSnackbar({
-        open: true,
-        message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
-        severity: 'error'
-      })
-      return
-    }
+  const handleConfirmPayment = useCallback(
+    async (paymentMethod: DialogPaymentMethod, paymentDeadline?: Date): Promise<void> => {
+      if (cartItems.length === 0) return
+      if (!defaultStoreId) {
+        setSnackbar({
+          open: true,
+          message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
+          severity: 'error'
+        })
+        return
+      }
 
-    try {
-      setCheckoutLoading(true)
+      try {
+        setCheckoutLoading(true)
 
-      // Generate transaction code (simple timestamp-based)
-      const code = `TRX-${Date.now()}`
+        // Generate transaction code (simple timestamp-based)
+        const code = `TRX-${Date.now()}`
 
-      // Calculate values
-      const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0)
-      const total = subtotal - discount
+        // Calculate values
+        const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0)
+        const total = subtotal - discount
 
-      // Prepare transaction items
-      const transactionItems = cartItems.map(item => ({
-        productId: item.id, // CartItem uses 'id' property from Product
-        quantity: item.quantity,
-        price: item.price.toString()
-      }))
+        // Prepare transaction items
+        const transactionItems = cartItems.map((item) => ({
+          productId: item.id, // CartItem uses 'id' property from Product
+          quantity: item.quantity,
+          price: item.price.toString()
+        }))
 
-      // Create transaction via IPC with payment method
-      const result = await window.api.db.transactions.create({
-        code,
-        storeId: defaultStoreId,
-        subtotal: subtotal.toString(),
-        discount: discount.toString(),
-        tax: '0',
-        total: total.toString(),
-        paymentMethod,
-        paymentDeadline,
-        receiptPrinted: false,
-        customerId: selectedCustomerId,
-        userId: userName,
-        items: transactionItems
-      })
+        // Create transaction via IPC with payment method
+        const result = await window.api.db.transactions.create({
+          code,
+          storeId: defaultStoreId,
+          subtotal: subtotal.toString(),
+          discount: discount.toString(),
+          tax: '0',
+          total: total.toString(),
+          paymentMethod,
+          paymentDeadline,
+          receiptPrinted: false,
+          customerId: selectedCustomerId,
+          userId: userName,
+          items: transactionItems
+        })
 
-      if (result.success) {
-        // Print receipt after successful transaction
-        try {
-          const printResult = await window.api.db.receipt.printReceipt(result.data)
+        if (result.success) {
+          // Print receipt after successful transaction
+          try {
+            const printResult = await window.api.db.receipt.printReceipt(result.data)
 
-          if (printResult.success) {
-            // Update receipt printed status
-            await window.api.db.receipt.updateReceiptPrinted(result.data.id, true)
+            if (printResult.success) {
+              // Update receipt printed status
+              await window.api.db.receipt.updateReceiptPrinted(result.data.id, true)
 
+              setSnackbar({
+                open: true,
+                message: 'Transaksi berhasil disimpan dan struk dicetak',
+                severity: 'success'
+              })
+            } else {
+              // Receipt printing failed but transaction succeeded
+              setSnackbar({
+                open: true,
+                message: `Transaksi berhasil disimpan, cetak struk gagal: ${printResult.error || 'Printer error'}`,
+                severity: 'error'
+              })
+            }
+          } catch (printError) {
+            console.error('Receipt printing error:', printError)
             setSnackbar({
               open: true,
-              message: 'Transaksi berhasil disimpan dan struk dicetak',
-              severity: 'success'
-            })
-          } else {
-            // Receipt printing failed but transaction succeeded
-            setSnackbar({
-              open: true,
-              message: `Transaksi berhasil disimpan, cetak struk gagal: ${printResult.error || 'Printer error'}`,
+              message: 'Transaksi berhasil disimpan, cetak struk gagal',
               severity: 'error'
             })
           }
-        } catch (printError) {
-          console.error('Receipt printing error:', printError)
+
+          // Clear cart and reset form (after printing attempt)
+          setCartItems([])
+          setDiscount(0)
+          setSelectedCustomerId(null)
+          setPaidAmount(0)
+          setPaymentMethodDialogOpen(false)
+        } else {
           setSnackbar({
             open: true,
-            message: 'Transaksi berhasil disimpan, cetak struk gagal',
+            message: result.error || 'Gagal menyimpan transaksi',
             severity: 'error'
           })
         }
-
-        // Clear cart and reset form (after printing attempt)
-        setCartItems([])
-        setDiscount(0)
-        setSelectedCustomerId(null)
-        setPaidAmount(0)
-        setPaymentMethodDialogOpen(false)
-      } else {
-        setSnackbar({
-          open: true,
-          message: result.error || 'Gagal menyimpan transaksi',
-          severity: 'error'
-        })
+      } catch (err) {
+        console.error('Checkout failed:', err)
+        setSnackbar({ open: true, message: 'Gagal menyimpan transaksi', severity: 'error' })
+      } finally {
+        setCheckoutLoading(false)
       }
-    } catch (err) {
-      console.error('Checkout failed:', err)
-      setSnackbar({ open: true, message: 'Gagal menyimpan transaksi', severity: 'error' })
-    } finally {
-      setCheckoutLoading(false)
-    }
-  }, [cartItems, discount, defaultStoreId, selectedCustomerId, userName])
+    },
+    [cartItems, discount, defaultStoreId, selectedCustomerId, userName]
+  )
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
@@ -601,9 +610,12 @@ export default function SalesPage(): React.JSX.Element {
         <Snackbar
           open={snackbar.open}
           autoHideDuration={3000}
-          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
         >
-          <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
+          <Alert
+            severity={snackbar.severity}
+            onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+          >
             {snackbar.message}
           </Alert>
         </Snackbar>

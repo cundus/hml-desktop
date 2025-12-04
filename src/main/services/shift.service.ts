@@ -1,6 +1,7 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
+import { ExpenseService } from './expense.service'
 
 export interface CashierShift {
   id: string
@@ -54,6 +55,8 @@ export interface ShiftSummary {
   totalTax: string
   netSales: string
   expectedCash: string
+  totalExpenses: string
+  expenseCount: number
   transactions: {
     id: string
     code: string
@@ -64,7 +67,10 @@ export interface ShiftSummary {
 }
 
 export class ShiftService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private expenseService: ExpenseService
+  ) {}
 
   /**
    * Get current open shift for a user
@@ -417,7 +423,11 @@ export class ShiftService {
     txStmt.free()
 
     const netSales = totalSales - totalDiscount + totalTax
-    const expectedCash = parseFloat(shift.initialCash) + netSales
+
+    // Get expense summary for this shift
+    const expenseSummary = await this.expenseService.getExpenseSummaryByShift(shiftId)
+    const totalExpenses = parseFloat(expenseSummary.totalExpenses) || 0
+    const expectedCash = parseFloat(shift.initialCash) + netSales - totalExpenses
 
     return {
       shift,
@@ -427,6 +437,8 @@ export class ShiftService {
       totalTax: totalTax.toString(),
       netSales: netSales.toString(),
       expectedCash: expectedCash.toString(),
+      totalExpenses: expenseSummary.totalExpenses,
+      expenseCount: expenseSummary.expenseCount,
       transactions
     }
   }

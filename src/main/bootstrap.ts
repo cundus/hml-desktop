@@ -4,6 +4,7 @@ import {
   CategoryController,
   CustomerCategoryController,
   CustomerController,
+  ExpenseController,
   PermissionController,
   ProductController,
   ProductLocationController,
@@ -31,6 +32,7 @@ import {
   CategoryService,
   CustomerCategoryService,
   CustomerService,
+  ExpenseService,
   PermissionService,
   ProductLocationService,
   ProductPriceService,
@@ -45,8 +47,8 @@ import {
   SyncService,
   TransactionService,
   UomService,
-  UserRoleService,
-  UserService
+  UserService,
+  UserRoleService
 } from './services'
 import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
@@ -92,8 +94,11 @@ export async function bootstrap(): Promise<void> {
   // Initialize purchasing service
   const purchaseOrderService = new PurchaseOrderService(db)
 
+  // Initialize expense service
+  const expenseService = new ExpenseService(db)
+
   // Initialize shift service
-  const shiftService = new ShiftService(db)
+  const shiftService = new ShiftService(db, expenseService)
 
   // Initialize app config service
   const appConfigService = new AppConfigService(db)
@@ -138,6 +143,7 @@ export async function bootstrap(): Promise<void> {
   const authController = new AuthController(authService)
   const uomController = new UomController(uomService)
   const receiptController = new ReceiptController(receiptService)
+  const expenseController = new ExpenseController(expenseService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -161,6 +167,7 @@ export async function bootstrap(): Promise<void> {
   authController.registerHandlers()
   uomController.registerHandlers()
   receiptController.registerHandlers()
+  expenseController.registerHandlers()
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
 

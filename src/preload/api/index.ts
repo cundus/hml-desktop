@@ -7,9 +7,13 @@ export * from './core'
 export * from './inventory'
 export * from './sales'
 export * from './purchasing'
+export * from './expenses'
 export * from './sync'
 export * from './shift'
 export * from './app-config'
+
+// Import Transaction type for receipt API
+import { Transaction } from './sales'
 
 // Re-export for convenience
 import {
@@ -32,6 +36,7 @@ import {
 import { productPriceApi, productLocationApi, batchApi, stockTransactionApi } from './inventory'
 import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
+import { expenseApi } from './expenses'
 import { syncApi } from './sync'
 import { shiftApi } from './shift'
 import { appConfigApi } from './app-config'
@@ -72,6 +77,9 @@ export const db = {
 
   // Purchasing
   purchaseOrders: purchaseOrderApi,
+
+  // Expenses
+  expenses: expenseApi,
 
   // Sync
   sync: syncApi,

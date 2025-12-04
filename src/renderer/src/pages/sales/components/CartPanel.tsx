@@ -89,9 +89,7 @@ export default function CartPanel({
                       {item.sku}
                     </Typography>
                   </TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(item.price)}
-                  </TableCell>
+                  <TableCell align="right">{formatCurrency(item.price)}</TableCell>
                   <TableCell align="center">
                     <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
                       <IconButton
@@ -113,9 +111,7 @@ export default function CartPanel({
                       </IconButton>
                     </Stack>
                   </TableCell>
-                  <TableCell align="right">
-                    {formatCurrency(item.price * item.quantity)}
-                  </TableCell>
+                  <TableCell align="right">{formatCurrency(item.price * item.quantity)}</TableCell>
                   <TableCell align="center">
                     <IconButton
                       size="small"

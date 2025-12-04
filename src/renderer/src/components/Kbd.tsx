@@ -69,11 +69,7 @@ export default function Kbd({ keys, description, size = 'medium' }: KbdProps): R
         </KbdKey>
       ))}
       {description && (
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ ml: 0.5 }}
-        >
+        <Typography variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
           {description}
         </Typography>
       )}

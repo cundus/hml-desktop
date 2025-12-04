@@ -106,8 +106,12 @@ export const transactionApi = {
     ipcRenderer.invoke('db:transactions:getDashboardStats') as Promise<ApiResponse<DashboardStats>>,
 
   printReceipt: (transaction: Transaction) =>
-    ipcRenderer.invoke('receipt:print', transaction) as Promise<ApiResponse<{ success: boolean; error?: string }>>,
+    ipcRenderer.invoke('receipt:print', transaction) as Promise<
+      ApiResponse<{ success: boolean; error?: string }>
+    >,
 
   updateReceiptPrinted: (transactionId: string, printed: boolean) =>
-    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed) as Promise<ApiResponse<Transaction>>
+    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed) as Promise<
+      ApiResponse<Transaction>
+    >
 }

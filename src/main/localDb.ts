@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import initSqlJs, { Database } from 'sql.js'
 import { app } from 'electron'
 import { join } from 'path'
@@ -334,18 +335,83 @@ async function createTables(database: Database): Promise<void> {
   // Add payment columns to existing transactions table (migration)
   try {
     database.run(`ALTER TABLE transactions ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'cash'`)
-  } catch (e) {
+  } catch {
     // Column already exists
   }
   try {
     database.run(`ALTER TABLE transactions ADD COLUMN payment_deadline INTEGER`)
-  } catch (e) {
+  } catch {
     // Column already exists
   }
   try {
     database.run(`ALTER TABLE transactions ADD COLUMN receipt_printed INTEGER NOT NULL DEFAULT 0`)
-  } catch (e) {
+  } catch {
     // Column already exists
+  }
+
+  // Expenses table - daily operational expenses
+  database.run(`
+    CREATE TABLE IF NOT EXISTS expenses (
+      id TEXT PRIMARY KEY,
+      shift_id TEXT NOT NULL,
+      item TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      price TEXT NOT NULL,
+      total TEXT NOT NULL,
+      description TEXT,
+      created_by TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (shift_id) REFERENCES shifts (id)
+    )
+  `)
+
+  // Add expenses table migration for existing databases (only if table exists but missing columns)
+  try {
+    // Check if expenses table exists first
+    const tableExists = database
+      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='expenses'")
+      .get()
+    if (tableExists) {
+      // Try to add columns one by one - if they already exist, the ALTER will fail and we catch it
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN shift_id TEXT NOT NULL DEFAULT ''`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN item TEXT NOT NULL DEFAULT ''`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN quantity INTEGER NOT NULL DEFAULT 1`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN price TEXT NOT NULL DEFAULT '0'`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN total TEXT NOT NULL DEFAULT '0'`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN description TEXT`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN created_by TEXT`)
+      } catch {
+        // Column already exists
+      }
+    }
+  } catch {
+    // Table doesn't exist or migration failed, CREATE TABLE will handle it
   }
 
   // Transaction Items table - sales line items

@@ -169,7 +169,9 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus pesanan pembelian ini?')
+    const confirmed = await globalAlert.confirm(
+      'Apakah Anda yakin ingin menghapus pesanan pembelian ini?'
+    )
     if (!confirmed) return
 
     try {

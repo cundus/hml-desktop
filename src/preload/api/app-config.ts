@@ -34,7 +34,8 @@ export const appConfigApi = {
   /**
    * Check if device is configured
    */
-  isConfigured: () => ipcRenderer.invoke('app:config:isConfigured') as Promise<ApiResponse<boolean>>,
+  isConfigured: () =>
+    ipcRenderer.invoke('app:config:isConfigured') as Promise<ApiResponse<boolean>>,
 
   /**
    * Setup device configuration (first-time setup)

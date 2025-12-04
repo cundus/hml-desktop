@@ -52,17 +52,14 @@ export function registerAppConfigHandlers(service: AppConfigService): void {
   )
 
   // Update cloud database URL
-  ipcMain.handle(
-    'app:config:setCloudDbUrl',
-    async (_, url: string): Promise<ApiResponse<void>> => {
-      try {
-        await service.setCloudDbUrl(url)
-        return { success: true }
-      } catch (error) {
-        return { success: false, error: (error as Error).message }
-      }
+  ipcMain.handle('app:config:setCloudDbUrl', async (_, url: string): Promise<ApiResponse<void>> => {
+    try {
+      await service.setCloudDbUrl(url)
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
     }
-  )
+  })
 
   // Reset configuration
   ipcMain.handle('app:config:reset', async (): Promise<ApiResponse<void>> => {

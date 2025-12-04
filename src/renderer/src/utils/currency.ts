@@ -26,6 +26,9 @@ export const formatIDR = formatCurrency
  */
 export function parseCurrency(formatted: string): number {
   // Remove currency symbol, dots, and convert to number
-  const cleaned = formatted.replace(/[^\d,-]/g, '').replace(/\./g, '').replace(/,/g, '.')
+  const cleaned = formatted
+    .replace(/[^\d,-]/g, '')
+    .replace(/\./g, '')
+    .replace(/,/g, '.')
   return parseFloat(cleaned) || 0
 }

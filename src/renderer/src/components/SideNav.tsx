@@ -240,6 +240,12 @@ const menus: MenuItem[] = [
         label: 'Konfigurasi Aplikasi',
         path: '/settings/app-config',
         permissions: ['settings.app-config.manage']
+      },
+      {
+        key: 'printer',
+        label: 'Pengaturan Printer',
+        path: '/settings/printer',
+        permissions: ['settings.printer.manage']
       }
     ]
   },

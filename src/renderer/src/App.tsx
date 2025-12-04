@@ -21,6 +21,7 @@ import PurchaseOrderFormPage from './pages/purchasing/PurchaseOrderForm'
 import Settings from './pages/Settings'
 import AccessControlPage from './pages/settings/AccessControl'
 import AppConfigPage from './pages/settings/AppConfig'
+import PrinterSettings from './pages/settings/PrinterSettings'
 import CategoryPage from './pages/settings/master/Category'
 import CustomerPage from './pages/settings/master/Customer'
 import CustomerCategoryPage from './pages/settings/master/CustomerCategory'
@@ -33,6 +34,7 @@ import WarehousePricingPage from './pages/warehouse/Pricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
 import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
+import ExpensesPage from './pages/operations/expenses'
 import SetupPage from './pages/Setup'
 
 const router = createHashRouter([
@@ -101,6 +103,10 @@ const router = createHashRouter([
             children: [{ path: 'settings/app-config', element: <AppConfigPage /> }]
           },
           {
+            element: <RoleGuard requiredPermissions={['settings.printer.manage']} />,
+            children: [{ path: 'settings/printer', element: <PrinterSettings /> }]
+          },
+          {
             element: <RoleGuard requiredPermissions={['warehouse.manage']} />,
             children: [
               { path: 'warehouse/stocks', element: <WarehouseStocksPage /> },
@@ -124,6 +130,10 @@ const router = createHashRouter([
               { path: 'purchasing/orders', element: <PurchaseOrdersPage /> },
               { path: 'purchasing/order-form', element: <PurchaseOrderFormPage /> }
             ]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['operations.expenses']} />,
+            children: [{ path: 'operations/expenses', element: <ExpensesPage /> }]
           }
         ]
       }

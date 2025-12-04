@@ -1,5 +1,30 @@
 import { ipcRenderer } from 'electron'
 
+// Printer config types (mirrored from main/services/receipt.service.ts)
+interface ReceiptConfig {
+  printerName?: string
+  paperWidth: number
+  storeName: string
+  storeAddress: string
+  storePhone: string
+  storeEmail?: string
+}
+
+interface ExpenseReportData {
+  date: string
+  shiftId: string
+  shiftName: string
+  expenses: Array<{
+    item: string
+    quantity: number
+    price: string
+    total: string
+    description?: string
+  }>
+  totalExpenses: number
+  expenseCount: number
+}
+
 // Export all API modules
 export * from './types'
 export * from './master-data'
@@ -45,7 +70,18 @@ import { appConfigApi } from './app-config'
 const receiptApi = {
   printReceipt: (transaction: Transaction) => ipcRenderer.invoke('receipt:print', transaction),
   updateReceiptPrinted: (transactionId: string, printed: boolean) =>
-    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed)
+    ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed),
+  getConfig: () => ipcRenderer.invoke('receipt:getConfig'),
+  updateConfig: (config: Partial<ReceiptConfig>) => ipcRenderer.invoke('receipt:updateConfig', config)
+}
+
+// Printer API
+const printerApi = {
+  getConfig: () => ipcRenderer.invoke('receipt:getConfig'),
+  updateConfig: (config: Partial<ReceiptConfig>) => ipcRenderer.invoke('receipt:updateConfig', config),
+  getStatus: () => ipcRenderer.invoke('printer:getStatus'),
+  testPrint: () => ipcRenderer.invoke('printer:testPrint'),
+  printExpenseReport: (data: ExpenseReportData) => ipcRenderer.invoke('printer:printExpenseReport', data)
 }
 
 export const db = {
@@ -91,5 +127,8 @@ export const db = {
   appConfig: appConfigApi,
 
   // Receipt
-  receipt: receiptApi
+  receipt: receiptApi,
+
+  // Printer
+  printer: printerApi
 }

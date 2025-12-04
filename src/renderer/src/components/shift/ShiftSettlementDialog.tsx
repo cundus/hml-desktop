@@ -39,6 +39,8 @@ interface ShiftSummary {
   totalTax: string
   netSales: string
   expectedCash: string
+  totalExpenses: string
+  expenseCount: number
   transactions: {
     id: string
     code: string
@@ -215,6 +217,14 @@ export default function ShiftSettlementDialog({
                     Total Pajak
                   </Typography>
                   <Typography variant="h6">Rp {formatCurrency(summary.totalTax)}</Typography>
+                </Paper>
+                <Paper variant="outlined" sx={{ p: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    Pengeluaran ({summary.expenseCount || 0} item)
+                  </Typography>
+                  <Typography variant="h6" color="warning.main">
+                    - Rp {formatCurrency(summary.totalExpenses || '0')}
+                  </Typography>
                 </Paper>
               </Box>
 

@@ -47,7 +47,8 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'master.customer-category.manage', name: 'Manage customer categories' },
   { id: 'master.uom.manage', name: 'Manage units of measure' },
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
-  { id: 'settings.app-config.manage', name: 'Manage app configuration' }
+  { id: 'settings.app-config.manage', name: 'Manage app configuration' },
+  { id: 'settings.printer.manage', name: 'Manage printer settings' }
 ]
 
 /**

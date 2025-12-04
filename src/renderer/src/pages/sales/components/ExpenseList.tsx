@@ -13,7 +13,20 @@ import Stack from '@mui/material/Stack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import { formatCurrency } from '../../../utils/currency'
-import { Expense } from 'src/preload/api'
+
+// Define Expense type locally to avoid import issues
+interface Expense {
+  id: string
+  shiftId: string
+  item: string
+  quantity: number
+  price: string
+  total: string
+  description: string | null
+  createdBy: string | null
+  createdAt: Date
+  updatedAt: Date
+}
 
 export interface ExpenseListProps {
   expenses: Expense[]
@@ -44,7 +57,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
-          No expenses recorded yet
+          Belum ada pengeluaran yang dicatat
         </Typography>
       </Box>
     )
@@ -64,12 +77,8 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
         }}
       >
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h6" color="primary">
-            Total Expenses ({expenses.length} items)
-          </Typography>
-          <Typography variant="h6" color="primary">
-            {formatCurrency(totalExpenses)}
-          </Typography>
+          <Typography variant="h6">Total Pengeluaran ({expenses.length} item)</Typography>
+          <Typography variant="h6">{formatCurrency(totalExpenses)}</Typography>
         </Stack>
       </Box>
 
@@ -79,12 +88,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
           <TableHead>
             <TableRow>
               <TableCell>Item</TableCell>
-              <TableCell align="center">Qty</TableCell>
-              <TableCell align="right">Price</TableCell>
+              <TableCell align="center">Jml</TableCell>
+              <TableCell align="right">Harga</TableCell>
               <TableCell align="right">Total</TableCell>
-              <TableCell>Description</TableCell>
-              <TableCell align="center">Time</TableCell>
-              <TableCell align="center">Actions</TableCell>
+              <TableCell>Deskripsi</TableCell>
+              <TableCell align="center">Waktu</TableCell>
+              <TableCell align="center">Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

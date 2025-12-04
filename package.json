@@ -34,6 +34,7 @@
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.7",
+    "electron-printer": "^0.0.5",
     "electron-updater": "^6.3.9",
     "node-thermal-printer": "^4.5.0",
     "pg": "^8.16.3",

@@ -78,28 +78,28 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
     const newErrors: Partial<Record<keyof ExpenseFormData, string>> = {}
 
     if (!formData.item.trim()) {
-      newErrors.item = 'Item name is required'
+      newErrors.item = 'Nama item wajib diisi'
     }
 
     if (formData.quantity <= 0) {
-      newErrors.quantity = 'Quantity must be greater than 0'
+      newErrors.quantity = 'Jumlah harus lebih dari 0'
     }
 
     if (formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0'
+      newErrors.price = 'Harga harus lebih dari 0'
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = () => {
+  const handleSubmit = (): void => {
     if (validateForm()) {
       onSubmit(formData)
     }
   }
 
-  const handleClose = () => {
+  const handleClose = (): void => {
     setFormData({
       item: '',
       quantity: 1,
@@ -114,12 +114,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Add Expense</DialogTitle>
+      <DialogTitle>Tambah Pengeluaran</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 2 }}>
           <Stack spacing={3}>
             <TextField
-              label="Item Name"
+              label="Nama Item"
               value={formData.item}
               onChange={handleInputChange('item')}
               error={!!errors.item}
@@ -130,7 +130,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
 
             <Stack direction="row" spacing={2}>
               <TextField
-                label="Quantity"
+                label="Jumlah"
                 type="number"
                 value={formData.quantity}
                 onChange={handleInputChange('quantity')}
@@ -142,7 +142,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
               />
 
               <TextField
-                label="Price"
+                label="Harga"
                 type="number"
                 value={formData.price}
                 onChange={handleInputChange('price')}
@@ -155,7 +155,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
             </Stack>
 
             <TextField
-              label="Description (Optional)"
+              label="Deskripsi (Opsional)"
               value={formData.description}
               onChange={handleInputChange('description')}
               multiline
@@ -167,15 +167,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
             <Box
               sx={{
                 p: 2,
-                bgcolor: 'grey.50',
                 borderRadius: 1,
                 border: '1px solid',
                 borderColor: 'grey.200'
               }}
             >
-              <Typography variant="body2" color="text.secondary">
-                Total Amount:
-              </Typography>
+              <Typography variant="body2">Total Jumlah:</Typography>
               <Typography variant="h6" color="primary">
                 {formatCurrency(total)}
               </Typography>
@@ -185,10 +182,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose} disabled={loading}>
-          Cancel
+          Batal
         </Button>
         <Button onClick={handleSubmit} variant="contained" disabled={loading}>
-          {loading ? 'Saving...' : 'Add Expense'}
+          {loading ? 'Menyimpan...' : 'Tambah Pengeluaran'}
         </Button>
       </DialogActions>
     </Dialog>

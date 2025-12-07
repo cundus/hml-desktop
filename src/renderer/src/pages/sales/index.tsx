@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
-  Grid,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,7 +17,6 @@ import ProductBrowser, { type Product } from './components/ProductBrowser'
 import ProductSelectModal, { type ProductSelectResult } from './components/ProductSelectModal'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
-import PaymentSection, { type PaymentMethod } from './components/PaymentSection'
 import PaymentMethodDialog, {
   type PaymentMethod as DialogPaymentMethod
 } from './components/PaymentMethodDialog'
@@ -45,8 +43,6 @@ export default function SalesPage(): React.JSX.Element {
   const [discount, setDiscount] = useState(0)
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null)
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash')
-  const [paidAmount, setPaidAmount] = useState(0)
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
@@ -64,7 +60,6 @@ export default function SalesPage(): React.JSX.Element {
 
   const customerInputRef = useRef<HTMLInputElement | null>(null)
   const discountInputRef = useRef<HTMLInputElement | null>(null)
-  const paidInputRef = useRef<HTMLInputElement | null>(null)
 
   // Load products, customers, categories, and prices from local DB
   useEffect(() => {
@@ -294,7 +289,6 @@ export default function SalesPage(): React.JSX.Element {
           setCartItems([])
           setDiscount(0)
           setSelectedCustomerId(null)
-          setPaidAmount(0)
           setPaymentMethodDialogOpen(false)
         } else {
           setSnackbar({
@@ -325,7 +319,10 @@ export default function SalesPage(): React.JSX.Element {
         return
       }
 
-      if (event.key === 'F2' || (event.ctrlKey && event.key.toLowerCase() === 'b')) {
+      if (
+        (event.ctrlKey && event.key.toLowerCase() === 'p') ||
+        (event.ctrlKey && event.key.toLowerCase() === 'b')
+      ) {
         event.preventDefault()
         setProductDialogOpen(true)
         return
@@ -340,12 +337,6 @@ export default function SalesPage(): React.JSX.Element {
       if (event.key === 'F4' || (event.ctrlKey && event.key.toLowerCase() === 'd')) {
         event.preventDefault()
         discountInputRef.current?.focus()
-        return
-      }
-
-      if (event.key === 'F5' || (event.ctrlKey && event.key.toLowerCase() === 'p')) {
-        event.preventDefault()
-        paidInputRef.current?.focus()
         return
       }
 
@@ -480,6 +471,38 @@ export default function SalesPage(): React.JSX.Element {
 
         <Divider sx={{ mb: 2 }} />
 
+        {/* Customer selector at top */}
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 1,
+            bgcolor: 'background.default',
+            border: '1px solid',
+            borderColor: 'divider'
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <CustomerSelector
+              customers={customers}
+              selectedCustomerId={selectedCustomerId}
+              onChange={setSelectedCustomerId}
+              inputRef={customerInputRef}
+            />
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() => window.api?.openMasterCustomerWindow?.()}
+          >
+            Tambah pelanggan
+          </Button>
+        </Box>
+
+        {/* Summary */}
         <Box
           sx={{
             mb: 2,
@@ -514,66 +537,34 @@ export default function SalesPage(): React.JSX.Element {
           </Box>
         </Box>
 
-        <Grid container spacing={2} sx={{ flexGrow: 1, minHeight: 0 }}>
-          <Grid
-            size={{ xs: 12, md: 7 }}
-            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
-          >
-            <Box sx={{ flexGrow: 1, minHeight: 0 }}>
-              <CartPanel
-                items={cartItems}
-                subtotal={subtotal}
-                discount={discount}
-                total={total}
-                onQuantityChange={handleQuantityChange}
-                onRemove={handleRemoveItem}
-                onChangeDiscount={handleChangeDiscount}
-                onCheckout={handleCheckout}
-                discountInputRef={discountInputRef}
-              />
-            </Box>
-          </Grid>
-          <Grid
-            size={{ xs: 12, md: 5 }}
-            sx={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}
-          >
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
-              <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1 }}>
-                <Box sx={{ flex: 1 }}>
-                  <CustomerSelector
-                    customers={customers}
-                    selectedCustomerId={selectedCustomerId}
-                    onChange={setSelectedCustomerId}
-                    inputRef={customerInputRef}
-                  />
-                </Box>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  onClick={() => window.api?.openMasterCustomerWindow?.()}
-                >
-                  Tambah pelanggan
-                </Button>
-              </Box>
-              <PaymentSection
-                total={total}
-                method={paymentMethod}
-                paidAmount={paidAmount}
-                onMethodChange={setPaymentMethod}
-                onPaidAmountChange={setPaidAmount}
-                paidInputRef={paidInputRef}
-              />
-              <Button
-                variant="contained"
-                color="secondary"
-                sx={{ mt: 1 }}
-                onClick={() => setProductDialogOpen(true)}
-              >
-                Cari produk (F2)
-              </Button>
-            </Box>
-          </Grid>
-        </Grid>
+        {/* Product search above full-width cart */}
+        <Box
+          sx={{
+            mb: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <Typography variant="subtitle2">Daftar Produk</Typography>
+          <Button variant="contained" color="secondary" onClick={() => setProductDialogOpen(true)}>
+            Cari produk (CTRL+P)
+          </Button>
+        </Box>
+
+        <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+          <CartPanel
+            items={cartItems}
+            subtotal={subtotal}
+            discount={discount}
+            total={total}
+            onQuantityChange={handleQuantityChange}
+            onRemove={handleRemoveItem}
+            onChangeDiscount={handleChangeDiscount}
+            onCheckout={handleCheckout}
+            discountInputRef={discountInputRef}
+          />
+        </Box>
 
         <Dialog
           open={productDialogOpen}

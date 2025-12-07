@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import TextField from '@mui/material/TextField'
@@ -73,7 +74,7 @@ export default function ProductBrowser({
     setActiveCategory((prev) => (prev === category ? null : category))
   }
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation & selection via keyboard
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent): void => {
       if (filtered.length === 0) return
@@ -86,9 +87,7 @@ export default function ProductBrowser({
         setSelectedIndex((prev) => Math.max(prev - 1, 0))
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        if (filtered[selectedIndex]) {
-          onAdd(filtered[selectedIndex])
-        }
+        onAdd(filtered[selectedIndex])
       }
     },
     [filtered, selectedIndex, onAdd]
@@ -105,10 +104,7 @@ export default function ProductBrowser({
   }, [selectedIndex, filtered.length])
 
   return (
-    <Box
-      sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}
-      onKeyDown={handleKeyDown}
-    >
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
       <Box>
         <Typography variant="h6" gutterBottom>
           Produk
@@ -119,6 +115,7 @@ export default function ProductBrowser({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           inputRef={searchInputRef}
+          onKeyDown={handleKeyDown}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -169,7 +166,7 @@ export default function ProductBrowser({
             Tidak ada produk ditemukan.
           </Typography>
         ) : (
-          <List dense ref={listRef}>
+          <List dense ref={listRef} onKeyDown={handleKeyDown}>
             {filtered.map((product, index) => (
               <ListItemButton
                 key={product.id}

@@ -7,9 +7,9 @@ import Button from '@mui/material/Button'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
-import InputAdornment from '@mui/material/InputAdornment'
 import Divider from '@mui/material/Divider'
 import Alert from '@mui/material/Alert'
+import CurrencyInput from '../CurrencyInput'
 
 interface CloseShiftDialogProps {
   open: boolean
@@ -96,19 +96,14 @@ export default function CloseShiftDialog({
               <Typography variant="h6">Rp {formatCurrency(initialCash)}</Typography>
             </Box>
 
-            <TextField
+            <CurrencyInput
               label="Kas Akhir"
-              type="number"
-              value={closingCash}
-              onChange={(e) => setClosingCash(e.target.value)}
+              value={Number(closingCash) || 0}
+              onChange={(value) => setClosingCash(value.toString())}
               fullWidth
               margin="normal"
               required
               autoFocus
-              InputProps={{
-                startAdornment: <InputAdornment position="start">Rp</InputAdornment>
-              }}
-              inputProps={{ min: 0, step: 1000 }}
               helperText={closingCash ? `Rp ${formatCurrency(closingCash)}` : ''}
             />
 

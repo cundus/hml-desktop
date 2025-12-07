@@ -16,6 +16,7 @@ import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import { formatCurrency } from '../../../utils/currency'
 import type { Product } from './ProductBrowser'
+import Kbd from '@renderer/components/Kbd'
 
 export type CartItem = Product & {
   quantity: number
@@ -63,6 +64,7 @@ export default function CartPanel({
           <TableHead>
             <TableRow>
               <TableCell>Item</TableCell>
+              <TableCell align="center">Satuan</TableCell>
               <TableCell align="right">Harga</TableCell>
               <TableCell align="center">Jml</TableCell>
               <TableCell align="right">Total</TableCell>
@@ -72,7 +74,7 @@ export default function CartPanel({
           <TableBody>
             {items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   <Typography variant="body2" color="text.secondary">
                     Keranjang kosong.
                   </Typography>
@@ -88,6 +90,9 @@ export default function CartPanel({
                     <Typography variant="caption" color="text.secondary">
                       {item.sku}
                     </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography variant="body2">{item.unit}</Typography>
                   </TableCell>
                   <TableCell align="right">{formatCurrency(item.price)}</TableCell>
                   <TableCell align="center">
@@ -171,7 +176,7 @@ export default function CartPanel({
           onClick={onCheckout}
           disabled={disabled || items.length === 0}
         >
-          Selesaikan Transaksi
+          Selesaikan Transaksi (<Kbd keys={['Ctrl', '+', 'Enter']} />)
         </Button>
       </Box>
     </Box>

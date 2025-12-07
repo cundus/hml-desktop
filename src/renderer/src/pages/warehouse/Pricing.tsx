@@ -16,6 +16,7 @@ import TextField from '@mui/material/TextField'
 import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
 import EditIcon from '@mui/icons-material/Edit'
+import CurrencyInput from '../../components/CurrencyInput'
 
 type PricingItem = {
   id: string
@@ -153,13 +154,12 @@ export default function WarehousePricingPage(): React.JSX.Element {
             </Box>
           )}
 
-          <TextField
+          <CurrencyInput
             margin="normal"
             label="Base Cost"
-            type="number"
+            value={Number(baseCost) || 0}
+            onChange={(value) => setBaseCost(value.toString())}
             fullWidth
-            value={baseCost}
-            onChange={(e) => setBaseCost(e.target.value)}
           />
           <TextField
             margin="normal"

@@ -8,6 +8,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
+import CurrencyInput from '../../../components/CurrencyInput'
 import { formatCurrency } from '../../../utils/currency'
 
 export interface ExpenseFormData {
@@ -141,14 +142,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
                 disabled={loading}
               />
 
-              <TextField
+              <CurrencyInput
                 label="Harga"
-                type="number"
                 value={formData.price}
-                onChange={handleInputChange('price')}
+                onChange={(value) => setFormData(prev => ({ ...prev, price: value }))}
                 error={!!errors.price}
                 helperText={errors.price}
-                inputProps={{ min: 0, step: 0.01 }}
                 fullWidth
                 disabled={loading}
               />

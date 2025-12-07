@@ -9,7 +9,7 @@ import MenuItem from '@mui/material/MenuItem'
 import Typography from '@mui/material/Typography'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
-import InputAdornment from '@mui/material/InputAdornment'
+import CurrencyInput from '../CurrencyInput'
 import useAuth from '../../hooks/useAuth'
 
 interface Store {
@@ -126,19 +126,14 @@ export default function OpenShiftDialog({
               ))}
             </TextField>
 
-            <TextField
+            <CurrencyInput
               label="Kas Awal"
-              type="number"
-              value={initialCash}
-              onChange={(e) => setInitialCash(e.target.value)}
+              value={Number(initialCash) || 0}
+              onChange={(value) => setInitialCash(value.toString())}
               fullWidth
               margin="normal"
               required
               autoFocus
-              InputProps={{
-                startAdornment: <InputAdornment position="start">Rp</InputAdornment>
-              }}
-              inputProps={{ min: 0, step: 1000 }}
               helperText={
                 initialCash ? `Rp ${formatCurrency(initialCash)}` : 'Masukkan jumlah kas awal'
               }

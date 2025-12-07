@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -146,14 +147,15 @@ export default function ProductSelectModal({
     })
   }, [product, selectedUom, selectedPrice, quantity, onConfirm])
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    if (!open) return
+  // Handle keyboard navigation - scoped to dialog only
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent): void => {
+      if (!open) return
 
-    const handleKeyDown = (e: KeyboardEvent): void => {
       // Enter to confirm
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
+        e.stopPropagation()
         handleConfirm()
         return
       }
@@ -215,11 +217,9 @@ export default function ProductSelectModal({
         setSelectedPrice(priceCategories[prevIndex])
         return
       }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose, handleConfirm, uomOptions, priceCategories, selectedPrice?.id])
+    },
+    [open, onClose, handleConfirm, uomOptions, priceCategories, selectedPrice?.id]
+  )
 
   const handleQuantityChange = (value: string): void => {
     const num = parseInt(value, 10)
@@ -236,7 +236,7 @@ export default function ProductSelectModal({
   const totalPrice = unitPrice * quantity
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth onKeyDown={handleKeyDown}>
       <DialogTitle>
         <Typography variant="h6" component="span">
           {product.name}

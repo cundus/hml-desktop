@@ -18,6 +18,7 @@ import Divider from '@mui/material/Divider'
 import Autocomplete from '@mui/material/Autocomplete'
 import CircularProgress from '@mui/material/CircularProgress'
 import AddIcon from '@mui/icons-material/Add'
+import CurrencyInput from '../../components/CurrencyInput'
 import DeleteIcon from '@mui/icons-material/Delete'
 import SaveIcon from '@mui/icons-material/Save'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
@@ -178,13 +179,6 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     const newItems = [...items]
     newItems[index].quantity = quantity
     newItems[index].subtotal = quantity * newItems[index].cost
-    setItems(newItems)
-  }
-
-  const updateCost = (index: number, cost: number): void => {
-    const newItems = [...items]
-    newItems[index].cost = cost
-    newItems[index].subtotal = newItems[index].quantity * cost
     setItems(newItems)
   }
 
@@ -417,31 +411,11 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
                     size="small"
                     inputProps={{ min: 1 }}
-                    sx={{ width: 80 }}
-                    disabled={status === 'RECEIVED'}
-                  />
-                </TableCell>
-                <TableCell align="right">
-                  <TextField
-                    type="number"
-                    value={item.cost}
-                    onChange={(e) => updateCost(index, parseFloat(e.target.value) || 0)}
-                    size="small"
-                    inputProps={{ min: 0, step: 0.01 }}
-                    sx={{ width: 100 }}
-                    disabled={status === 'RECEIVED'}
-                  />
-                </TableCell>
-                <TableCell align="right">{item.subtotal.toFixed(2)}</TableCell>
-                <TableCell align="right">
-                  <IconButton
-                    size="small"
                     color="error"
                     onClick={() => removeItem(index)}
                     disabled={status === 'RECEIVED'}
-                  >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  />
+                  <DeleteIcon fontSize="small" />
                 </TableCell>
               </TableRow>
             ))}

@@ -15,21 +15,11 @@ export type PaymentMethod = 'cash' | 'card' | 'qris'
 export type PaymentSectionProps = {
   total: number
   method: PaymentMethod
-  paidAmount: number
   onMethodChange: (method: PaymentMethod) => void
-  onPaidAmountChange: (amount: number) => void
-  paidInputRef?: React.Ref<HTMLInputElement>
 }
 
-export default function PaymentSection({
-  total,
-  method,
-  paidAmount,
-  onMethodChange,
-  onPaidAmountChange,
-  paidInputRef
-}: PaymentSectionProps): React.JSX.Element {
-  const change = method === 'cash' ? Math.max(0, paidAmount - total) : 0
+export default function PaymentSection({ total, method, onMethodChange }: PaymentSectionProps): React.JSX.Element {
+  const change = 0 // Change is now handled in the payment dialog
 
   return (
     <Box>
@@ -47,24 +37,9 @@ export default function PaymentSection({
       </RadioGroup>
 
       {method === 'cash' && (
-        <Stack direction="row" spacing={2} mt={1} alignItems="center">
-          <TextField
-            size="small"
-            type="number"
-            label="Dibayar (IDR)"
-            value={paidAmount}
-            onChange={(e) => onPaidAmountChange(Number(e.target.value) || 0)}
-            sx={{ maxWidth: 180 }}
-            inputProps={{ min: 0 }}
-            inputRef={paidInputRef}
-          />
-          <Typography variant="body2" color="text.secondary">
-            Kembalian:{' '}
-            <Typography component="span" fontWeight="600">
-              {formatCurrency(change)}
-            </Typography>
-          </Typography>
-        </Stack>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+          Nominal pembayaran tunai akan diinput di dialog konfirmasi (F9 / Ctrl+Enter).
+        </Typography>
       )}
     </Box>
   )

@@ -163,6 +163,131 @@ const ENTITY_CONFIG: Record<
       'deleted_at'
     ],
     hasDeviceId: true
+  },
+  price_category: {
+    columns: [
+      'id',
+      'name',
+      'description',
+      'is_default',
+      'sort_order',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  product_uom: {
+    columns: [
+      'id',
+      'product_id',
+      'uom_id',
+      'conversion_factor',
+      'is_base_unit',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  product_uom_category_price: {
+    columns: [
+      'id',
+      'product_id',
+      'uom_id',
+      'price_category_id',
+      'price',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  store_product_uom_price: {
+    columns: [
+      'id',
+      'product_id',
+      'uom_id',
+      'price_category_id',
+      'store_id',
+      'price',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  product_location: {
+    columns: [
+      'id',
+      'product_id',
+      'store_id',
+      'quantity',
+      'reserved_quantity',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  stock_transaction: {
+    columns: [
+      'id',
+      'product_id',
+      'store_id',
+      'type',
+      'quantity',
+      'reference',
+      'batch_id',
+      'supplier_id',
+      'customer_id',
+      'performed_by',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  product_price: {
+    columns: [
+      'id',
+      'product_id',
+      'store_id',
+      'price',
+      'cost',
+      'is_active',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  batch: {
+    columns: [
+      'id',
+      'product_id',
+      'code',
+      'expiry_date',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at'
+    ],
+    hasDeviceId: false
   }
 }
 

@@ -1,4 +1,4 @@
-import { pgTable, text, boolean, numeric, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, boolean, numeric, timestamp, integer, unique } from 'drizzle-orm/pg-core'
 
 // PRODUCT: Product, Category, Supplier, ProductPrice, Batch
 
@@ -86,6 +86,8 @@ export const priceCategories = pgTable('price_category', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   description: text('description'),
+  isDefault: boolean('is_default').notNull().default(false),
+  sortOrder: integer('sort_order').notNull().default(0),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
@@ -120,7 +122,9 @@ export const productUomCategoryPrices = pgTable('product_uom_category_price', {
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
   deviceId: text('device_id')
-})
+}, (table) => ({
+  uniqProductUomCategory: unique().on(table.productId, table.uomId, table.priceCategoryId)
+}))
 
 export const storeProductUomPrices = pgTable('store_product_uom_price', {
   id: text('id').primaryKey(),
@@ -135,4 +139,6 @@ export const storeProductUomPrices = pgTable('store_product_uom_price', {
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
   deviceId: text('device_id')
-})
+}, (table) => ({
+  uniqStorePrice: unique().on(table.productId, table.uomId, table.priceCategoryId, table.storeId)
+}))

@@ -224,7 +224,9 @@ export default function PriceCategoryPage(): React.JSX.Element {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingCategory ? 'Edit Kategori Harga' : 'Tambah Kategori Harga'}</DialogTitle>
+        <DialogTitle>
+          {editingCategory ? 'Edit Kategori Harga' : 'Tambah Kategori Harga'}
+        </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
             {!editingCategory && (

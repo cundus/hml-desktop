@@ -409,7 +409,11 @@ export default function ProductPricingPage(): React.JSX.Element {
     return (
       <Box sx={{ p: 3 }}>
         <Alert severity="error">Produk tidak ditemukan</Alert>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/pricing/products')} sx={{ mt: 2 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/pricing/products')}
+          sx={{ mt: 2 }}
+        >
           Kembali ke Daftar
         </Button>
       </Box>
@@ -596,9 +600,7 @@ export default function ProductPricingPage(): React.JSX.Element {
             <TableBody>
               {priceCategories.map((cat) => {
                 const isRetail = cat.id === 'RETAIL'
-                const value = isRetail
-                  ? retailPrice
-                  : Number(hqCategoryPrices[cat.id] ?? '0') || 0
+                const value = isRetail ? retailPrice : Number(hqCategoryPrices[cat.id] ?? '0') || 0
 
                 return (
                   <TableRow key={cat.id}>

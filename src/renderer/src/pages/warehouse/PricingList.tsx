@@ -109,10 +109,7 @@ export default function WarehousePricingListPage(): React.JSX.Element {
   const filteredItems = items.filter((item) => {
     if (!search.trim()) return true
     const q = search.toLowerCase()
-    return (
-      item.productCode.toLowerCase().includes(q) ||
-      item.productName.toLowerCase().includes(q)
-    )
+    return item.productCode.toLowerCase().includes(q) || item.productName.toLowerCase().includes(q)
   })
 
   const handleRowClick = (productId: string): void => {

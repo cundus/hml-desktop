@@ -244,9 +244,7 @@ export async function backfillProductUomsAndStorePrices(db: Database): Promise<v
     if (!unitCode) continue
 
     // Find matching UOM by code
-    const uomStmt = db.prepare(
-      'SELECT id FROM uom WHERE code = ? AND deleted_at IS NULL LIMIT 1'
-    )
+    const uomStmt = db.prepare('SELECT id FROM uom WHERE code = ? AND deleted_at IS NULL LIMIT 1')
     uomStmt.bind([unitCode])
     let uomId: string | null = null
     if (uomStmt.step()) {

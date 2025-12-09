@@ -152,8 +152,7 @@ export class PricingService {
     storeStmt.free()
 
     // 2. Default HQ prices for categories not overridden by store
-    let defaultQuery =
-      `SELECT pucp.price_category_id AS id, pc.name AS name, pucp.price AS price
+    let defaultQuery = `SELECT pucp.price_category_id AS id, pc.name AS name, pucp.price AS price
        FROM product_uom_category_price pucp
        JOIN price_category pc ON pc.id = pucp.price_category_id
        WHERE pucp.product_id = ? AND pucp.uom_id = ? AND pucp.deleted_at IS NULL`
@@ -187,9 +186,7 @@ export class PricingService {
    * List all price categories.
    */
   async getPriceCategories(): Promise<PriceCategory[]> {
-    const stmt = this.db.prepare(
-      'SELECT id, name FROM price_category WHERE deleted_at IS NULL'
-    )
+    const stmt = this.db.prepare('SELECT id, name FROM price_category WHERE deleted_at IS NULL')
 
     const results: PriceCategory[] = []
 
@@ -240,10 +237,7 @@ export class PricingService {
   /**
    * List HQ (default) prices per category for a given product+UOM.
    */
-  async getCategoryPrices(
-    productId: string,
-    uomId: string
-  ): Promise<ProductUomCategoryPrice[]> {
+  async getCategoryPrices(productId: string, uomId: string): Promise<ProductUomCategoryPrice[]> {
     const stmt = this.db.prepare(
       `SELECT id, product_id, uom_id, price_category_id, price
          FROM product_uom_category_price
@@ -295,10 +289,11 @@ export class PricingService {
     checkStmt.free()
 
     if (existingId) {
-      this.db.run(
-        'UPDATE product_uom_category_price SET price = ?, updated_at = ? WHERE id = ?',
-        [price, now, existingId]
-      )
+      this.db.run('UPDATE product_uom_category_price SET price = ?, updated_at = ? WHERE id = ?', [
+        price,
+        now,
+        existingId
+      ])
 
       return {
         id: existingId,
@@ -348,10 +343,11 @@ export class PricingService {
     checkStmt.free()
 
     if (existingId) {
-      this.db.run(
-        'UPDATE store_product_uom_price SET price = ?, updated_at = ? WHERE id = ?',
-        [price, now, existingId]
-      )
+      this.db.run('UPDATE store_product_uom_price SET price = ?, updated_at = ? WHERE id = ?', [
+        price,
+        now,
+        existingId
+      ])
 
       return {
         id: existingId,
@@ -450,6 +446,10 @@ export class PricingService {
     )
 
     // Soft delete the product_uom entry
-    this.db.run('UPDATE product_uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
+    this.db.run('UPDATE product_uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now,
+      now,
+      id
+    ])
   }
 }

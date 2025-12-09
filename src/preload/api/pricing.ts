@@ -55,8 +55,7 @@ export const pricingApi = {
     uomId: string
     priceCategoryId: string
     storeId: string
-  }) =>
-    ipcRenderer.invoke('db:pricing:resolvePrice', args) as Promise<ApiResponse<ResolvedPrice>>,
+  }) => ipcRenderer.invoke('db:pricing:resolvePrice', args) as Promise<ApiResponse<ResolvedPrice>>,
 
   getAvailableCategoryPrices: (args: { productId: string; uomId: string; storeId: string }) =>
     ipcRenderer.invoke('db:pricing:getAvailableCategoryPrices', args) as Promise<
@@ -64,9 +63,7 @@ export const pricingApi = {
     >,
 
   getPriceCategories: () =>
-    ipcRenderer.invoke('db:pricing:getPriceCategories') as Promise<
-      ApiResponse<PriceCategory[]>
-    >,
+    ipcRenderer.invoke('db:pricing:getPriceCategories') as Promise<ApiResponse<PriceCategory[]>>,
 
   // Admin endpoints
   getProductUomsByProduct: (productId: string) =>
@@ -105,8 +102,7 @@ export const pricingApi = {
     uomId: string
     conversionFactor: number
     isBaseUnit: boolean
-  }) =>
-    ipcRenderer.invoke('db:pricing:createProductUom', args) as Promise<ApiResponse<ProductUom>>,
+  }) => ipcRenderer.invoke('db:pricing:createProductUom', args) as Promise<ApiResponse<ProductUom>>,
 
   deleteProductUom: (id: string) =>
     ipcRenderer.invoke('db:pricing:deleteProductUom', id) as Promise<ApiResponse<void>>

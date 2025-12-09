@@ -145,7 +145,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({
               <CurrencyInput
                 label="Harga"
                 value={formData.price}
-                onChange={(value) => setFormData(prev => ({ ...prev, price: value }))}
+                onChange={(value) => setFormData((prev) => ({ ...prev, price: value }))}
                 error={!!errors.price}
                 helperText={errors.price}
                 fullWidth

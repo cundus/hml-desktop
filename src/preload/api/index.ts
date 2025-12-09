@@ -75,16 +75,19 @@ const receiptApi = {
   updateReceiptPrinted: (transactionId: string, printed: boolean) =>
     ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed),
   getConfig: () => ipcRenderer.invoke('receipt:getConfig'),
-  updateConfig: (config: Partial<ReceiptConfig>) => ipcRenderer.invoke('receipt:updateConfig', config)
+  updateConfig: (config: Partial<ReceiptConfig>) =>
+    ipcRenderer.invoke('receipt:updateConfig', config)
 }
 
 // Printer API
 const printerApi = {
   getConfig: () => ipcRenderer.invoke('receipt:getConfig'),
-  updateConfig: (config: Partial<ReceiptConfig>) => ipcRenderer.invoke('receipt:updateConfig', config),
+  updateConfig: (config: Partial<ReceiptConfig>) =>
+    ipcRenderer.invoke('receipt:updateConfig', config),
   getStatus: () => ipcRenderer.invoke('printer:getStatus'),
   testPrint: () => ipcRenderer.invoke('printer:testPrint'),
-  printExpenseReport: (data: ExpenseReportData) => ipcRenderer.invoke('printer:printExpenseReport', data)
+  printExpenseReport: (data: ExpenseReportData) =>
+    ipcRenderer.invoke('printer:printExpenseReport', data)
 }
 
 export const db = {

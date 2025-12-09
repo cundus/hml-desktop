@@ -167,8 +167,8 @@ Example:
 
 ```ts
 interface UomOption {
-  id: string          // uom_id
-  code: string        // 'PCS', 'BOX', 'DUS'
+  id: string // uom_id
+  code: string // 'PCS', 'BOX', 'DUS'
   name: string
   conversionFactor: number
 }
@@ -185,14 +185,14 @@ interface ProductSelectResult {
   product: ProductForSelection
   selectedUom: UomOption
   selectedPrice: {
-    id: string        // optional price category id, if used
+    id: string // optional price category id, if used
     name: string
-    price: number     // price per selected UOM (after store override)
+    price: number // price per selected UOM (after store override)
   }
-  quantity: number        // in selected UOM (e.g. 2 DUS)
-  unitPrice: number       // price per selected UOM
-  totalPrice: number      // quantity * unitPrice
-  baseQuantity: number    // quantity * selectedUom.conversionFactor
+  quantity: number // in selected UOM (e.g. 2 DUS)
+  unitPrice: number // price per selected UOM
+  totalPrice: number // quantity * unitPrice
+  baseQuantity: number // quantity * selectedUom.conversionFactor
 }
 ```
 
@@ -224,7 +224,7 @@ The **visible UX** remains very similar; we only enrich the result with `baseQua
 
 ```ts
 interface CartItem {
-  id: string                  // composite: productId + uomId + priceId
+  id: string // composite: productId + uomId + priceId
   productId: string
   name: string
   sku: string
@@ -233,11 +233,11 @@ interface CartItem {
   uomCode: string
   conversionFactor: number
 
-  quantity: number            // in selected UOM
-  baseQuantity: number        // quantity * conversionFactor
+  quantity: number // in selected UOM
+  baseQuantity: number // quantity * conversionFactor
 
-  unitPrice: number           // per selected UOM
-  subtotal: number            // quantity * unitPrice
+  unitPrice: number // per selected UOM
+  subtotal: number // quantity * unitPrice
 
   // optional: discount, tax, notes, etc.
 }
@@ -256,16 +256,17 @@ Pseudo:
 
 ```ts
 const handleProductSelectConfirm = (result: ProductSelectResult): void => {
-  const { product, selectedUom, selectedPrice, quantity, unitPrice, totalPrice, baseQuantity } = result
+  const { product, selectedUom, selectedPrice, quantity, unitPrice, totalPrice, baseQuantity } =
+    result
 
   const cartItemId = `${product.id}-${selectedUom.id}-${selectedPrice.id}`
 
-  setCartItems(prev => {
-    const existing = prev.find(i => i.id === cartItemId)
+  setCartItems((prev) => {
+    const existing = prev.find((i) => i.id === cartItemId)
     if (existing) {
       const newQty = existing.quantity + quantity
       const newBaseQty = existing.baseQuantity + baseQuantity
-      return prev.map(i =>
+      return prev.map((i) =>
         i.id === cartItemId
           ? {
               ...i,
@@ -314,10 +315,10 @@ interface SalesDetailPayload {
   uomId: string
   uomCode: string
 
-  quantity: number        // in selected UOM
-  baseQuantity: number    // quantity * conversionFactor
+  quantity: number // in selected UOM
+  baseQuantity: number // quantity * conversionFactor
 
-  unitPrice: number       // per selected UOM
+  unitPrice: number // per selected UOM
   subtotal: number
 }
 

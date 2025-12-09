@@ -1,10 +1,10 @@
-
 # Revised Specification: Multi-UOM + Category Price + Per-Store Pricing
 
 Dokumen revisi ini memperbaiki versi sebelumnya dengan memasukkan kebutuhan terbaru:
 Harga harus dapat berbeda berdasarkan kategori harga, satuan yang dipilih, dan store.
 
 Final pricing logic menjadi berdasarkan kombinasi:
+
 - Product
 - UOM
 - Price Category
@@ -63,11 +63,11 @@ CREATE TABLE product_uoms (
 ```
 
 Rules:
+
 - Satu baris wajib `is_base_unit = TRUE`
 - `conversion_factor` base unit wajib bernilai `1`
 
 ---
-
 
 ### 2.3 NEW TABLE: Harga default berdasarkan kategori per UOM
 
@@ -89,15 +89,15 @@ CREATE TABLE product_uom_category_prices (
 
 Contoh isi:
 
-| product | uom | category | price |
-|---|---|---|---|
-| A | PCS | Retail | 6000 |
-| A | PCS | Wholesale | 5200 |
-| A | BOX | Retail | 55000 |
-| A | BOX | Wholesale | 50000 |
-| A | DUS | Wholesale | 230000 |
+| product | uom | category  | price  |
+| ------- | --- | --------- | ------ |
+| A       | PCS | Retail    | 6000   |
+| A       | PCS | Wholesale | 5200   |
+| A       | BOX | Retail    | 55000  |
+| A       | BOX | Wholesale | 50000  |
+| A       | DUS | Wholesale | 230000 |
 
-Jika tidak ada baris kategori tertentu → transaksi  kategori tersebut tidak diperbolehkan.
+Jika tidak ada baris kategori tertentu → transaksi kategori tersebut tidak diperbolehkan.
 
 ---
 
@@ -147,11 +147,12 @@ async function resolvePrice({ productId, uomId, categoryId, storeId }) {
 
   if (defaultPrice) return defaultPrice.price
 
-  throw new Error("Harga untuk kombinasi kategori dan satuan tidak tersedia.")
+  throw new Error('Harga untuk kombinasi kategori dan satuan tidak tersedia.')
 }
 ```
 
 Prioritas:
+
 1. Price override store
 2. Default harga HQ
 3. Error jika tidak ditemukan
@@ -169,17 +170,19 @@ Pada saat user memilih produk:
 
 Contoh:
 Produk A:
+
 - PCS hanya punya Retail
 - DUS punya Retail & Wholesale
 
 Maka UI:
 
-| pilih UOM | kategori terlihat |
-|---|---|
-| PCS | Retail |
-| DUS | Retail + Wholesale |
+| pilih UOM | kategori terlihat  |
+| --------- | ------------------ |
+| PCS       | Retail             |
+| DUS       | Retail + Wholesale |
 
 Ketika user submit:
+
 - Sistem kirim payload:
 
 ```json
@@ -209,15 +212,19 @@ Ketika user submit:
 ## 6. Edge Cases (Updated)
 
 ### ❌ UOM valid, kategori tidak punya harga di kombinasinya
+
 UI tidak boleh memperbolehkan submit transaksi.
 
 ### ❌ Harga kategori HQ dihapus tapi store override ada
+
 Store override tetap berlaku.
 
 ### ❌ Ada store override tapi user berada di store lain
+
 Tidak berlaku, fallback HQ price.
 
 ### 🔥 Harga berbeda untuk kategori dan per UOM
+
 Benar dan sesuai tujuan akhir sistem.
 
 ---
@@ -230,4 +237,3 @@ Dengan revisi ini:
 ✔ Override per store tanpa memecah logika
 ✔ Flow sales tetap aman
 ✔ Data tetap konsisten di level stok (base unit only)
-

@@ -18,7 +18,11 @@ export type PaymentSectionProps = {
   onMethodChange: (method: PaymentMethod) => void
 }
 
-export default function PaymentSection({ total, method, onMethodChange }: PaymentSectionProps): React.JSX.Element {
+export default function PaymentSection({
+  total,
+  method,
+  onMethodChange
+}: PaymentSectionProps): React.JSX.Element {
   const change = 0 // Change is now handled in the payment dialog
 
   return (

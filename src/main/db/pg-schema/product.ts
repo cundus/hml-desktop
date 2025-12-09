@@ -110,35 +110,43 @@ export const productUoms = pgTable('product_uom', {
   deviceId: text('device_id')
 })
 
-export const productUomCategoryPrices = pgTable('product_uom_category_price', {
-  id: text('id').primaryKey(),
-  productId: text('product_id').notNull(),
-  uomId: text('uom_id').notNull(),
-  priceCategoryId: text('price_category_id').notNull(),
-  price: numeric('price').notNull(),
+export const productUomCategoryPrices = pgTable(
+  'product_uom_category_price',
+  {
+    id: text('id').primaryKey(),
+    productId: text('product_id').notNull(),
+    uomId: text('uom_id').notNull(),
+    priceCategoryId: text('price_category_id').notNull(),
+    price: numeric('price').notNull(),
 
-  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
-  syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id')
-}, (table) => ({
-  uniqProductUomCategory: unique().on(table.productId, table.uomId, table.priceCategoryId)
-}))
+    createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+    syncedAt: timestamp('synced_at', { withTimezone: false }),
+    deletedAt: timestamp('deleted_at', { withTimezone: false }),
+    deviceId: text('device_id')
+  },
+  (table) => ({
+    uniqProductUomCategory: unique().on(table.productId, table.uomId, table.priceCategoryId)
+  })
+)
 
-export const storeProductUomPrices = pgTable('store_product_uom_price', {
-  id: text('id').primaryKey(),
-  productId: text('product_id').notNull(),
-  uomId: text('uom_id').notNull(),
-  priceCategoryId: text('price_category_id').notNull(),
-  storeId: text('store_id').notNull(),
-  price: numeric('price').notNull(),
+export const storeProductUomPrices = pgTable(
+  'store_product_uom_price',
+  {
+    id: text('id').primaryKey(),
+    productId: text('product_id').notNull(),
+    uomId: text('uom_id').notNull(),
+    priceCategoryId: text('price_category_id').notNull(),
+    storeId: text('store_id').notNull(),
+    price: numeric('price').notNull(),
 
-  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
-  syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false }),
-  deviceId: text('device_id')
-}, (table) => ({
-  uniqStorePrice: unique().on(table.productId, table.uomId, table.priceCategoryId, table.storeId)
-}))
+    createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+    syncedAt: timestamp('synced_at', { withTimezone: false }),
+    deletedAt: timestamp('deleted_at', { withTimezone: false }),
+    deviceId: text('device_id')
+  },
+  (table) => ({
+    uniqStorePrice: unique().on(table.productId, table.uomId, table.priceCategoryId, table.storeId)
+  })
+)

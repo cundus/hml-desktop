@@ -113,6 +113,71 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Price Category table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS price_category (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Product UOM table (per-product UOM definitions)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS product_uom (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      uom_id TEXT NOT NULL,
+      conversion_factor REAL NOT NULL,
+      is_base_unit INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Default prices per (product, UOM, price category)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS product_uom_category_price (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      uom_id TEXT NOT NULL,
+      price_category_id TEXT NOT NULL,
+      price TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT,
+      UNIQUE (product_id, uom_id, price_category_id)
+    )
+  `)
+
+  // Store-specific price overrides per (product, UOM, price category, store)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS store_product_uom_price (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      uom_id TEXT NOT NULL,
+      price_category_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      price TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT,
+      UNIQUE (product_id, uom_id, price_category_id, store_id)
+    )
+  `)
+
   // Users table
   database.run(`
     CREATE TABLE IF NOT EXISTS user (

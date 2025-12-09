@@ -79,3 +79,60 @@ export const uom = pgTable('uom', {
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
+
+// PRICE CATEGORY & MULTI-UOM PRICING TABLES
+
+export const priceCategories = pgTable('price_category', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+
+export const productUoms = pgTable('product_uom', {
+  id: text('id').primaryKey(),
+  productId: text('product_id').notNull(),
+  uomId: text('uom_id').notNull(),
+  conversionFactor: numeric('conversion_factor').notNull(),
+  isBaseUnit: boolean('is_base_unit').notNull().default(false),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+
+export const productUomCategoryPrices = pgTable('product_uom_category_price', {
+  id: text('id').primaryKey(),
+  productId: text('product_id').notNull(),
+  uomId: text('uom_id').notNull(),
+  priceCategoryId: text('price_category_id').notNull(),
+  price: numeric('price').notNull(),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+
+export const storeProductUomPrices = pgTable('store_product_uom_price', {
+  id: text('id').primaryKey(),
+  productId: text('product_id').notNull(),
+  uomId: text('uom_id').notNull(),
+  priceCategoryId: text('price_category_id').notNull(),
+  storeId: text('store_id').notNull(),
+  price: numeric('price').notNull(),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})

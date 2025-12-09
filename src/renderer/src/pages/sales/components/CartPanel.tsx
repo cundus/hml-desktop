@@ -21,6 +21,13 @@ import Kbd from '@renderer/components/Kbd'
 export type CartItem = Product & {
   quantity: number
   total: number
+  productId?: string
+  uomId?: string | null
+  uomCode?: string
+  priceCategoryId?: string
+  priceCategoryName?: string
+  conversionFactor?: number
+  baseQuantity?: number
 }
 
 export type CartPanelProps = {
@@ -92,7 +99,7 @@ export default function CartPanel({
                     </Typography>
                   </TableCell>
                   <TableCell align="center">
-                    <Typography variant="body2">{item.unit}</Typography>
+                    <Typography variant="body2">{item.uomCode ?? item.unit}</Typography>
                   </TableCell>
                   <TableCell align="right">{formatCurrency(item.price)}</TableCell>
                   <TableCell align="center">

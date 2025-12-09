@@ -30,6 +30,7 @@ export * from './types'
 export * from './master-data'
 export * from './core'
 export * from './inventory'
+export * from './pricing'
 export * from './sales'
 export * from './purchasing'
 export * from './expenses'
@@ -65,6 +66,8 @@ import { expenseApi } from './expenses'
 import { syncApi } from './sync'
 import { shiftApi } from './shift'
 import { appConfigApi } from './app-config'
+import { pricingApi } from './pricing'
+import { priceCategoryApi } from './price-category'
 
 // Receipt printing API
 const receiptApi = {
@@ -107,6 +110,10 @@ export const db = {
   productLocations: productLocationApi,
   batches: batchApi,
   stockTransactions: stockTransactionApi,
+
+  // Pricing
+  pricing: pricingApi,
+  priceCategories: priceCategoryApi,
 
   // Sales
   transactions: transactionApi,

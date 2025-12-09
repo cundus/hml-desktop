@@ -31,6 +31,7 @@ export interface UomOption {
   code: string
   name: string
   conversionFactor: number // e.g., 1 for PCS, 12 for DUS (if 1 DUS = 12 PCS)
+  uomId?: string | null // ID from product_uom table, null for legacy fallback
 }
 
 export interface PriceCategory {
@@ -38,6 +39,7 @@ export interface PriceCategory {
   name: string
   price: number
   margin?: number // percentage
+  source?: 'store' | 'default' // where the price comes from
 }
 
 export interface ProductSelectResult {
@@ -52,6 +54,8 @@ export interface ProductSelectResult {
 interface ProductSelectModalProps {
   open: boolean
   product: ProductForSelection | null
+  storeId: string | null
+  enableMultiUomPricing?: boolean // Feature flag - defaults to true
   onClose: () => void
   onConfirm: (result: ProductSelectResult) => void
 }
@@ -59,6 +63,8 @@ interface ProductSelectModalProps {
 export default function ProductSelectModal({
   open,
   product,
+  storeId,
+  enableMultiUomPricing = true,
   onClose,
   onConfirm
 }: ProductSelectModalProps): React.JSX.Element {
@@ -67,6 +73,7 @@ export default function ProductSelectModal({
   const [selectedUom, setSelectedUom] = useState<UomOption | null>(null)
   const [selectedPrice, setSelectedPrice] = useState<PriceCategory | null>(null)
   const [quantity, setQuantity] = useState(1)
+  const [baseStock, setBaseStock] = useState<number>(0) // Stock in base units
   const quantityInputRef = useRef<HTMLInputElement>(null)
 
   // Load UOMs and set up price categories when product changes
@@ -75,51 +82,165 @@ export default function ProductSelectModal({
 
     const loadData = async (): Promise<void> => {
       try {
-        // Load UOMs
-        const uomRes = await window.api.db.uoms.getAll()
-        const uoms = uomRes.data ?? []
+        // Load stock for this product at the store
+        if (storeId) {
+          try {
+            const stockRes = await window.api.db.productLocations.getByProductAndStore(
+              product.id,
+              storeId
+            )
+            setBaseStock(stockRes.data?.quantity ?? 0)
+          } catch {
+            setBaseStock(0)
+          }
+        } else {
+          setBaseStock(0)
+        }
 
-        // Create UOM options - for now, use base unit and common conversions
-        // In future, this should come from product_uom_conversion table
+        // If multi-UOM pricing is disabled, use legacy behavior
+        if (!enableMultiUomPricing) {
+          const baseUom: UomOption = {
+            code: product.unit || 'PCS',
+            name: product.unit || 'Pieces',
+            conversionFactor: 1,
+            uomId: null
+          }
+          setUomOptions([baseUom])
+          setSelectedUom(baseUom)
+
+          const basePrice = product.price
+          const categories: PriceCategory[] = [
+            { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }
+          ]
+          setPriceCategories(categories)
+          setSelectedPrice(categories[0])
+          return
+        }
+
+        // Load product UOMs from new pricing system
+        const productUomsRes = await window.api.db.pricing.getProductUomsByProduct(product.id)
+        const productUoms = productUomsRes.data ?? []
+
+        let uomOptionsList: UomOption[] = []
+
+        if (productUoms.length > 0) {
+          // Use real product UOMs from the pricing system
+          // Sort so base unit comes first
+          const sorted = [...productUoms].sort((a, b) => {
+            if (a.isBaseUnit) return -1
+            if (b.isBaseUnit) return 1
+            return a.conversionFactor - b.conversionFactor
+          })
+
+          uomOptionsList = sorted.map((pu) => ({
+            code: pu.uomCode,
+            name: pu.uomName,
+            conversionFactor: pu.conversionFactor,
+            uomId: pu.uomId
+          }))
+        } else {
+          // Fallback: use product's base unit if no product_uom rows exist
+          uomOptionsList = [
+            {
+              code: product.unit || 'PCS',
+              name: product.unit || 'Pieces',
+              conversionFactor: 1,
+              uomId: null
+            }
+          ]
+        }
+
+        setUomOptions(uomOptionsList)
+        const defaultUom = uomOptionsList[0]
+        setSelectedUom(defaultUom)
+
+        // Load price categories for the selected UOM
+        await loadPriceCategories(product.id, defaultUom, storeId)
+      } catch (err) {
+        console.error('Failed to load product options:', err)
+        // Fallback to legacy behavior
         const baseUom: UomOption = {
           code: product.unit || 'PCS',
           name: product.unit || 'Pieces',
-          conversionFactor: 1
+          conversionFactor: 1,
+          uomId: null
         }
-
-        // Add other UOMs as options (simplified - no conversion for now)
-        const otherUoms: UomOption[] = uoms
-          .filter((u) => u.code !== baseUom.code)
-          .slice(0, 4) // Limit to 4 additional options
-          .map((u) => ({
-            code: u.code,
-            name: u.name,
-            conversionFactor: 1 // Would come from conversion table
-          }))
-
-        setUomOptions([baseUom, ...otherUoms])
+        setUomOptions([baseUom])
         setSelectedUom(baseUom)
 
-        // Set up price categories
-        // For now, create standard categories based on product price
-        // In future, this should come from price_category or customer_category tables
         const basePrice = product.price
         const categories: PriceCategory[] = [
-          { id: 'normal', name: 'Normal', price: basePrice, margin: 0 },
-          { id: 'member', name: 'Member', price: Math.round(basePrice * 0.95), margin: -5 },
-          { id: 'grosir', name: 'Grosir', price: Math.round(basePrice * 0.9), margin: -10 }
+          { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }
         ]
-
         setPriceCategories(categories)
         setSelectedPrice(categories[0])
-      } catch (err) {
-        console.error('Failed to load product options:', err)
       }
     }
 
     void loadData()
     setQuantity(1)
-  }, [product, open])
+  }, [product, open, storeId])
+
+  // Load price categories when UOM changes
+  const loadPriceCategories = async (
+    productId: string,
+    uom: UomOption,
+    currentStoreId: string | null
+  ): Promise<void> => {
+    try {
+      if (!uom.uomId) {
+        // No uomId means fallback mode - use product's legacy price
+        const basePrice = product?.price ?? 0
+        const categories: PriceCategory[] = [
+          { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }
+        ]
+        setPriceCategories(categories)
+        setSelectedPrice(categories[0])
+        return
+      }
+
+      // Use getAvailableCategoryPrices to get effective prices (HQ + store overrides)
+      const pricesRes = await window.api.db.pricing.getAvailableCategoryPrices({
+        productId,
+        uomId: uom.uomId,
+        storeId: currentStoreId || ''
+      })
+      const availablePrices = pricesRes.data ?? []
+
+      if (availablePrices.length > 0) {
+        const categories: PriceCategory[] = availablePrices.map((ap) => ({
+          id: ap.priceCategoryId,
+          name: ap.priceCategoryName,
+          price: Number(ap.price) || 0,
+          source: ap.source
+        }))
+        setPriceCategories(categories)
+        // Default to RETAIL if available, otherwise first
+        const retail = categories.find((c) => c.id === 'RETAIL')
+        setSelectedPrice(retail || categories[0])
+      } else {
+        // No prices configured - fallback to product's legacy price
+        const basePrice = product?.price ?? 0
+        const categories: PriceCategory[] = [
+          { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }
+        ]
+        setPriceCategories(categories)
+        setSelectedPrice(categories[0])
+      }
+    } catch (err) {
+      console.error('Failed to load price categories:', err)
+      // Fallback
+      const basePrice = product?.price ?? 0
+      setPriceCategories([{ id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }])
+      setSelectedPrice({ id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 })
+    }
+  }
+
+  // Reload price categories when UOM selection changes
+  useEffect(() => {
+    if (!product || !open || !selectedUom) return
+    void loadPriceCategories(product.id, selectedUom, storeId)
+  }, [selectedUom?.code])
 
   // Focus quantity input when modal opens
   useEffect(() => {
@@ -235,6 +356,10 @@ export default function ProductSelectModal({
   const unitPrice = (selectedPrice?.price ?? 0) * (selectedUom?.conversionFactor ?? 1)
   const totalPrice = unitPrice * quantity
 
+  // INV-002: Calculate stock in selected UOM and check if quantity exceeds
+  const stockInSelectedUom = selectedUom ? Math.floor(baseStock / selectedUom.conversionFactor) : 0
+  const quantityExceedsStock = baseStock > 0 && quantity > stockInSelectedUom
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth onKeyDown={handleKeyDown}>
       <DialogTitle>
@@ -338,6 +463,22 @@ export default function ProductSelectModal({
             <Typography variant="body2" color="text.secondary">
               {selectedUom?.code}
             </Typography>
+            {/* INV-002: Stock display in selected UOM */}
+            {baseStock > 0 && selectedUom && (
+              <Typography
+                variant="body2"
+                color={quantityExceedsStock ? 'warning.main' : 'text.secondary'}
+                sx={{ ml: 2 }}
+              >
+                Stok: {stockInSelectedUom} {selectedUom.code}
+                {quantityExceedsStock && ' (melebihi stok!)'}
+              </Typography>
+            )}
+            {baseStock === 0 && (
+              <Typography variant="body2" color="error" sx={{ ml: 2 }}>
+                Stok habis
+              </Typography>
+            )}
           </Stack>
         </Box>
 

@@ -13,6 +13,12 @@ interface SeedUom {
   name: string
 }
 
+interface SeedPriceCategory {
+  id: string
+  name: string
+  description?: string
+}
+
 const permissionCatalog: SeedPermission[] = [
   { id: 'dashboard.view', name: 'View dashboard' },
   { id: 'sales.view', name: 'Use sales screen' },
@@ -77,6 +83,25 @@ export async function resetAndReseedPermissions(db: Database): Promise<void> {
     db.run(
       'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
       [rpId, adminRoleId, perm.id, now, now]
+    )
+  }
+
+  saveDb(db)
+}
+
+const priceCategoryCatalog: SeedPriceCategory[] = [
+  { id: 'RETAIL', name: 'Retail' },
+  { id: 'WHOLESALE', name: 'Grosir' },
+  { id: 'MEMBER', name: 'Member' }
+]
+
+export async function seedPriceCategories(db: Database): Promise<void> {
+  const now = Date.now()
+
+  for (const cat of priceCategoryCatalog) {
+    db.run(
+      'INSERT OR IGNORE INTO price_category (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [cat.id, cat.name, cat.description ?? null, now, now]
     )
   }
 
@@ -178,6 +203,117 @@ export async function seedUoms(db: Database): Promise<void> {
       [id, uom.code, uom.name, now, now]
     )
   }
+
+  saveDb(db)
+}
+
+/**
+ * Backfill base product_uom rows and store_product_uom_price rows
+ * from existing product and product_price data.
+ *
+ * - For each product: ensure a base product_uom with conversion_factor = 1
+ *   using product.unit mapped to uom.code.
+ * - For each product_price row: create a store_product_uom_price row
+ *   with price_category_id = 'RETAIL' for the product's base UOM.
+ *
+ * This function is idempotent and safe to run on every startup.
+ */
+export async function backfillProductUomsAndStorePrices(db: Database): Promise<void> {
+  const now = Date.now()
+
+  // Ensure RETAIL category exists
+  const retailStmt = db.prepare("SELECT id FROM price_category WHERE id = 'RETAIL' LIMIT 1")
+  let retailCategoryId: string | null = null
+  if (retailStmt.step()) {
+    const row = retailStmt.getAsObject()
+    retailCategoryId = row.id as string
+  }
+  retailStmt.free()
+
+  if (!retailCategoryId) {
+    // Price categories not seeded yet; nothing to backfill
+    return
+  }
+
+  // Backfill base product_uom rows
+  const productStmt = db.prepare('SELECT id, unit FROM product WHERE deleted_at IS NULL')
+  while (productStmt.step()) {
+    const row = productStmt.getAsObject()
+    const productId = row.id as string
+    const unitCode = (row.unit as string | null) ?? ''
+    if (!unitCode) continue
+
+    // Find matching UOM by code
+    const uomStmt = db.prepare(
+      'SELECT id FROM uom WHERE code = ? AND deleted_at IS NULL LIMIT 1'
+    )
+    uomStmt.bind([unitCode])
+    let uomId: string | null = null
+    if (uomStmt.step()) {
+      const uomRow = uomStmt.getAsObject()
+      uomId = uomRow.id as string
+    }
+    uomStmt.free()
+
+    if (!uomId) continue
+
+    // Check if base product_uom already exists for this product
+    const baseCheckStmt = db.prepare(
+      'SELECT 1 FROM product_uom WHERE product_id = ? AND is_base_unit = 1 LIMIT 1'
+    )
+    baseCheckStmt.bind([productId])
+    const hasBase = baseCheckStmt.step()
+    baseCheckStmt.free()
+
+    if (!hasBase) {
+      const id = randomUUID()
+      db.run(
+        'INSERT INTO product_uom (id, product_id, uom_id, conversion_factor, is_base_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, productId, uomId, 1, 1, now, now]
+      )
+    }
+  }
+  productStmt.free()
+
+  // Backfill store_product_uom_price from product_price
+  const priceStmt = db.prepare(
+    'SELECT id, product_id, store_id, price FROM product_price WHERE deleted_at IS NULL'
+  )
+  while (priceStmt.step()) {
+    const row = priceStmt.getAsObject()
+    const productId = row.product_id as string
+    const storeId = row.store_id as string
+    const price = row.price as string
+
+    // Find base UOM for this product
+    const baseUomStmt = db.prepare(
+      'SELECT uom_id FROM product_uom WHERE product_id = ? AND is_base_unit = 1 LIMIT 1'
+    )
+    baseUomStmt.bind([productId])
+    let baseUomId: string | null = null
+    if (baseUomStmt.step()) {
+      const baseRow = baseUomStmt.getAsObject()
+      baseUomId = baseRow.uom_id as string
+    }
+    baseUomStmt.free()
+
+    if (!baseUomId) continue
+
+    // Seed store-specific RETAIL price for base UOM
+    const storePriceId = randomUUID()
+    db.run(
+      'INSERT OR IGNORE INTO store_product_uom_price (id, product_id, uom_id, price_category_id, store_id, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [storePriceId, productId, baseUomId, retailCategoryId, storeId, price, now, now]
+    )
+
+    // Also seed HQ default RETAIL price for base UOM, if not already present
+    const hqPriceId = randomUUID()
+    db.run(
+      'INSERT OR IGNORE INTO product_uom_category_price (id, product_id, uom_id, price_category_id, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [hqPriceId, productId, baseUomId, retailCategoryId, price, now, now]
+    )
+  }
+  priceStmt.free()
 
   saveDb(db)
 }

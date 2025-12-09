@@ -30,7 +30,9 @@ import StorePage from './pages/settings/master/Store'
 import SupplierPage from './pages/settings/master/Supplier'
 import UserPage from './pages/settings/master/User'
 import UomPage from './pages/settings/master/Uom'
-import WarehousePricingPage from './pages/warehouse/Pricing'
+import PriceCategoryPage from './pages/settings/master/PriceCategory'
+import WarehousePricingListPage from './pages/warehouse/PricingList'
+import ProductPricingPage from './pages/warehouse/ProductPricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
 import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
@@ -95,6 +97,10 @@ const router = createHashRouter([
             children: [{ path: 'master-uom', element: <UomPage /> }]
           },
           {
+            element: <RoleGuard requiredPermissions={['pricing.categories']} />,
+            children: [{ path: 'pricing/categories', element: <PriceCategoryPage /> }]
+          },
+          {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
             children: [{ path: 'access-control', element: <AccessControlPage /> }]
           },
@@ -111,8 +117,14 @@ const router = createHashRouter([
             children: [
               { path: 'warehouse/stocks', element: <WarehouseStocksPage /> },
               { path: 'warehouse/purchasing', element: <WarehousePurchasingPage /> },
-              { path: 'warehouse/stock-opname', element: <WarehouseStockOpnamePage /> },
-              { path: 'warehouse/pricing', element: <WarehousePricingPage /> }
+              { path: 'warehouse/stock-opname', element: <WarehouseStockOpnamePage /> }
+            ]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['pricing.products']} />,
+            children: [
+              { path: 'pricing/products', element: <WarehousePricingListPage /> },
+              { path: 'pricing/products/:productId', element: <ProductPricingPage /> }
             ]
           },
           {

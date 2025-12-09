@@ -1,6 +1,8 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
+import { StockTransactionService } from './stock-transaction.service'
+import { ProductLocationService } from './product-location.service'
 
 export interface Transaction {
   id: string
@@ -55,7 +57,11 @@ export interface CreateTransactionItemDto {
 }
 
 export class TransactionService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private stockTransactionService?: StockTransactionService,
+    private productLocationService?: ProductLocationService
+  ) {}
 
   /**
    * Get all transactions
@@ -223,13 +229,34 @@ export class TransactionService {
       ]
     )
 
-    // Insert transaction items
+    // Insert transaction items and process inventory
     for (const item of data.items) {
       const itemId = randomUUID()
       this.db.run(
         'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
         [itemId, id, item.productId, item.quantity, item.price, now, now]
       )
+
+      // INV-001: Record stock transaction and deduct inventory (quantity is already in base units)
+      if (this.stockTransactionService && this.productLocationService) {
+        // Create SALE stock transaction for audit trail
+        await this.stockTransactionService.create({
+          productId: item.productId,
+          storeId: data.storeId,
+          type: 'SALE',
+          quantity: item.quantity,
+          reference: data.code,
+          customerId: data.customerId,
+          performedBy: data.userId
+        })
+
+        // Deduct from product_location (negative delta)
+        await this.productLocationService.adjustQuantity(
+          item.productId,
+          data.storeId,
+          -item.quantity
+        )
+      }
     }
 
     saveDb(this.db)

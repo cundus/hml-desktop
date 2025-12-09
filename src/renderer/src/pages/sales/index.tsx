@@ -28,10 +28,12 @@ import {
 } from '../../components/shift'
 import { useShift } from '@renderer/hooks/useShift'
 import useAuth from '../../hooks/useAuth'
+import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import { formatCurrency } from '@renderer/utils/currency'
 
 export default function SalesPage(): React.JSX.Element {
   const { token, userName } = useAuth()
+  const { flags: featureFlags } = useFeatureFlags()
   const { currentShift, hasOpenShift, isLoading: shiftLoading, openShift, closeShift } = useShift()
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false)
   const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false)
@@ -141,20 +143,27 @@ export default function SalesPage(): React.JSX.Element {
 
   // Handle confirmed selection from modal
   const handleProductSelectConfirm = (result: ProductSelectResult): void => {
-    const { product, selectedUom, quantity, unitPrice } = result
+    const { product, selectedUom, selectedPrice, quantity, unitPrice } = result
 
-    // Create a unique cart item ID based on product + UOM + price category
-    const cartItemId = `${product.id}-${selectedUom.code}-${result.selectedPrice.id}`
+    // Create a unique cart line ID based on product + UOM + price category
+    const cartItemId = `${product.id}-${selectedUom.code}-${selectedPrice.id}`
+    const conversionFactor = selectedUom.conversionFactor || 1
+    const baseQuantity = quantity * conversionFactor
 
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === cartItemId)
       if (existing) {
+        const newQuantity = existing.quantity + quantity
+        const conv = existing.conversionFactor ?? conversionFactor
+        const newBaseQuantity = newQuantity * conv
+        const price = existing.price
         return prev.map((item) =>
           item.id === cartItemId
             ? {
                 ...item,
-                quantity: item.quantity + quantity,
-                total: (item.quantity + quantity) * unitPrice
+                quantity: newQuantity,
+                baseQuantity: newBaseQuantity,
+                total: newQuantity * price
               }
             : item
         )
@@ -164,8 +173,15 @@ export default function SalesPage(): React.JSX.Element {
           {
             ...product,
             id: cartItemId,
-            price: unitPrice,
+            productId: product.id,
+            uomId: selectedUom.uomId ?? null,
+            uomCode: selectedUom.code,
+            priceCategoryId: selectedPrice.id,
+            priceCategoryName: selectedPrice.name,
+            conversionFactor,
             quantity,
+            baseQuantity,
+            price: unitPrice,
             total: unitPrice * quantity
           }
         ]
@@ -183,7 +199,19 @@ export default function SalesPage(): React.JSX.Element {
   }
 
   const handleQuantityChange = (id: string, quantity: number): void => {
-    setCartItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantity } : item)))
+    setCartItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        const conv = item.conversionFactor ?? 1
+        const baseQuantity = quantity * conv
+        return {
+          ...item,
+          quantity,
+          baseQuantity,
+          total: item.price * quantity
+        }
+      })
+    )
   }
 
   const handleRemoveItem = (id: string): void => {
@@ -227,16 +255,16 @@ export default function SalesPage(): React.JSX.Element {
         // Generate transaction code (simple timestamp-based)
         const code = `TRX-${Date.now()}`
 
-        // Calculate values
-        const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0)
-        const total = subtotal - discount
-
-        // Prepare transaction items
-        const transactionItems = cartItems.map((item) => ({
-          productId: item.id, // CartItem uses 'id' property from Product
-          quantity: item.quantity,
-          price: item.price.toString()
-        }))
+        // Prepare transaction items (quantity in base units for inventory)
+        const transactionItems = cartItems.map((item) => {
+          const conv = item.conversionFactor ?? 1
+          const baseQuantity = item.baseQuantity ?? item.quantity * conv
+          return {
+            productId: item.productId ?? item.id,
+            quantity: baseQuantity,
+            price: item.price.toString()
+          }
+        })
 
         // Create transaction via IPC with payment method
         const result = await window.api.db.transactions.create({
@@ -249,8 +277,8 @@ export default function SalesPage(): React.JSX.Element {
           paymentMethod,
           paymentDeadline,
           receiptPrinted: false,
-          customerId: selectedCustomerId,
-          userId: userName,
+          customerId: selectedCustomerId ?? undefined,
+          userId: userName ?? undefined,
           items: transactionItems
         })
 
@@ -304,7 +332,7 @@ export default function SalesPage(): React.JSX.Element {
         setCheckoutLoading(false)
       }
     },
-    [cartItems, discount, defaultStoreId, selectedCustomerId, userName]
+    [cartItems, discount, subtotal, total, defaultStoreId, selectedCustomerId, userName]
   )
 
   useEffect(() => {
@@ -584,6 +612,8 @@ export default function SalesPage(): React.JSX.Element {
         <ProductSelectModal
           open={productSelectModalOpen}
           product={selectedProduct}
+          storeId={defaultStoreId}
+          enableMultiUomPricing={featureFlags.enableMultiUomPricing}
           onClose={() => {
             setProductSelectModalOpen(false)
             setSelectedProduct(null)

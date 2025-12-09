@@ -64,5 +64,21 @@ export const appConfigApi = {
    * Set a specific config value
    */
   setValue: (key: string, value: string | null) =>
-    ipcRenderer.invoke('app:config:setValue', key, value) as Promise<ApiResponse<void>>
+    ipcRenderer.invoke('app:config:setValue', key, value) as Promise<ApiResponse<void>>,
+
+  // ============ Feature Flags ============
+
+  /**
+   * Get all feature flags
+   */
+  getFeatureFlags: () =>
+    ipcRenderer.invoke('app:config:getFeatureFlags') as Promise<
+      ApiResponse<{ enableMultiUomPricing: boolean }>
+    >,
+
+  /**
+   * Set multi-UOM pricing feature flag
+   */
+  setMultiUomPricing: (enabled: boolean) =>
+    ipcRenderer.invoke('app:config:setMultiUomPricing', enabled) as Promise<ApiResponse<void>>
 }

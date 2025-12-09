@@ -19,13 +19,14 @@ import {
   TransactionController,
   UomController,
   UserController,
-  UserRoleController
+  UserRoleController,
+  PricingController
 } from './controllers'
 import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
 import { getDb } from './db'
-import { seedAdmin, seedUoms } from './seed'
+import { seedAdmin, seedUoms, seedPriceCategories, backfillProductUomsAndStorePrices } from './seed'
 import {
   AuthService,
   BatchService,
@@ -48,10 +49,13 @@ import {
   TransactionService,
   UomService,
   UserService,
-  UserRoleService
+  UserRoleService,
+  PricingService
 } from './services'
 import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
+import { PriceCategoryService } from './services/price-category.service'
+import { PriceCategoryController } from './controllers/price-category.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -64,6 +68,8 @@ export async function bootstrap(): Promise<void> {
   // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
   await seedAdmin(db)
   await seedUoms(db)
+  await seedPriceCategories(db)
+  await backfillProductUomsAndStorePrices(db)
 
   // Initialize master data services
   const categoryService = new CategoryService(db)
@@ -87,9 +93,15 @@ export async function bootstrap(): Promise<void> {
   const productLocationService = new ProductLocationService(db)
   const batchService = new BatchService(db)
   const stockTransactionService = new StockTransactionService(db)
+  const pricingService = new PricingService(db)
+  const priceCategoryService = new PriceCategoryService(db)
 
-  // Initialize sales/POS service
-  const transactionService = new TransactionService(db)
+  // Initialize sales/POS service (with inventory integration for INV-001)
+  const transactionService = new TransactionService(
+    db,
+    stockTransactionService,
+    productLocationService
+  )
 
   // Initialize purchasing service
   const purchaseOrderService = new PurchaseOrderService(db)
@@ -144,6 +156,8 @@ export async function bootstrap(): Promise<void> {
   const uomController = new UomController(uomService)
   const receiptController = new ReceiptController(receiptService)
   const expenseController = new ExpenseController(expenseService)
+  const pricingController = new PricingController(pricingService)
+  const priceCategoryController = new PriceCategoryController(priceCategoryService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -154,6 +168,8 @@ export async function bootstrap(): Promise<void> {
   userController.registerHandlers()
   productController.registerHandlers()
   productPriceController.registerHandlers()
+  pricingController.registerHandlers()
+  priceCategoryController.registerHandlers()
   productLocationController.registerHandlers()
   batchController.registerHandlers()
   stockTransactionController.registerHandlers()
@@ -171,5 +187,5 @@ export async function bootstrap(): Promise<void> {
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
 
-  console.log('✓ All 22 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 23 services and controllers initialized (sql.js local + cloud sync ready)')
 }

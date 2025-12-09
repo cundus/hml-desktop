@@ -33,7 +33,9 @@ const CONFIG_KEYS = {
   CLOUD_DB_URL: 'cloud_db_url',
   MANAGER_ID: 'manager_id',
   MANAGER_NAME: 'manager_name',
-  IS_CONFIGURED: 'is_configured'
+  IS_CONFIGURED: 'is_configured',
+  // Feature flags
+  ENABLE_MULTI_UOM_PRICING: 'enable_multi_uom_pricing'
 }
 
 export class AppConfigService {
@@ -199,5 +201,33 @@ export class AppConfigService {
       return null
     }
     return config.branchId
+  }
+
+  // ============ Feature Flags ============
+
+  /**
+   * Check if multi-UOM pricing feature is enabled
+   * Defaults to true for new installations
+   */
+  async isMultiUomPricingEnabled(): Promise<boolean> {
+    const value = await this.get(CONFIG_KEYS.ENABLE_MULTI_UOM_PRICING)
+    // Default to true if not set (new installations)
+    return value === null || value === 'true'
+  }
+
+  /**
+   * Enable or disable multi-UOM pricing feature
+   */
+  async setMultiUomPricingEnabled(enabled: boolean): Promise<void> {
+    await this.set(CONFIG_KEYS.ENABLE_MULTI_UOM_PRICING, enabled ? 'true' : 'false')
+  }
+
+  /**
+   * Get all feature flags
+   */
+  async getFeatureFlags(): Promise<{ enableMultiUomPricing: boolean }> {
+    return {
+      enableMultiUomPricing: await this.isMultiUomPricingEnabled()
+    }
   }
 }

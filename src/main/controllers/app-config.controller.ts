@@ -96,4 +96,32 @@ export function registerAppConfigHandlers(service: AppConfigService): void {
       }
     }
   )
+
+  // ============ Feature Flags ============
+
+  // Get all feature flags
+  ipcMain.handle(
+    'app:config:getFeatureFlags',
+    async (): Promise<ApiResponse<{ enableMultiUomPricing: boolean }>> => {
+      try {
+        const data = await service.getFeatureFlags()
+        return { success: true, data }
+      } catch (error) {
+        return { success: false, error: (error as Error).message }
+      }
+    }
+  )
+
+  // Set multi-UOM pricing feature flag
+  ipcMain.handle(
+    'app:config:setMultiUomPricing',
+    async (_, enabled: boolean): Promise<ApiResponse<void>> => {
+      try {
+        await service.setMultiUomPricingEnabled(enabled)
+        return { success: true }
+      } catch (error) {
+        return { success: false, error: (error as Error).message }
+      }
+    }
+  )
 }

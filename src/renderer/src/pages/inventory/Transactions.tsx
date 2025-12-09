@@ -24,6 +24,7 @@ import FilterListIcon from '@mui/icons-material/FilterList'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useBranchConfig from '../../hooks/useBranchConfig'
 
 const transactionSchema = z.object({
   productId: z.string().min(1, 'Produk wajib diisi'),
@@ -67,6 +68,7 @@ interface Filters {
 }
 
 export default function TransactionsPage(): React.JSX.Element {
+  const { storeId: branchStoreId } = useBranchConfig()
   const [items, setItems] = useState<StockTransaction[]>([])
   const [filteredItems, setFilteredItems] = useState<StockTransaction[]>([])
   const [products, setProducts] = useState<Product[]>([])
@@ -106,7 +108,7 @@ export default function TransactionsPage(): React.JSX.Element {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [branchStoreId])
 
   useEffect(() => {
     applyFilters()
@@ -127,7 +129,13 @@ export default function TransactionsPage(): React.JSX.Element {
         const productsMap = new Map(productsRes.data?.map((p) => [p.id, p.name]))
         const storesMap = new Map(storesRes.data?.map((s) => [s.id, s.name]))
 
-        const enrichedTransactions = (transactionsRes.data ?? []).map((txn) => ({
+        // Filter transactions by branch store if not HQ
+        const allTransactions = transactionsRes.data ?? []
+        const filteredByBranch = branchStoreId
+          ? allTransactions.filter((txn) => txn.storeId === branchStoreId)
+          : allTransactions
+
+        const enrichedTransactions = filteredByBranch.map((txn) => ({
           ...txn,
           productName: productsMap.get(txn.productId),
           storeName: storesMap.get(txn.storeId)
@@ -135,11 +143,16 @@ export default function TransactionsPage(): React.JSX.Element {
 
         setItems(enrichedTransactions)
         setProducts(productsRes.data ?? [])
-        setStores(storesRes.data ?? [])
+        // For branch users, only show their store in dropdown
+        setStores(
+          branchStoreId
+            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
+            : (storesRes.data ?? [])
+        )
       } else {
         setError('Gagal memuat data')
       }
-    } catch (err) {
+    } catch {
       setError('Gagal memuat data')
     } finally {
       setLoading(false)

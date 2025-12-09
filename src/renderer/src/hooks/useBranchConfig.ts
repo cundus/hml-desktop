@@ -1,49 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
-import type { DeviceConfig } from '../../../preload/api/app-config'
-
-interface BranchConfigState {
-  config: DeviceConfig | null
-  loading: boolean
-  error: string | null
-  refresh: () => Promise<void>
-}
+import { useContext } from 'react'
+import BranchConfigContext, {
+  type BranchConfigContextType
+} from '../contexts/BranchConfigContext'
 
 /**
  * Hook to access the current branch/device configuration
- * Use this to get the branch ID for filtering queries
+ * Backed by BranchConfigContext.
  */
-export default function useBranchConfig(): BranchConfigState {
-  const [config, setConfig] = useState<DeviceConfig | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
-  const loadConfig = useCallback(async (): Promise<void> => {
-    try {
-      setLoading(true)
-      setError(null)
-      const res = await window.api.db.appConfig.get()
-      if (res.success && res.data) {
-        setConfig(res.data)
-      } else {
-        setError(res.error ?? 'Failed to load branch config')
-      }
-    } catch (err) {
-      setError((err as Error).message)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    loadConfig()
-  }, [loadConfig])
-
-  return {
-    config,
-    loading,
-    error,
-    refresh: loadConfig
+export default function useBranchConfig(): BranchConfigContextType {
+  const context = useContext(BranchConfigContext)
+  if (!context) {
+    throw new Error('useBranchConfig must be used within a BranchConfigProvider')
   }
+  return context
 }
 
 /**
@@ -56,11 +25,11 @@ export function useStoreFilter(): {
   isHeadBranch: boolean
   loading: boolean
 } {
-  const { config, loading } = useBranchConfig()
+  const { storeId, isHeadBranch, loading } = useBranchConfig()
 
   return {
-    storeId: config?.isHeadBranch ? null : (config?.branchId ?? null),
-    isHeadBranch: config?.isHeadBranch ?? false,
+    storeId,
+    isHeadBranch,
     loading
   }
 }

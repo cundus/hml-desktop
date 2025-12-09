@@ -17,6 +17,7 @@ import InventoryIcon from '@mui/icons-material/Inventory'
 import WarningIcon from '@mui/icons-material/Warning'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
+import useBranchConfig from '../../hooks/useBranchConfig'
 
 interface DashboardMetrics {
   totalProducts: number
@@ -53,6 +54,7 @@ interface RecentTransaction {
 }
 
 export default function InventoryDashboard(): React.JSX.Element {
+  const { storeId: branchStoreId } = useBranchConfig()
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     totalProducts: 0,
     totalStores: 0,
@@ -67,7 +69,7 @@ export default function InventoryDashboard(): React.JSX.Element {
 
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [branchStoreId])
 
   const loadDashboardData = async (): Promise<void> => {
     try {
@@ -98,9 +100,17 @@ export default function InventoryDashboard(): React.JSX.Element {
 
       const products = productsRes.data ?? []
       const stores = storesRes.data ?? []
-      const locations = locationsRes.data ?? []
+      const allLocations = locationsRes.data ?? []
       const batches = batchesRes.data ?? []
-      const transactions = transactionsRes.data ?? []
+      const allTransactions = transactionsRes.data ?? []
+
+      // Filter by store if not HQ
+      const locations = branchStoreId
+        ? allLocations.filter((loc) => loc.storeId === branchStoreId)
+        : allLocations
+      const transactions = branchStoreId
+        ? allTransactions.filter((tx) => tx.storeId === branchStoreId)
+        : allTransactions
 
       // Create lookup maps
       const productsMap = new Map(products.map((p) => [p.id, p.name]))
@@ -164,7 +174,7 @@ export default function InventoryDashboard(): React.JSX.Element {
       setLowStockItems(lowStock)
       setExpiringBatches(expiring)
       setRecentTransactions(recent)
-    } catch (err) {
+    } catch {
       setError('Gagal memuat data dashboard')
     } finally {
       setLoading(false)

@@ -29,11 +29,13 @@ import {
 import { useShift } from '@renderer/hooks/useShift'
 import useAuth from '../../hooks/useAuth'
 import { useFeatureFlags } from '../../hooks/useFeatureFlags'
+import useBranchConfig from '../../hooks/useBranchConfig'
 import { formatCurrency } from '@renderer/utils/currency'
 
 export default function SalesPage(): React.JSX.Element {
   const { token, userName } = useAuth()
   const { flags: featureFlags } = useFeatureFlags()
+  const { storeId: branchStoreId } = useBranchConfig()
   const { currentShift, hasOpenShift, isLoading: shiftLoading, openShift, closeShift } = useShift()
   const [openShiftDialogOpen, setOpenShiftDialogOpen] = useState(false)
   const [closeShiftDialogOpen, setCloseShiftDialogOpen] = useState(false)
@@ -108,11 +110,16 @@ export default function SalesPage(): React.JSX.Element {
         }))
         setCustomers(mappedCustomers)
 
-        // Load stores and pick first as default
-        const storesRes = await window.api.db.stores.getAll()
-        const stores = storesRes.data ?? []
-        if (stores.length > 0) {
-          setDefaultStoreId(stores[0].id)
+        // Use branch store ID if available, otherwise pick first store (HQ mode)
+        if (branchStoreId) {
+          setDefaultStoreId(branchStoreId)
+        } else {
+          // HQ mode - pick first store as default
+          const storesRes = await window.api.db.stores.getAll()
+          const stores = storesRes.data ?? []
+          if (stores.length > 0) {
+            setDefaultStoreId(stores[0].id)
+          }
         }
       } catch (err) {
         console.error('Failed to load sales data:', err)
@@ -122,7 +129,7 @@ export default function SalesPage(): React.JSX.Element {
       }
     }
     void loadData()
-  }, [])
+  }, [branchStoreId])
 
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),

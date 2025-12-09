@@ -18,6 +18,7 @@ import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ReceiptIcon from '@mui/icons-material/Receipt'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
 // import DownloadIcon from '@mui/icons-material/Download'
+import useBranchConfig from '../../hooks/useBranchConfig'
 
 interface Store {
   id: string
@@ -50,6 +51,7 @@ interface SalesSummary {
 }
 
 export default function SalesReportsPage(): React.JSX.Element {
+  const { storeId: branchStoreId } = useBranchConfig()
   const [stores, setStores] = useState<Store[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([])
@@ -67,7 +69,7 @@ export default function SalesReportsPage(): React.JSX.Element {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [branchStoreId])
 
   useEffect(() => {
     applyFilters()
@@ -86,17 +88,28 @@ export default function SalesReportsPage(): React.JSX.Element {
       if (transactionsRes.success && storesRes.success) {
         const storesMap = new Map(storesRes.data?.map((s) => [s.id, s.name]))
 
-        const enrichedTransactions = (transactionsRes.data ?? []).map((txn) => ({
+        // Filter transactions by branch store if not HQ
+        const allTransactions = transactionsRes.data ?? []
+        const filteredByBranch = branchStoreId
+          ? allTransactions.filter((txn) => txn.storeId === branchStoreId)
+          : allTransactions
+
+        const enrichedTransactions = filteredByBranch.map((txn) => ({
           ...txn,
           storeName: storesMap.get(txn.storeId)
         }))
 
         setTransactions(enrichedTransactions)
-        setStores(storesRes.data ?? [])
+        // For branch users, only show their store in dropdown
+        setStores(
+          branchStoreId
+            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
+            : (storesRes.data ?? [])
+        )
       } else {
         setError('Gagal memuat data')
       }
-    } catch (err) {
+    } catch {
       setError('Gagal memuat data')
     } finally {
       setLoading(false)

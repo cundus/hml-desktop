@@ -22,6 +22,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import useBranchConfig from '../../hooks/useBranchConfig'
 
 type PurchaseOrderStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED'
 
@@ -55,6 +56,7 @@ interface Store {
 
 export default function PurchaseOrdersPage(): React.JSX.Element {
   const navigate = useNavigate()
+  const { storeId: branchStoreId } = useBranchConfig()
   const [items, setItems] = useState<PurchaseOrder[]>([])
   const [filteredItems, setFilteredItems] = useState<PurchaseOrder[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -72,7 +74,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
 
   useEffect(() => {
     loadData()
-  }, [])
+  }, [branchStoreId])
 
   useEffect(() => {
     applyFilters()
@@ -93,7 +95,13 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
         const suppliersMap = new Map(suppliersRes.data?.map((s) => [s.id, s.name]))
         const storesMap = new Map(storesRes.data?.map((s) => [s.id, s.name]))
 
-        const enrichedPOs = (posRes.data ?? []).map((po) => ({
+        // Filter POs by branch store if not HQ
+        const allPOs = posRes.data ?? []
+        const filteredByBranch = branchStoreId
+          ? allPOs.filter((po) => po.storeId === branchStoreId)
+          : allPOs
+
+        const enrichedPOs = filteredByBranch.map((po) => ({
           ...po,
           supplierName: suppliersMap.get(po.supplierId),
           storeName: storesMap.get(po.storeId)
@@ -101,7 +109,12 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
 
         setItems(enrichedPOs)
         setSuppliers(suppliersRes.data ?? [])
-        setStores(storesRes.data ?? [])
+        // For branch users, only show their store in dropdown
+        setStores(
+          branchStoreId
+            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
+            : (storesRes.data ?? [])
+        )
       } else {
         setError('Gagal memuat data')
       }

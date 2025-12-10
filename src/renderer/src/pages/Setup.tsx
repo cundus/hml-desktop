@@ -20,6 +20,7 @@ import CloudDownloadIcon from '@mui/icons-material/CloudDownload'
 import PersonIcon from '@mui/icons-material/Person'
 import CheckCircleIcon from '@mui/icons-material/CheckCircle'
 import { globalAlert } from '../lib/globalAlert'
+import useBranchConfig from '../hooks/useBranchConfig'
 
 interface Store {
   id: string
@@ -38,6 +39,7 @@ const steps = ['Sinkronisasi Cloud', 'Pilih Cabang', 'Pilih Manager', 'Selesai']
 
 export default function SetupPage(): React.JSX.Element {
   const navigate = useNavigate()
+  const { refresh: refreshBranchConfig } = useBranchConfig()
   const [activeStep, setActiveStep] = useState(0)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -193,6 +195,8 @@ export default function SetupPage(): React.JSX.Element {
       })
 
       if (response.success) {
+        // Refresh branch configuration context so guards see the updated config
+        await refreshBranchConfig()
         globalAlert.success('Konfigurasi berhasil disimpan!')
         setActiveStep(3)
       } else {

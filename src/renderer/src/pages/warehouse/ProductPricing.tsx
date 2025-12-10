@@ -421,6 +421,9 @@ export default function ProductPricingPage(): React.JSX.Element {
   }
 
   const retailPrice = computeSelling(Number(baseCost) || 0, Number(marginPct) || 0)
+  const activeUom = selectedUomId
+    ? (productUoms.find((u) => u.uomId === selectedUomId) ?? null)
+    : null
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto' }}>
@@ -473,6 +476,15 @@ export default function ProductPricingPage(): React.JSX.Element {
             ))
           )}
         </Stack>
+
+        {activeUom && (
+          <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
+            Sedang mengatur harga untuk UOM:{' '}
+            {`${activeUom.uomCode} (×${activeUom.conversionFactor})${
+              activeUom.isBaseUnit ? ' - Base' : ''
+            }`}
+          </Typography>
+        )}
 
         <Divider sx={{ my: 2 }} />
 
@@ -581,9 +593,18 @@ export default function ProductPricingPage(): React.JSX.Element {
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
           Atur harga untuk setiap kategori pelanggan.{' '}
-          {selectedUomId
-            ? `UOM: ${productUoms.find((u) => u.uomId === selectedUomId)?.uomCode ?? '-'}`
-            : 'Pilih UOM terlebih dahulu.'}
+          {activeUom ? (
+            <Chip
+              label={`UOM aktif: ${activeUom.uomCode} (×${activeUom.conversionFactor})${
+                activeUom.isBaseUnit ? ' - Base' : ''
+              }`}
+              color="primary"
+              size="small"
+              sx={{ ml: 1 }}
+            />
+          ) : (
+            'Pilih UOM terlebih dahulu.'
+          )}
         </Typography>
 
         {!selectedUomId ? (
@@ -662,10 +683,14 @@ export default function ProductPricingPage(): React.JSX.Element {
               </MenuItem>
             ))}
           </TextField>
-          {selectedUomId && (
-            <Typography variant="body2" color="text.secondary">
-              UOM: {productUoms.find((u) => u.uomId === selectedUomId)?.uomCode ?? '-'}
-            </Typography>
+          {activeUom && (
+            <Chip
+              label={`UOM aktif: ${activeUom.uomCode} (×${activeUom.conversionFactor})${
+                activeUom.isBaseUnit ? ' - Base' : ''
+              }`}
+              color="primary"
+              size="small"
+            />
           )}
         </Stack>
 

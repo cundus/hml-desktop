@@ -26,7 +26,13 @@ import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
 import { getDb } from './db'
-import { seedAdmin, seedUoms, seedPriceCategories, backfillProductUomsAndStorePrices } from './seed'
+import {
+  seedAdmin,
+  seedUoms,
+  seedPriceCategories,
+  backfillProductUomsAndStorePrices,
+  seedPermissions
+} from './seed'
 import {
   AuthService,
   BatchService,
@@ -66,6 +72,7 @@ export async function bootstrap(): Promise<void> {
 
   // Seed static reference data
   // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
+  await seedPermissions(db)
   await seedAdmin(db)
   await seedUoms(db)
   await seedPriceCategories(db)

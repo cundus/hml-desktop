@@ -31,6 +31,7 @@ import useAuth from '../../hooks/useAuth'
 import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import useBranchConfig from '../../hooks/useBranchConfig'
 import { formatCurrency } from '@renderer/utils/currency'
+import Kbd from '../../components/Kbd'
 
 export default function SalesPage(): React.JSX.Element {
   const { token, userName } = useAuth()
@@ -521,6 +522,9 @@ export default function SalesPage(): React.JSX.Element {
           }}
         >
           <Box sx={{ flex: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+              Pelanggan <Kbd keys={['F3']} size="small" />
+            </Typography>
             <CustomerSelector
               customers={customers}
               selectedCustomerId={selectedCustomerId}
@@ -583,7 +587,7 @@ export default function SalesPage(): React.JSX.Element {
         >
           <Typography variant="subtitle2">Daftar Produk</Typography>
           <Button variant="contained" color="secondary" onClick={() => setProductDialogOpen(true)}>
-            Cari produk (CTRL+P)
+            Cari produk <Kbd keys={['Ctrl', 'P']} size="small" />
           </Button>
         </Box>
 

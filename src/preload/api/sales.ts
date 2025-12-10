@@ -96,6 +96,25 @@ export const transactionApi = {
       ApiResponse<SalesSummary>
     >,
 
+  update: (
+    id: string,
+    data: {
+      subtotal?: string
+      discount?: string
+      tax?: string
+      total?: string
+      paymentMethod?: string
+      paymentDeadline?: Date | null
+      customerId?: string | null
+      items?: {
+        id?: string
+        productId: string
+        quantity: number
+        price: string
+      }[]
+    }
+  ) => ipcRenderer.invoke('db:transactions:update', id, data) as Promise<ApiResponse<Transaction>>,
+
   delete: (id: string) =>
     ipcRenderer.invoke('db:transactions:delete', id) as Promise<ApiResponse<Transaction>>,
 

@@ -154,8 +154,8 @@ export default function CartPanel({
         </Stack>
 
         <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="body2" color="text.secondary">
-            Diskon (%)
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            Diskon (%) <Kbd keys={['F4']} size="small" />
           </Typography>
           <TextField
             size="small"

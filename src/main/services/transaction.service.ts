@@ -56,6 +56,24 @@ export interface CreateTransactionItemDto {
   price: string
 }
 
+export interface UpdateTransactionDto {
+  subtotal?: string
+  discount?: string
+  tax?: string
+  total?: string
+  paymentMethod?: string
+  paymentDeadline?: Date | null
+  customerId?: string | null
+  items?: UpdateTransactionItemDto[]
+}
+
+export interface UpdateTransactionItemDto {
+  id?: string // existing item ID (for update/delete)
+  productId: string
+  quantity: number
+  price: string
+}
+
 export class TransactionService {
   constructor(
     private db: Database,
@@ -287,6 +305,155 @@ export class TransactionService {
       throw new Error('Transaction not found after delete')
     }
     return deleted
+  }
+
+  /**
+   * Update transaction (for corrections)
+   * Note: This recalculates inventory if items change
+   */
+  async update(id: string, data: UpdateTransactionDto): Promise<Transaction> {
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    const now = Date.now()
+
+    // Update main transaction fields
+    const updates: string[] = []
+    const params: (string | number | null)[] = []
+
+    if (data.subtotal !== undefined) {
+      updates.push('subtotal = ?')
+      params.push(data.subtotal)
+    }
+    if (data.discount !== undefined) {
+      updates.push('discount = ?')
+      params.push(data.discount)
+    }
+    if (data.tax !== undefined) {
+      updates.push('tax = ?')
+      params.push(data.tax)
+    }
+    if (data.total !== undefined) {
+      updates.push('total = ?')
+      params.push(data.total)
+    }
+    if (data.paymentMethod !== undefined) {
+      updates.push('payment_method = ?')
+      params.push(data.paymentMethod)
+    }
+    if (data.paymentDeadline !== undefined) {
+      updates.push('payment_deadline = ?')
+      params.push(data.paymentDeadline ? data.paymentDeadline.getTime() : null)
+    }
+    if (data.customerId !== undefined) {
+      updates.push('customer_id = ?')
+      params.push(data.customerId)
+    }
+
+    updates.push('updated_at = ?')
+    params.push(now)
+    params.push(id)
+
+    if (updates.length > 1) {
+      this.db.run(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`, params)
+    }
+
+    // Update items if provided
+    if (data.items) {
+      const existingItems = existing.items ?? []
+      const existingItemIds = new Set(existingItems.map((i) => i.id))
+      const newItemIds = new Set(data.items.filter((i) => i.id).map((i) => i.id))
+
+      // Delete removed items (and reverse inventory)
+      for (const oldItem of existingItems) {
+        if (!newItemIds.has(oldItem.id)) {
+          // Reverse the inventory deduction
+          if (this.stockTransactionService && this.productLocationService) {
+            await this.stockTransactionService.create({
+              productId: oldItem.productId,
+              storeId: existing.storeId,
+              type: 'ADJUSTMENT',
+              quantity: oldItem.quantity,
+              reference: `CORRECTION:${existing.code}`,
+              performedBy: existing.userId ?? undefined
+            })
+            await this.productLocationService.adjustQuantity(
+              oldItem.productId,
+              existing.storeId,
+              oldItem.quantity // add back
+            )
+          }
+          this.db.run('DELETE FROM transaction_items WHERE id = ?', [oldItem.id])
+        }
+      }
+
+      // Update existing or add new items
+      for (const newItem of data.items) {
+        if (newItem.id && existingItemIds.has(newItem.id)) {
+          // Update existing item
+          const oldItem = existingItems.find((i) => i.id === newItem.id)
+          if (oldItem) {
+            const qtyDiff = newItem.quantity - oldItem.quantity
+
+            // Adjust inventory for quantity change
+            if (qtyDiff !== 0 && this.stockTransactionService && this.productLocationService) {
+              await this.stockTransactionService.create({
+                productId: newItem.productId,
+                storeId: existing.storeId,
+                type: qtyDiff > 0 ? 'SALE' : 'ADJUSTMENT',
+                quantity: Math.abs(qtyDiff),
+                reference: `CORRECTION:${existing.code}`,
+                performedBy: existing.userId ?? undefined
+              })
+              await this.productLocationService.adjustQuantity(
+                newItem.productId,
+                existing.storeId,
+                -qtyDiff // negative if selling more, positive if returning
+              )
+            }
+
+            this.db.run(
+              'UPDATE transaction_items SET product_id = ?, quantity = ?, price = ?, updated_at = ? WHERE id = ?',
+              [newItem.productId, newItem.quantity, newItem.price, now, newItem.id]
+            )
+          }
+        } else {
+          // Add new item
+          const itemId = randomUUID()
+          this.db.run(
+            'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [itemId, id, newItem.productId, newItem.quantity, newItem.price, now, now]
+          )
+
+          // Deduct inventory for new item
+          if (this.stockTransactionService && this.productLocationService) {
+            await this.stockTransactionService.create({
+              productId: newItem.productId,
+              storeId: existing.storeId,
+              type: 'SALE',
+              quantity: newItem.quantity,
+              reference: `CORRECTION:${existing.code}`,
+              performedBy: existing.userId ?? undefined
+            })
+            await this.productLocationService.adjustQuantity(
+              newItem.productId,
+              existing.storeId,
+              -newItem.quantity
+            )
+          }
+        }
+      }
+    }
+
+    saveDb(this.db)
+
+    const updated = await this.findById(id)
+    if (!updated) {
+      throw new Error('Transaction not found after update')
+    }
+    return updated
   }
 
   /**

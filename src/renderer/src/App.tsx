@@ -17,6 +17,7 @@ import NotFound from './pages/NotFound'
 import Pets from './pages/Pets'
 import SalesPage from './pages/sales'
 import SalesReportsPage from './pages/sales/Reports'
+import TransactionDetailPage from './pages/sales/TransactionDetail'
 import PurchaseOrdersPage from './pages/purchasing/PurchaseOrders'
 import PurchaseOrderFormPage from './pages/purchasing/PurchaseOrderForm'
 import Settings from './pages/Settings'
@@ -59,7 +60,10 @@ const router = createHashRouter([
           },
           {
             element: <RoleGuard requiredPermissions={['sales.reports']} />,
-            children: [{ path: 'sales/reports', element: <SalesReportsPage /> }]
+            children: [
+              { path: 'sales/reports', element: <SalesReportsPage /> },
+              { path: 'sales/transaction/:transactionId', element: <TransactionDetailPage /> }
+            ]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.view']} />,

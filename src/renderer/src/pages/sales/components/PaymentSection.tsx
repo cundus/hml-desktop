@@ -1,14 +1,5 @@
+import { Box, FormControlLabel, Radio, RadioGroup, Typography } from '@mui/material'
 import type React from 'react'
-import {
-  Box,
-  FormControlLabel,
-  Radio,
-  RadioGroup,
-  Stack,
-  TextField,
-  Typography
-} from '@mui/material'
-import { formatCurrency } from '../../../utils/currency'
 
 export type PaymentMethod = 'cash' | 'card' | 'qris'
 
@@ -19,11 +10,11 @@ export type PaymentSectionProps = {
 }
 
 export default function PaymentSection({
-  total,
+  // total,
   method,
   onMethodChange
 }: PaymentSectionProps): React.JSX.Element {
-  const change = 0 // Change is now handled in the payment dialog
+  // const change = 0 // Change is now handled in the payment dialog
 
   return (
     <Box>

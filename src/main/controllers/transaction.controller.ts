@@ -96,6 +96,19 @@ export class TransactionController {
       }
     })
 
+    // Update transaction (for corrections)
+    ipcMain.handle('db:transactions:update', async (_, id: string, data) => {
+      try {
+        const transaction = await this.transactionService.update(id, data)
+        return { success: true, data: transaction }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
+
     // Update receipt printed status
     ipcMain.handle(
       'db:transactions:updateReceiptPrinted',

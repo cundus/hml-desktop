@@ -11,18 +11,14 @@ const KbdKey = styled(Box)(({ theme }) => ({
   height: '24px',
   padding: theme.spacing(0, 1),
   margin: theme.spacing(0, 0.25),
-  backgroundColor: alpha(theme.palette.grey[500], 0.1),
+  backgroundColor: alpha(theme.palette.grey[500], 0.5),
   border: `1px solid ${alpha(theme.palette.grey[500], 0.3)}`,
   borderRadius: theme.shape.borderRadius,
   fontFamily: 'monospace',
   fontSize: '0.75rem',
   fontWeight: 500,
   color: theme.palette.text.secondary,
-  boxShadow: `0 1px 2px ${alpha('#000', 0.1)}`,
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.grey[500], 0.15),
-    borderColor: alpha(theme.palette.grey[500], 0.4)
-  }
+  boxShadow: `0 1px 2px ${alpha('#000', 0.5)}`
 }))
 
 const KbdContainer = styled(Box)(({ theme }) => ({

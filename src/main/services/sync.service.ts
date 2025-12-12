@@ -102,7 +102,10 @@ const ENTITY_CONFIG: Record<
       'description',
       'unit',
       'cost',
+      'weight',
       'category_id',
+      'supplier_id',
+      'is_service',
       'is_active',
       'device_id',
       'created_at',
@@ -282,6 +285,75 @@ const ENTITY_CONFIG: Record<
       'product_id',
       'code',
       'expiry_date',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at'
+    ],
+    hasDeviceId: false
+  },
+  transactions: {
+    columns: [
+      'id',
+      'code',
+      'store_id',
+      'subtotal',
+      'discount',
+      'tax',
+      'total',
+      'total_weight',
+      'payment_method',
+      'payment_deadline',
+      'receipt_printed',
+      'customer_id',
+      'user_id',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
+  },
+  transaction_items: {
+    columns: [
+      'id',
+      'transaction_id',
+      'product_id',
+      'quantity',
+      'price',
+      'created_at',
+      'updated_at'
+    ],
+    hasDeviceId: false
+  },
+  expenses: {
+    columns: [
+      'id',
+      'shift_id',
+      'item',
+      'quantity',
+      'price',
+      'total',
+      'description',
+      'created_by',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at'
+    ],
+    hasDeviceId: false
+  },
+  shifts: {
+    columns: [
+      'id',
+      'store_id',
+      'user_id',
+      'start_amount',
+      'end_amount',
+      'status',
+      'opened_at',
+      'closed_at',
       'created_at',
       'updated_at',
       'synced_at',
@@ -639,7 +711,7 @@ export class SyncService {
     )
     stmt.bind([lastPushAt])
 
-    const localRecords: any[] = []
+    const localRecords: Record<string, unknown>[] = []
     while (stmt.step()) {
       localRecords.push(stmt.getAsObject())
     }
@@ -681,7 +753,7 @@ export class SyncService {
         // Mark as synced locally
         this.localDb.run(`UPDATE ${entityName} SET synced_at = ? WHERE id = ?`, [
           Date.now(),
-          localRecord.id
+          localRecord.id as string
         ])
       } catch (error) {
         console.error(`Error pushing record ${localRecord.id}:`, error)

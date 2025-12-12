@@ -24,6 +24,7 @@ export interface ProductForSelection {
   category: string
   unit: string // Base unit from product
   cost: string
+  weight: string // Weight per base unit in grams
   price: number // Default price
 }
 

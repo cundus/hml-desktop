@@ -39,6 +39,7 @@ const productSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
   unit: z.string().min(1, 'Satuan wajib diisi'),
   cost: z.string().min(1, 'Harga pokok wajib diisi'),
+  weight: z.string().optional(),
   categoryId: z.string().optional(),
   supplierId: z.string().optional(),
   isService: z.boolean(),
@@ -53,6 +54,7 @@ export type Product = {
   name: string
   unit: string
   cost: string
+  weight: string
   categoryId: string | null
   supplierId: string | null
   isService: boolean
@@ -108,6 +110,7 @@ export default function ProductPage(): React.JSX.Element {
       name: '',
       unit: 'PCS',
       cost: '',
+      weight: '0',
       categoryId: '',
       supplierId: '',
       isService: false,
@@ -146,6 +149,7 @@ export default function ProductPage(): React.JSX.Element {
             name: p.name,
             unit: p.unit,
             cost: p.cost,
+            weight: p.weight ?? '0',
             categoryId: p.categoryId,
             supplierId: p.supplierId,
             isService: p.isService ?? false,
@@ -182,6 +186,7 @@ export default function ProductPage(): React.JSX.Element {
       name: '',
       unit: 'PCS',
       cost: '',
+      weight: '0',
       categoryId: '',
       supplierId: '',
       isService: false,
@@ -197,6 +202,7 @@ export default function ProductPage(): React.JSX.Element {
       name: product.name,
       unit: product.unit,
       cost: product.cost,
+      weight: product.weight ?? '0',
       categoryId: product.categoryId ?? '',
       supplierId: product.supplierId ?? '',
       isService: product.isService,
@@ -218,6 +224,7 @@ export default function ProductPage(): React.JSX.Element {
         name: values.name,
         unit: values.unit,
         cost: values.cost,
+        weight: Number(values.weight) || 0,
         categoryId: values.categoryId || undefined,
         supplierId: values.supplierId || undefined,
         isService: values.isService,
@@ -228,6 +235,7 @@ export default function ProductPage(): React.JSX.Element {
         name: values.name,
         unit: values.unit,
         cost: values.cost,
+        weight: Number(values.weight) || 0,
         categoryId: values.categoryId || undefined,
         supplierId: values.supplierId || undefined,
         isService: values.isService,
@@ -255,6 +263,7 @@ export default function ProductPage(): React.JSX.Element {
                     name: updated.name,
                     unit: updated.unit,
                     cost: updated.cost,
+                    weight: updated.weight ?? '0',
                     categoryId: updated.categoryId,
                     supplierId: updated.supplierId,
                     isService: updated.isService ?? false,
@@ -289,6 +298,7 @@ export default function ProductPage(): React.JSX.Element {
               name: created.name,
               unit: created.unit,
               cost: created.cost,
+              weight: created.weight ?? '0',
               categoryId: created.categoryId,
               supplierId: created.supplierId,
               isService: created.isService ?? false,
@@ -613,6 +623,15 @@ export default function ProductPage(): React.JSX.Element {
               {...register('cost')}
               error={!!errors.cost}
               helperText={errors.cost?.message}
+            />
+            <TextField
+              margin="normal"
+              label="Berat (gram)"
+              fullWidth
+              type="number"
+              {...register('weight')}
+              error={!!errors.weight}
+              helperText={errors.weight?.message || 'Berat per satuan dasar dalam gram'}
             />
             <TextField
               margin="normal"

@@ -21,6 +21,7 @@ export type Product = {
   category: string
   unit: string
   cost: string
+  weight: string
   price: number
 }
 

@@ -178,6 +178,15 @@ export class ReceiptService {
     }).format(num)
   }
 
+  private formatWeight(weightInGrams: string | number): string {
+    const grams = typeof weightInGrams === 'string' ? parseFloat(weightInGrams) : weightInGrams
+    if (grams >= 1000) {
+      const kg = grams / 1000
+      return `${kg.toFixed(2).replace(/\.?0+$/, '')} Kg`
+    }
+    return `${Math.round(grams)} gr`
+  }
+
   async printReceipt(transaction: Transaction): Promise<{ success: boolean; error?: string }> {
     try {
       const itemsWithNames = await this.fetchItemsWithProductNames(transaction.items || [])
@@ -443,6 +452,7 @@ export class ReceiptService {
     ${parseFloat(discount) > 0 ? `<div class="total-row"><span>Diskon</span><span>-${this.formatCurrency(discount)}</span></div>` : ''}
     ${parseFloat(tax) > 0 ? `<div class="total-row"><span>Pajak</span><span>${this.formatCurrency(tax)}</span></div>` : ''}
     <div class="total-row grand"><span>TOTAL</span><span>${this.formatCurrency(total)}</span></div>
+    ${parseFloat(transaction.totalWeight || '0') > 0 ? `<div class="total-row"><span>Total Berat</span><span>${this.formatWeight(transaction.totalWeight)}</span></div>` : ''}
   </div>
 
   ${

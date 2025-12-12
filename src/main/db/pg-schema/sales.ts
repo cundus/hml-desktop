@@ -1,15 +1,19 @@
-import { pgTable, text, integer, numeric, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, numeric, timestamp, boolean } from 'drizzle-orm/pg-core'
 
 // SALES: Transactions, TransactionItems
 
 export const transactions = pgTable('transactions', {
   id: text('id').primaryKey(),
-  code: text('code').notNull(),
+  code: text('code').notNull().unique(),
   storeId: text('store_id').notNull(),
   subtotal: numeric('subtotal').notNull(),
   discount: numeric('discount').notNull().default('0'),
   tax: numeric('tax').notNull().default('0'),
   total: numeric('total').notNull(),
+  totalWeight: numeric('total_weight').default('0'),
+  paymentMethod: text('payment_method').notNull().default('cash'),
+  paymentDeadline: timestamp('payment_deadline', { withTimezone: false }),
+  receiptPrinted: boolean('receipt_printed').notNull().default(false),
   customerId: text('customer_id'),
   userId: text('user_id'),
 

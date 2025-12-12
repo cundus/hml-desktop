@@ -10,6 +10,7 @@ export interface Product {
   description: string | null
   unit: string
   cost: string
+  weight: string
   categoryId: string | null
   supplierId: string | null
   isService: boolean
@@ -118,7 +119,7 @@ export class ProductService {
     const now = Date.now()
 
     this.db.run(
-      'INSERT INTO product (id, sku, name, description, unit, cost, category_id, supplier_id, is_service, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO product (id, sku, name, description, unit, cost, weight, category_id, supplier_id, is_service, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.sku,
@@ -126,6 +127,7 @@ export class ProductService {
         data.description ?? null,
         data.unit,
         data.cost,
+        data.weight ?? 0,
         data.categoryId ?? null,
         data.supplierId ?? null,
         data.isService ? 1 : 0,
@@ -134,6 +136,20 @@ export class ProductService {
         now
       ]
     )
+
+    // Auto-create base UOM entry from the product's unit field
+    const uomStmt = this.db.prepare('SELECT id FROM uom WHERE code = ? LIMIT 1')
+    uomStmt.bind([data.unit])
+    if (uomStmt.step()) {
+      const uomRow = uomStmt.getAsObject()
+      const uomId = uomRow.id as string
+      const productUomId = randomUUID()
+      this.db.run(
+        'INSERT INTO product_uom (id, product_id, uom_id, conversion_factor, is_base_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [productUomId, id, uomId, 1, 1, now, now]
+      )
+    }
+    uomStmt.free()
 
     saveDb(this.db)
 
@@ -144,6 +160,7 @@ export class ProductService {
       description: data.description ?? null,
       unit: data.unit,
       cost: data.cost.toString(),
+      weight: (data.weight ?? 0).toString(),
       categoryId: data.categoryId ?? null,
       supplierId: data.supplierId ?? null,
       isService: data.isService ?? false,
@@ -168,12 +185,13 @@ export class ProductService {
     const now = Date.now()
 
     this.db.run(
-      'UPDATE product SET name = ?, description = ?, unit = ?, cost = ?, category_id = ?, supplier_id = ?, is_service = ?, is_active = ?, updated_at = ? WHERE id = ?',
+      'UPDATE product SET name = ?, description = ?, unit = ?, cost = ?, weight = ?, category_id = ?, supplier_id = ?, is_service = ?, is_active = ?, updated_at = ? WHERE id = ?',
       [
         data.name ?? existing.name,
         data.description ?? existing.description ?? null,
         data.unit ?? existing.unit,
         data.cost ?? existing.cost,
+        data.weight ?? existing.weight ?? 0,
         data.categoryId ?? existing.categoryId ?? null,
         data.supplierId ?? existing.supplierId ?? null,
         (data.isService ?? existing.isService) ? 1 : 0,
@@ -264,6 +282,7 @@ export class ProductService {
       description: row.description as string | null,
       unit: row.unit as string,
       cost: row.cost as string,
+      weight: (row.weight as string) ?? '0',
       categoryId: row.category_id as string | null,
       supplierId: row.supplier_id as string | null,
       isService: (row.is_service as number) === 1,

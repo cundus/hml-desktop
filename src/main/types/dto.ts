@@ -30,6 +30,7 @@ export interface CreateProductDto {
   description?: string
   unit: string
   cost: number
+  weight?: number
   categoryId?: string
   supplierId?: string
   isService?: boolean
@@ -41,6 +42,7 @@ export interface UpdateProductDto {
   description?: string
   unit?: string
   cost?: number
+  weight?: number
   categoryId?: string
   supplierId?: string
   isService?: boolean

@@ -12,6 +12,7 @@ export interface Transaction {
   discount: string
   tax: string
   total: string
+  totalWeight: string
   paymentMethod: string
   paymentDeadline: Date | null
   receiptPrinted: boolean
@@ -42,6 +43,7 @@ export interface CreateTransactionDto {
   discount?: string
   tax?: string
   total: string
+  totalWeight?: string
   paymentMethod?: string
   paymentDeadline?: Date
   receiptPrinted?: boolean
@@ -228,7 +230,7 @@ export class TransactionService {
 
     // Insert transaction
     this.db.run(
-      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, payment_method, payment_deadline, receipt_printed, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.code,
@@ -237,6 +239,7 @@ export class TransactionService {
         data.discount ?? '0',
         data.tax ?? '0',
         data.total,
+        data.totalWeight ?? '0',
         data.paymentMethod ?? 'cash',
         data.paymentDeadline ? data.paymentDeadline.getTime() : null,
         (data.receiptPrinted ?? false) ? 1 : 0,
@@ -667,6 +670,7 @@ export class TransactionService {
       discount: row.discount as string,
       tax: row.tax as string,
       total: row.total as string,
+      totalWeight: (row.total_weight as string) ?? '0',
       paymentMethod: (row.payment_method as string) ?? 'cash', // Backward compatibility
       paymentDeadline: row.payment_deadline ? new Date(row.payment_deadline as number) : null,
       receiptPrinted: (row.receipt_printed as number) === 1, // Convert SQLite boolean

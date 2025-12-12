@@ -292,6 +292,11 @@ async function createTables(database: Database): Promise<void> {
   } catch {
     // Column already exists
   }
+  try {
+    database.run('ALTER TABLE product ADD COLUMN weight TEXT DEFAULT "0"')
+  } catch {
+    // Column already exists
+  }
 
   // Customer table
   database.run(`
@@ -412,6 +417,11 @@ async function createTables(database: Database): Promise<void> {
   }
   try {
     database.run(`ALTER TABLE transactions ADD COLUMN receipt_printed INTEGER NOT NULL DEFAULT 0`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transactions ADD COLUMN total_weight TEXT DEFAULT '0'`)
   } catch {
     // Column already exists
   }

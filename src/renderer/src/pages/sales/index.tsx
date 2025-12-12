@@ -96,6 +96,7 @@ export default function SalesPage(): React.JSX.Element {
             category: p.categoryId ? (categoriesMap.get(p.categoryId) ?? 'Lainnya') : 'Lainnya',
             unit: p.unit ?? 'PCS',
             cost: p.cost ?? '0',
+            weight: p.weight ?? '0',
             price: pricesMap.get(p.id) ?? parseFloat(p.cost) ?? 0
           }))
 
@@ -264,9 +265,14 @@ export default function SalesPage(): React.JSX.Element {
         const code = `TRX-${Date.now()}`
 
         // Prepare transaction items (quantity in base units for inventory)
+        // Also calculate total weight based on product weights and quantities
+        let totalWeight = 0
         const transactionItems = cartItems.map((item) => {
           const conv = item.conversionFactor ?? 1
           const baseQuantity = item.baseQuantity ?? item.quantity * conv
+          // Weight calculation: base weight * base quantity (weight is per base unit)
+          const itemWeight = (parseFloat(item.weight) || 0) * baseQuantity
+          totalWeight += itemWeight
           return {
             productId: item.productId ?? item.id,
             quantity: baseQuantity,
@@ -282,6 +288,7 @@ export default function SalesPage(): React.JSX.Element {
           discount: discount.toString(),
           tax: '0',
           total: total.toString(),
+          totalWeight: totalWeight.toString(),
           paymentMethod,
           paymentDeadline,
           receiptPrinted: false,

@@ -9,8 +9,11 @@ export const products = pgTable('product', {
   description: text('description'),
   unit: text('unit').notNull(),
   cost: numeric('cost').notNull(),
-  isActive: boolean('is_active').notNull().default(true),
+  weight: numeric('weight').default('0'),
   categoryId: text('category_id'),
+  supplierId: text('supplier_id'),
+  isService: boolean('is_service').notNull().default(false),
+  isActive: boolean('is_active').notNull().default(true),
   deviceId: text('device_id'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),

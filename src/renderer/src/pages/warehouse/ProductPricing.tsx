@@ -58,17 +58,15 @@ type UomMaster = {
   name: string
 }
 
-function computeSelling(baseCost: number, marginPct: number): number {
-  return Math.round(baseCost * (1 + marginPct / 100))
-}
-
 function computeMarginFixed(baseCost: number, marginPct: number): number {
   return Math.round(baseCost * (marginPct / 100))
 }
 
 function computeMarginPct(baseCost: number, marginFixed: number): number {
   if (baseCost <= 0) return 0
-  return Math.round((marginFixed / baseCost) * 100)
+  // Allow decimal percentages for more precise margin when editing by Rp
+  const pct = (marginFixed / baseCost) * 100
+  return Number(pct.toFixed(2))
 }
 
 export default function ProductPricingPage(): React.JSX.Element {
@@ -84,10 +82,11 @@ export default function ProductPricingPage(): React.JSX.Element {
     severity: 'success' | 'error'
   }>({ open: false, message: '', severity: 'success' })
 
-  // Base cost & margin (linked: fixed ↔ percentage)
+  // Base cost (shared across all UOMs)
   const [baseCost, setBaseCost] = useState('0')
-  const [marginPct, setMarginPct] = useState('20')
-  const [marginFixed, setMarginFixed] = useState('0')
+
+  // Margin per UOM: { uomId: { pct: string, fixed: string } }
+  const [uomMargins, setUomMargins] = useState<Record<string, { pct: string; fixed: string }>>({})
 
   // UOM management
   const [productUoms, setProductUoms] = useState<ProductUomRow[]>([])
@@ -98,7 +97,9 @@ export default function ProductPricingPage(): React.JSX.Element {
 
   // Price categories
   const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([])
-  const [hqCategoryPrices, setHqCategoryPrices] = useState<Record<string, string>>({})
+
+  // HQ prices per UOM: { uomId: { categoryId: price } }
+  const [allUomPrices, setAllUomPrices] = useState<Record<string, Record<string, string>>>({})
 
   // Store overrides
   const [stores, setStores] = useState<StoreOption[]>([])
@@ -164,31 +165,37 @@ export default function ProductPricingPage(): React.JSX.Element {
         const defaultUomId = baseUom?.uomId ?? uomRows[0]?.uomId ?? null
         setSelectedUomId(defaultUomId)
 
-        // Load HQ prices for base UOM
-        if (defaultUomId) {
+        // Load HQ prices for all product UOMs
+        const allPrices: Record<string, Record<string, string>> = {}
+        const margins: Record<string, { pct: string; fixed: string }> = {}
+        const cost = Number(p.cost ?? '0') || 0
+
+        for (const uomRow of uomRows) {
           const pricesRes = await window.api.db.pricing.getCategoryPrices({
             productId,
-            uomId: defaultUomId
+            uomId: uomRow.uomId
           })
           const prices = pricesRes.data ?? []
           const map: Record<string, string> = {}
           prices.forEach((row) => {
             map[row.priceCategoryId] = row.price
           })
-          setHqCategoryPrices(map)
+          allPrices[uomRow.uomId] = map
 
-          // Calculate margin from RETAIL price
+          // Calculate margin from RETAIL price for this UOM
           const retail = prices.find((r) => r.priceCategoryId === 'RETAIL')
-          if (retail) {
-            const cost = Number(p.cost ?? '0') || 0
+          if (retail && cost > 0) {
             const retailPrice = Number(retail.price ?? '0') || 0
-            if (cost > 0) {
-              const margin = Math.round((retailPrice / cost - 1) * 100)
-              setMarginPct(String(margin))
-              setMarginFixed(computeMarginFixed(cost, margin).toString())
-            }
+            const marginFixed = retailPrice - cost
+            const marginPct = computeMarginPct(cost, marginFixed)
+            margins[uomRow.uomId] = { pct: String(marginPct), fixed: String(marginFixed) }
+          } else {
+            margins[uomRow.uomId] = { pct: '0', fixed: '0' }
           }
         }
+
+        setAllUomPrices(allPrices)
+        setUomMargins(margins)
       } catch (error) {
         console.error('Failed to load product data', error)
         setSnackbar({ open: true, message: 'Gagal memuat data produk', severity: 'error' })
@@ -200,9 +207,11 @@ export default function ProductPricingPage(): React.JSX.Element {
     void loadData()
   }, [productId, navigate])
 
-  // Load HQ prices when selected UOM changes
+  // Load HQ prices for a UOM if not already loaded
   useEffect(() => {
     if (!productId || !selectedUomId) return
+    // Already loaded? Skip
+    if (allUomPrices[selectedUomId]) return
 
     const loadUomPrices = async (): Promise<void> => {
       try {
@@ -215,18 +224,24 @@ export default function ProductPricingPage(): React.JSX.Element {
         prices.forEach((row) => {
           map[row.priceCategoryId] = row.price
         })
-        setHqCategoryPrices(map)
+        setAllUomPrices((prev) => ({ ...prev, [selectedUomId]: map }))
 
-        // Update margin from RETAIL
+        // Calculate margin from RETAIL
         const retail = prices.find((r) => r.priceCategoryId === 'RETAIL')
-        if (retail && product) {
-          const cost = Number(baseCost) || 0
+        const cost = Number(baseCost) || 0
+        if (retail && cost > 0) {
           const retailPrice = Number(retail.price ?? '0') || 0
-          if (cost > 0) {
-            const margin = Math.round((retailPrice / cost - 1) * 100)
-            setMarginPct(String(margin))
-            setMarginFixed(computeMarginFixed(cost, margin).toString())
-          }
+          const marginFixed = retailPrice - cost
+          const marginPct = computeMarginPct(cost, marginFixed)
+          setUomMargins((prev) => ({
+            ...prev,
+            [selectedUomId]: { pct: String(marginPct), fixed: String(marginFixed) }
+          }))
+        } else {
+          setUomMargins((prev) => ({
+            ...prev,
+            [selectedUomId]: { pct: '0', fixed: '0' }
+          }))
         }
       } catch (error) {
         console.error('Failed to load UOM prices', error)
@@ -235,7 +250,7 @@ export default function ProductPricingPage(): React.JSX.Element {
 
     void loadUomPrices()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, selectedUomId])
+  }, [productId, selectedUomId, allUomPrices])
 
   // Load store prices when store or UOM changes
   useEffect(() => {
@@ -331,43 +346,49 @@ export default function ProductPricingPage(): React.JSX.Element {
   }
 
   const handleSaveAll = async (): Promise<void> => {
-    if (!productId || !selectedUomId) return
+    if (!productId) return
     setSaving(true)
 
     try {
       const tasks: Array<Promise<unknown>> = []
       const cost = Number(baseCost) || 0
-      const margin = Number(marginPct) || 0
-      const retailPrice = computeSelling(cost, margin)
 
-      // Save RETAIL price (computed from margin)
-      tasks.push(
-        window.api.db.pricing.upsertCategoryPrice({
-          productId,
-          uomId: selectedUomId,
-          priceCategoryId: 'RETAIL',
-          price: retailPrice.toString()
-        })
-      )
+      // Save prices for ALL UOMs that have been edited
+      for (const uomId of Object.keys(allUomPrices)) {
+        const uomPrices = allUomPrices[uomId]
+        const margin = uomMargins[uomId]
+        const marginFixed = Number(margin?.fixed ?? '0') || 0
+        const retailPrice = cost + marginFixed
 
-      // Save other HQ category prices
-      priceCategories.forEach((cat) => {
-        if (cat.id === 'RETAIL') return
-        const raw = hqCategoryPrices[cat.id]
-        if (raw == null) return
-        const catPrice = Number(raw) || 0
+        // Save RETAIL price (computed from margin)
         tasks.push(
           window.api.db.pricing.upsertCategoryPrice({
             productId,
-            uomId: selectedUomId,
-            priceCategoryId: cat.id,
-            price: catPrice.toString()
+            uomId,
+            priceCategoryId: 'RETAIL',
+            price: retailPrice.toString()
           })
         )
-      })
 
-      // Save store overrides if a store is selected
-      if (selectedStoreId) {
+        // Save other HQ category prices
+        priceCategories.forEach((cat) => {
+          if (cat.id === 'RETAIL') return
+          const raw = uomPrices[cat.id]
+          if (raw == null) return
+          const catPrice = Number(raw) || 0
+          tasks.push(
+            window.api.db.pricing.upsertCategoryPrice({
+              productId,
+              uomId,
+              priceCategoryId: cat.id,
+              price: catPrice.toString()
+            })
+          )
+        })
+      }
+
+      // Save store overrides if a store is selected (for current UOM only)
+      if (selectedStoreId && selectedUomId) {
         priceCategories.forEach((cat) => {
           const rawStore = storeCategoryPrices[cat.id]
           if (rawStore == null) return
@@ -420,10 +441,44 @@ export default function ProductPricingPage(): React.JSX.Element {
     )
   }
 
-  const retailPrice = computeSelling(Number(baseCost) || 0, Number(marginPct) || 0)
   const activeUom = selectedUomId
     ? (productUoms.find((u) => u.uomId === selectedUomId) ?? null)
     : null
+
+  // Get current UOM's margin values
+  const currentMargin = selectedUomId ? uomMargins[selectedUomId] : null
+  const marginPct = currentMargin?.pct ?? '0'
+  const marginFixed = currentMargin?.fixed ?? '0'
+  const retailPrice = (Number(baseCost) || 0) + (Number(marginFixed) || 0)
+
+  // Get current UOM's category prices
+  const hqCategoryPrices = selectedUomId ? (allUomPrices[selectedUomId] ?? {}) : {}
+
+  // Setters for current UOM's margin
+  const setMarginPct = (val: string): void => {
+    if (!selectedUomId) return
+    setUomMargins((prev) => ({
+      ...prev,
+      [selectedUomId]: { ...prev[selectedUomId], pct: val }
+    }))
+  }
+
+  const setMarginFixed = (val: string): void => {
+    if (!selectedUomId) return
+    setUomMargins((prev) => ({
+      ...prev,
+      [selectedUomId]: { ...prev[selectedUomId], fixed: val }
+    }))
+  }
+
+  // Setter for current UOM's category prices
+  const setHqCategoryPrices = (updater: (prev: Record<string, string>) => Record<string, string>): void => {
+    if (!selectedUomId) return
+    setAllUomPrices((prev) => ({
+      ...prev,
+      [selectedUomId]: updater(prev[selectedUomId] ?? {})
+    }))
+  }
 
   return (
     <Box sx={{ height: '100%', overflow: 'auto' }}>
@@ -573,7 +628,7 @@ export default function ProductPricingPage(): React.JSX.Element {
               setMarginFixed(computeMarginFixed(cost, pct).toString())
             }}
             sx={{ width: 100 }}
-            inputProps={{ step: 1 }}
+            inputProps={{ step: 0.01 }}
           />
           <Box sx={{ pt: 1, minWidth: 150 }}>
             <Typography variant="body2" color="text.secondary">

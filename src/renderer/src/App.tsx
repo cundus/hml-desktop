@@ -12,6 +12,8 @@ import InventoryBatchesPage from './pages/inventory/Batches'
 import InventoryDashboardPage from './pages/inventory/Dashboard'
 import InventoryPricingPage from './pages/inventory/Pricing'
 import InventoryTransactionsPage from './pages/inventory/Transactions'
+import InventoryManagementPage from './pages/inventory'
+import BulkStockAdjustmentsPage from './pages/inventory/BulkAdjustments'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import Pets from './pages/Pets'
@@ -135,10 +137,12 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['inventory.manage']} />,
             children: [
+              { path: 'inventory', element: <InventoryManagementPage /> },
               { path: 'inventory/dashboard', element: <InventoryDashboardPage /> },
               { path: 'inventory/pricing', element: <InventoryPricingPage /> },
               { path: 'inventory/batches', element: <InventoryBatchesPage /> },
-              { path: 'inventory/transactions', element: <InventoryTransactionsPage /> }
+              { path: 'inventory/transactions', element: <InventoryTransactionsPage /> },
+              { path: 'inventory/adjustments', element: <BulkStockAdjustmentsPage /> }
             ]
           },
           {

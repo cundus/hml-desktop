@@ -69,7 +69,6 @@ export class PriceCategoryService {
       })
     }
     stmt.free()
-    console.log(results)
 
     return results
   }

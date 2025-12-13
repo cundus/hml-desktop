@@ -1,14 +1,13 @@
 import { ExpandLess, ExpandMore } from '@mui/icons-material'
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
 import HomeIcon from '@mui/icons-material/Home'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import LocalOfferIcon from '@mui/icons-material/LocalOffer'
+import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import LogoutIcon from '@mui/icons-material/Logout'
+import ReceiptIcon from '@mui/icons-material/Receipt'
 import SettingsIcon from '@mui/icons-material/Settings'
 import ShoppingBasketIcon from '@mui/icons-material/ShoppingBasket'
-import InventoryIcon from '@mui/icons-material/Inventory'
-import DashboardIcon from '@mui/icons-material/Dashboard'
-import LocalShippingIcon from '@mui/icons-material/LocalShipping'
-import ReceiptIcon from '@mui/icons-material/Receipt'
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance'
-import LocalOfferIcon from '@mui/icons-material/LocalOffer'
 import Collapse from '@mui/material/Collapse'
 import List from '@mui/material/List'
 import ListItemButton from '@mui/material/ListItemButton'
@@ -63,34 +62,15 @@ const menus: MenuItem[] = [
     permissions: ['inventory.manage'],
     children: [
       {
-        key: 'inventory-dashboard',
-        label: 'Dashboard',
-        icon: <DashboardIcon fontSize="small" />,
-        path: '/inventory/dashboard',
+        key: 'inventory-management',
+        label: 'Inventory Management',
+        path: '/inventory',
         permissions: ['inventory.manage']
       },
       {
-        key: 'inventory-stocks',
-        label: 'Stok',
-        path: '/inventory/stocks',
-        permissions: ['inventory.manage']
-      },
-      {
-        key: 'inventory-stock-opname',
-        label: 'Stok Opname',
-        path: '/inventory/stock-opname',
-        permissions: ['inventory.manage']
-      },
-      {
-        key: 'inventory-batches',
-        label: 'Batch',
-        path: '/inventory/batches',
-        permissions: ['inventory.manage']
-      },
-      {
-        key: 'inventory-transactions',
-        label: 'Transaksi Stok',
-        path: '/inventory/transactions',
+        key: 'inventory-adjustments',
+        label: 'Penyesuaian Stok Massal',
+        path: '/inventory/adjustments',
         permissions: ['inventory.manage']
       }
     ]

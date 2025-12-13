@@ -486,6 +486,16 @@ async function createTables(database: Database): Promise<void> {
       } catch {
         // Column already exists
       }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN synced_at INTEGER`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN deleted_at INTEGER`)
+      } catch {
+        // Column already exists
+      }
     }
   } catch {
     // Table doesn't exist or migration failed, CREATE TABLE will handle it
@@ -500,9 +510,23 @@ async function createTables(database: Database): Promise<void> {
       quantity INTEGER NOT NULL,
       price TEXT NOT NULL,
       created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
     )
   `)
+
+  // Add missing columns to transaction_items if they don't exist
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN synced_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN deleted_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
 
   // Purchase Order table
   database.run(`
@@ -532,6 +556,40 @@ async function createTables(database: Database): Promise<void> {
       updated_at INTEGER NOT NULL
     )
   `)
+
+  // Stock Adjustment table - tracks manual stock adjustments
+  database.run(`
+    CREATE TABLE IF NOT EXISTS stock_adjustment (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      difference INTEGER NOT NULL,
+      note TEXT,
+      performed_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Add missing columns to stock_adjusment if they don't exist
+  try {
+    database.run(`ALTER TABLE stock_adjustment ADD COLUMN synced_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE stock_adjustment ADD COLUMN deleted_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE stock_adjustment ADD COLUMN updated_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
 
   // Sync metadata table - tracks sync state per entity
   database.run(`
@@ -576,6 +634,9 @@ async function createTables(database: Database): Promise<void> {
       action TEXT NOT NULL,
       notes TEXT,
       created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
       device_id TEXT
     )
   `)

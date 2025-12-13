@@ -32,7 +32,9 @@ export const transactionItems = pgTable('transaction_items', {
   price: numeric('price').notNull(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
 export const expenses = pgTable('expenses', {
@@ -49,4 +51,24 @@ export const expenses = pgTable('expenses', {
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false })
+})
+
+export const cashierShifts = pgTable('cashier_shift', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull(),
+  storeId: text('store_id').notNull(),
+  status: text('status').notNull().default('OPEN'),
+  initialCash: numeric('initial_cash').notNull().default('0'),
+  closingCash: numeric('closing_cash'),
+  expectedCash: numeric('expected_cash'),
+  difference: numeric('difference'),
+  notes: text('notes'),
+  openedAt: timestamp('opened_at', { withTimezone: false }).notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: false }),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
 })

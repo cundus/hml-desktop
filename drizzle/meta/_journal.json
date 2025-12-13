@@ -8,6 +8,34 @@
       "when": 1765282743763,
       "tag": "0000_third_night_thrasher",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1765627384630,
+      "tag": "0001_condemned_lockjaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765629322444,
+      "tag": "0002_tense_devos",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1765630547908,
+      "tag": "0003_left_wolf_cub",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1765631181112,
+      "tag": "0004_ancient_mentor",
+      "breakpoints": true
     }
   ]
 }

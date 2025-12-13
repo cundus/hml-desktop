@@ -1,0 +1,1 @@
+ALTER TABLE "stock_adjustment" ADD COLUMN "updated_at" timestamp;

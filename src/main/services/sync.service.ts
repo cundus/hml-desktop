@@ -323,7 +323,9 @@ const ENTITY_CONFIG: Record<
       'quantity',
       'price',
       'created_at',
-      'updated_at'
+      'updated_at',
+      'synced_at',
+      'deleted_at'
     ],
     hasDeviceId: false
   },
@@ -344,22 +346,42 @@ const ENTITY_CONFIG: Record<
     ],
     hasDeviceId: false
   },
-  shifts: {
+  cashier_shift: {
     columns: [
       'id',
-      'store_id',
       'user_id',
-      'start_amount',
-      'end_amount',
+      'store_id',
       'status',
+      'initial_cash',
+      'closing_cash',
+      'expected_cash',
+      'difference',
+      'notes',
       'opened_at',
       'closed_at',
       'created_at',
       'updated_at',
       'synced_at',
-      'deleted_at'
+      'deleted_at',
+      'device_id'
     ],
-    hasDeviceId: false
+    hasDeviceId: true
+  },
+  stock_adjustment: {
+    columns: [
+      'id',
+      'product_id',
+      'store_id',
+      'difference',
+      'note',
+      'performed_by',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'device_id'
+    ],
+    hasDeviceId: true
   }
 }
 
@@ -415,6 +437,11 @@ export class SyncService {
     // Log connection URL (masked for security)
     const maskedUrl = url.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')
     console.log('Connecting to cloud database:', maskedUrl)
+    console.log(
+      'Environment check - PG_DATABASE_URL:',
+      process.env.PG_DATABASE_URL ? 'SET' : 'NOT SET'
+    )
+    console.log('Environment check - DATABASE_URL:', process.env.DATABASE_URL ? 'SET' : 'NOT SET')
 
     // Close existing pool if reconnecting
     if (this.cloudPool) {
@@ -425,13 +452,19 @@ export class SyncService {
 
     const pool = new Pool({ connectionString: url })
 
-    // Connectivity check
-    await pool.query('SELECT 1')
+    // Test the connection
+    try {
+      const client = await pool.connect()
+      console.log('Successfully connected to cloud database')
+      client.release()
+    } catch (error) {
+      console.error('Failed to connect to cloud database:', error)
+      throw error
+    }
 
     this.cloudPool = pool
     this.cloudDb = drizzle(pool, { schema: pgSchema })
-
-    console.log('✓ Cloud database connected')
+    console.log('Cloud database connection initialized')
   }
 
   /**
@@ -464,7 +497,16 @@ export class SyncService {
    * Check if cloud is connected
    */
   isCloudConnected(): boolean {
-    return this.cloudDb !== null && this.cloudPool !== null
+    const connected = this.cloudDb !== null && this.cloudPool !== null
+    console.log(
+      'isCloudConnected check - cloudDb:',
+      !!this.cloudDb,
+      'cloudPool:',
+      !!this.cloudPool,
+      'result:',
+      connected
+    )
+    return connected
   }
 
   /**
@@ -867,8 +909,18 @@ export class SyncService {
    */
   private toCloudValue(column: string, value: unknown): unknown {
     if (value === null || value === undefined) return null
-    // Convert timestamp to Date for _at columns
-    if (column.endsWith('_at') && typeof value === 'number') {
+    // Convert timestamp to Date for _at columns and other timestamp fields
+    const timestampFields = [
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at',
+      'opened_at',
+      'closed_at',
+      'payment_deadline',
+      'expiry_date'
+    ]
+    if (timestampFields.includes(column) && typeof value === 'number') {
       return new Date(value)
     }
     // Convert integer to boolean for is_active
@@ -932,9 +984,17 @@ export class SyncService {
   async getSyncStatus(): Promise<SyncStatus> {
     const unsyncedCount = this.getUnsyncedRecordsCount()
     const lastSyncTime = this.getGlobalLastSyncTime()
+    const isConnected = this.isCloudConnected()
+
+    console.log('getSyncStatus returning:', {
+      isCloudConnected: isConnected,
+      lastSyncTime,
+      unsyncedRecordsCount: unsyncedCount,
+      deviceId: this.deviceId
+    })
 
     return {
-      isCloudConnected: this.isCloudConnected(),
+      isCloudConnected: isConnected,
       lastSyncTime: lastSyncTime ? new Date(lastSyncTime) : null,
       unsyncedRecordsCount: unsyncedCount,
       deviceId: this.deviceId

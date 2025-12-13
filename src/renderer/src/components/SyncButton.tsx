@@ -43,6 +43,7 @@ export default function SyncButton(): React.JSX.Element {
   const loadStatus = async (): Promise<void> => {
     try {
       const response = await window.api.db.sync.getStatus()
+
       if (response.success && response.data) {
         setStatus(response.data)
       }

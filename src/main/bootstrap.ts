@@ -22,6 +22,7 @@ import {
   UserRoleController,
   PricingController
 } from './controllers'
+import { registerInventoryHandlers } from './controllers/inventory.controller'
 import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
@@ -194,5 +195,7 @@ export async function bootstrap(): Promise<void> {
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
 
-  console.log('✓ All 23 services and controllers initialized (sql.js local + cloud sync ready)')
+  registerInventoryHandlers()
+
+  console.log('✓ All 24 services and controllers initialized (sql.js local + cloud sync ready)')
 }

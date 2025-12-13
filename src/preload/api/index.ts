@@ -59,7 +59,7 @@ import {
   rolePermissionApi,
   authApi
 } from './core'
-import { productPriceApi, productLocationApi, batchApi, stockTransactionApi } from './inventory'
+import { productPriceApi, productLocationApi, batchApi, stockTransactionApi, inventoryApi } from './inventory'
 import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
 import { expenseApi } from './expenses'
@@ -113,6 +113,7 @@ export const db = {
   productLocations: productLocationApi,
   batches: batchApi,
   stockTransactions: stockTransactionApi,
+  inventory: inventoryApi,
 
   // Pricing
   pricing: pricingApi,

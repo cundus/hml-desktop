@@ -94,8 +94,6 @@ export default function UserPage(): React.JSX.Element {
           window.api.db.userRoles.getAll()
         ])
 
-        console.log(usersRes)
-
         if (usersRes.success && storesRes.success && rolesRes.success && userRolesRes.success) {
           const usersData = usersRes.data ?? []
           const storesData = storesRes.data ?? []
@@ -156,8 +154,6 @@ export default function UserPage(): React.JSX.Element {
   }
 
   const openEdit = (user: User): void => {
-    console.log(user)
-
     setEditing(user)
     reset({
       name: user.name,
@@ -182,8 +178,6 @@ export default function UserPage(): React.JSX.Element {
         return
       }
 
-      console.log(values)
-
       const selectedRoleIds = values.roleIds ?? []
 
       if (editing) {
@@ -207,7 +201,6 @@ export default function UserPage(): React.JSX.Element {
         }
 
         const response = await window.api.db.users.update(editing.id, updatePayload)
-        console.log('update', response)
 
         if (response.success && response.data) {
           const updated = response.data

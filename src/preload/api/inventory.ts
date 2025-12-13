@@ -250,3 +250,80 @@ export const stockTransactionApi = {
   delete: (id: string) =>
     ipcRenderer.invoke('db:stockTransactions:delete', id) as Promise<ApiResponse<StockTransaction>>
 }
+
+// Stock Adjustment Type
+export interface StockAdjustment extends BaseEntity {
+  productId: string
+  storeId: string
+  difference: number
+  note: string | null
+  performedBy: string
+  deviceId: string | null
+}
+
+// Stock Overview Type
+export interface StockOverviewItem {
+  id: string
+  productId: string
+  productName: string
+  productSku: string
+  unit: string
+  storeId: string
+  quantity: number
+  reservedQuantity: number
+  availableQuantity: number
+  lowStockThreshold: number
+  isLowStock: boolean
+}
+
+// Inventory Management API
+export const inventoryApi = {
+  // Stock Overview
+  getStockOverview: (storeId?: string) =>
+    ipcRenderer.invoke('inventory:stock-overview', storeId) as Promise<
+      ApiResponse<StockOverviewItem[]>
+    >,
+
+  // Stock Transactions (enriched with product/store names)
+  getStockTransactions: (filters?: { productId?: string; storeId?: string; limit?: number }) =>
+    ipcRenderer.invoke('inventory:stock-transactions', filters) as Promise<
+      ApiResponse<(StockTransaction & { productName: string; storeName: string })[]>
+    >,
+
+  // Stock Adjustments
+  getStockAdjustments: (filters?: { productId?: string; storeId?: string }) =>
+    ipcRenderer.invoke('inventory:stock-adjustments', filters) as Promise<
+      ApiResponse<(StockAdjustment & { productName: string; storeName: string })[]>
+    >,
+
+  createStockAdjustment: (data: {
+    productId: string
+    storeId: string
+    difference: number
+    note?: string
+    performedBy: string
+  }) =>
+    ipcRenderer.invoke('inventory:create-adjustment', data) as Promise<
+      ApiResponse<StockAdjustment>
+    >,
+
+  // Low Stock Alerts
+  getLowStockItems: (storeId?: string, threshold?: number) =>
+    ipcRenderer.invoke('inventory:low-stock', storeId, threshold) as Promise<
+      ApiResponse<StockOverviewItem[]>
+    >,
+
+  // Bulk Stock Adjustments
+  bulkCreateStockAdjustments: (
+    adjustments: Array<{
+      productId: string
+      storeId: string
+      difference: number
+      note?: string
+      performedBy: string
+    }>
+  ) =>
+    ipcRenderer.invoke('inventory:bulk-create-adjustments', adjustments) as Promise<
+      ApiResponse<StockAdjustment[]>
+    >
+}

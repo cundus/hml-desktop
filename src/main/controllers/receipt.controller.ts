@@ -89,5 +89,18 @@ export class ReceiptController {
         }
       }
     })
+
+    // Print settlement report
+    ipcMain.handle('printer:printSettlementReport', async (_, data) => {
+      try {
+        const result = await this.receiptService.printSettlementReport(data)
+        return result
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

@@ -1,7 +1,7 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
-import { ExpenseService } from './expense.service'
+import { ExpenseService, Expense } from './expense.service'
 
 export interface CashierShift {
   id: string
@@ -64,6 +64,8 @@ export interface ShiftSummary {
     createdAt: Date
     customerName?: string
   }[]
+  paymentMethodStats: Record<string, string>
+  expenses: Expense[]
 }
 
 export class ShiftService {
@@ -385,7 +387,7 @@ export class ShiftService {
 
     // Get transactions during this shift
     const txStmt = this.db.prepare(
-      `SELECT t.id, t.code, t.subtotal, t.discount, t.tax, t.total, t.created_at,
+      `SELECT t.id, t.code, t.subtotal, t.discount, t.tax, t.total, t.created_at, t.payment_method,
               c.name as customer_name
        FROM transactions t
        LEFT JOIN customer c ON t.customer_id = c.id
@@ -403,6 +405,7 @@ export class ShiftService {
     ])
 
     const transactions: ShiftSummary['transactions'] = []
+    const paymentMethodStats: Record<string, number> = {}
     let totalSales = 0
     let totalDiscount = 0
     let totalTax = 0
@@ -419,15 +422,28 @@ export class ShiftService {
       totalSales += parseFloat(row.subtotal as string) || 0
       totalDiscount += parseFloat(row.discount as string) || 0
       totalTax += parseFloat(row.tax as string) || 0
+
+      // Aggregate payment methods
+      const method = (row.payment_method as string) || 'cash'
+      const amount = parseFloat(row.total as string) || 0
+      paymentMethodStats[method] = (paymentMethodStats[method] || 0) + amount
     }
     txStmt.free()
 
     const netSales = totalSales - totalDiscount + totalTax
 
-    // Get expense summary for this shift
-    const expenseSummary = await this.expenseService.getExpenseSummaryByShift(shiftId)
-    const totalExpenses = parseFloat(expenseSummary.totalExpenses) || 0
+    // Get detailed expenses for this shift
+    const expenses = await this.expenseService.findByShiftId(shiftId)
+    const totalExpenses = expenses.reduce((sum, e) => sum + (parseFloat(e.total) || 0), 0)
+    const expenseCount = expenses.length
+
     const expectedCash = parseFloat(shift.initialCash) + netSales - totalExpenses
+
+    // Convert stats to string
+    const paymentMethodStatsStr: Record<string, string> = {}
+    for (const [method, amount] of Object.entries(paymentMethodStats)) {
+      paymentMethodStatsStr[method] = amount.toString()
+    }
 
     return {
       shift,
@@ -437,9 +453,11 @@ export class ShiftService {
       totalTax: totalTax.toString(),
       netSales: netSales.toString(),
       expectedCash: expectedCash.toString(),
-      totalExpenses: expenseSummary.totalExpenses,
-      expenseCount: expenseSummary.expenseCount,
-      transactions
+      totalExpenses: totalExpenses.toString(),
+      expenseCount,
+      transactions,
+      paymentMethodStats: paymentMethodStatsStr,
+      expenses
     }
   }
 

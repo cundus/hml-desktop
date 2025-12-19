@@ -48,6 +48,8 @@ interface ShiftSummary {
     createdAt: Date
     customerName?: string
   }[]
+  paymentMethodStats?: Record<string, string>
+  expenses?: any[] // Simplified for UI display
 }
 
 interface ShiftSettlementDialogProps {
@@ -302,6 +304,18 @@ export default function ShiftSettlementDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Tutup</Button>
+        {summary && (
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (summary) {
+                window.api.db.printer.printSettlementReport(summary)
+              }
+            }}
+          >
+            Cetak Laporan
+          </Button>
+        )}
         {summary && summary.shift.status === 'OPEN' && (
           <Button variant="contained" color="warning" onClick={onProceedToClose}>
             Lanjut Tutup Shift

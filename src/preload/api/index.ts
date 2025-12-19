@@ -59,7 +59,13 @@ import {
   rolePermissionApi,
   authApi
 } from './core'
-import { productPriceApi, productLocationApi, batchApi, stockTransactionApi, inventoryApi } from './inventory'
+import {
+  productPriceApi,
+  productLocationApi,
+  batchApi,
+  stockTransactionApi,
+  inventoryApi
+} from './inventory'
 import { transactionApi } from './sales'
 import { purchaseOrderApi } from './purchasing'
 import { expenseApi } from './expenses'
@@ -87,7 +93,8 @@ const printerApi = {
   getStatus: () => ipcRenderer.invoke('printer:getStatus'),
   testPrint: () => ipcRenderer.invoke('printer:testPrint'),
   printExpenseReport: (data: ExpenseReportData) =>
-    ipcRenderer.invoke('printer:printExpenseReport', data)
+    ipcRenderer.invoke('printer:printExpenseReport', data),
+  printSettlementReport: (data: any) => ipcRenderer.invoke('printer:printSettlementReport', data)
 }
 
 export const db = {

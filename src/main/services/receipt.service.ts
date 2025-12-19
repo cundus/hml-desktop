@@ -63,6 +63,11 @@ export class ReceiptService {
     void this.loadConfig()
   }
 
+  // Reuse ShiftSummary interface structure locally for type safety without circular dependency
+  // or export it from a shared types file if possible. For now, defining compatible structure.
+  // ... Or better, import if circular dependency is not an issue (Service -> Service often ok).
+  // But to be safe and quick, I'll define a local interface matching the data we need.
+
   private getDefaultConfig(): ReceiptConfig {
     return {
       paperWidth: 58,
@@ -471,6 +476,143 @@ export class ReceiptService {
     <div>Terima kasih atas kunjungan Anda</div>
     <div>Barang yang sudah dibeli</div>
     <div>tidak dapat dikembalikan</div>
+  </div>
+</body>
+</html>`
+  }
+
+  async printSettlementReport(data: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      const html = this.generateSettlementReportHtml(data)
+      return await this.printHtml(html)
+    } catch (error) {
+      console.error('Settlement report printing failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown printing error'
+      }
+    }
+  }
+
+  private generateSettlementReportHtml(data: any): string {
+    const {
+      shift,
+      totalSales,
+      totalDiscount,
+      totalTax,
+      netSales,
+      expectedCash,
+      totalExpenses,
+      expenseCount,
+      paymentMethodStats,
+      expenses
+    } = data
+    const w = this.config.paperWidth
+    const printableWidth = w <= 58 ? 48 : 72
+    const fontSize = w <= 58 ? 9 : 11
+
+    // Generate Payment Method List
+    let paymentMethodsHtml = ''
+    if (paymentMethodStats) {
+      paymentMethodsHtml = Object.entries(paymentMethodStats)
+        .map(
+          ([method, amount]) =>
+            `<div class="info-row"><span>${method.toUpperCase()}:</span><span>${this.formatCurrency(amount as string)}</span></div>`
+        )
+        .join('')
+    }
+
+    // Generate Expense List
+    let expensesHtml = ''
+    if (expenses && Array.isArray(expenses) && expenses.length > 0) {
+      expensesHtml = expenses
+        .map(
+          (e: any) =>
+            `<div style="margin-bottom: 1mm;">
+               <div class="info-row"><span>${e.item}</span><span>${this.formatCurrency(e.total)}</span></div>
+               <div style="font-size: 0.8em; color: #555;">${e.description || '-'}</div>
+             </div>`
+        )
+        .join('')
+    } else {
+      expensesHtml = '<div class="center">- Tidak ada pengeluaran -</div>'
+    }
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @page { size: ${w}mm auto; margin: 0; }
+    @media print {
+      html, body { width: ${printableWidth}mm !important; margin: 0 !important; }
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: ${printableWidth}mm;
+      max-width: ${printableWidth}mm;
+      overflow: hidden;
+    }
+    body {
+      font-family: Arial, 'Segoe UI', Tahoma, sans-serif;
+      font-size: ${fontSize}pt;
+      font-weight: 500;
+      color: #000;
+      background: #fff;
+      padding: 1mm;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .center { text-align: center; }
+    .bold { font-weight: 700; }
+    .line { border-top: 1px dashed #000; margin: 2mm 0; }
+    .double-line { border-top: 1px solid #000; margin: 2mm 0; }
+    .title { font-size: ${fontSize + 2}pt; font-weight: 600; margin-bottom: 2mm; }
+    .store-name { font-size: ${fontSize + 1}pt; font-weight: bold; }
+    .info-row { display: flex; justify-content: space-between; margin: 0.5mm 0; }
+    .section-title { font-weight: bold; margin-top: 2mm; text-decoration: underline; }
+    .footer { margin-top: 3mm; text-align: center; font-size: ${fontSize - 2}pt; }
+  </style>
+</head>
+<body>
+  <div class="header center">
+    <div class="store-name">${this.config.storeName}</div>
+    <div>${this.config.storeAddress}</div>
+    <div>${this.config.storePhone}</div>
+  </div>
+
+  <div class="double-line"></div>
+  <div class="center title">LAPORAN SETTLEMENT</div>
+  <div class="double-line"></div>
+
+  <div class="info-row"><span>Kasir:</span><span>${shift.userName || 'Unknown'}</span></div>
+  <div class="info-row"><span>Buka:</span><span>${new Date(shift.openedAt).toLocaleString('id-ID')}</span></div>
+  <div class="info-row"><span>Tutup:</span><span>${shift.closedAt ? new Date(shift.closedAt).toLocaleString('id-ID') : 'Sekarang'}</span></div>
+
+  <div class="line"></div>
+  <div class="section-title">RINGKASAN KAS</div>
+  <div class="info-row"><span>Kas Awal:</span><span>${this.formatCurrency(shift.initialCash)}</span></div>
+  <div class="info-row"><span>Total Penjualan:</span><span>+${this.formatCurrency(netSales)}</span></div>
+  <div class="info-row"><span>Total Pengeluaran:</span><span>-${this.formatCurrency(totalExpenses)}</span></div>
+  <div class="line"></div>
+  <div class="info-row bold"><span>Ekspektasi Kas:</span><span>${this.formatCurrency(expectedCash)}</span></div>
+
+  <div class="line"></div>
+  <div class="section-title">DETAIL PENJUALAN</div>
+  <div class="info-row"><span>Total Bruto:</span><span>${this.formatCurrency(totalSales)}</span></div>
+  <div class="info-row"><span>Diskon:</span><span>-${this.formatCurrency(totalDiscount)}</span></div>
+  <div class="info-row"><span>Pajak:</span><span>+${this.formatCurrency(totalTax)}</span></div>
+  <div class="line"></div>
+  <div class="info-row bold"><span>PEMBAYARAN</span></div>
+  ${paymentMethodsHtml}
+
+  <div class="line"></div>
+  <div class="section-title">DETAIL PENGELUARAN</div>
+  ${expensesHtml}
+
+  <div class="double-line"></div>
+  <div class="footer">
+    <div>Dicetak pada: ${new Date().toLocaleString('id-ID')}</div>
   </div>
 </body>
 </html>`

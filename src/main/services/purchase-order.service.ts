@@ -48,12 +48,80 @@ export interface UpdatePurchaseOrderDto {
   total?: string
 }
 
+import { StockTransactionService } from './stock-transaction.service'
+import { ProductLocationService } from './product-location.service'
+
 export class PurchaseOrderService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private stockTransactionService?: StockTransactionService,
+    private productLocationService?: ProductLocationService
+  ) {}
+
+  // ... (Rest of existing methods)
 
   /**
-   * Get all purchase orders
+   * Receive purchase order
+   * This action is irreversible. It will update the status to RECEIVED and increase inventory.
    */
+  async receiveOrder(id: string): Promise<PurchaseOrder> {
+    const po = await this.findById(id)
+    if (!po) {
+      throw new Error('Purchase order not found')
+    }
+
+    if (po.status !== 'ORDERED') {
+      throw new Error('Can only receive orders with ORDERED status')
+    }
+
+    if (!po.items || po.items.length === 0) {
+      throw new Error('Cannot receive order with no items')
+    }
+
+    if (!this.stockTransactionService || !this.productLocationService) {
+      throw new Error('Inventory services not initialized')
+    }
+
+    try {
+      this.db.exec('BEGIN TRANSACTION')
+      const now = Date.now()
+
+      // 1. Update PO status
+      this.db.run('UPDATE purchase_order SET status = ?, updated_at = ? WHERE id = ?', [
+        'RECEIVED',
+        now,
+        id
+      ])
+
+      // 2. Update inventory and create stock transactions
+      for (const item of po.items) {
+        // Create stock transaction
+        await this.stockTransactionService.create({
+          productId: item.productId,
+          storeId: po.storeId,
+          type: 'INBOUND',
+          quantity: item.quantity,
+          reference: po.code,
+          supplierId: po.supplierId,
+          performedBy: 'SYSTEM' // Or pass user ID if available
+        })
+
+        // Update product location
+        await this.productLocationService.adjustQuantity(item.productId, po.storeId, item.quantity)
+      }
+
+      this.db.exec('COMMIT')
+      saveDb(this.db)
+
+      const updated = await this.findById(id)
+      if (!updated) throw new Error('Failed to retrieve updated PO')
+      return updated
+    } catch (error) {
+      this.db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   async findAll(): Promise<PurchaseOrder[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM purchase_order WHERE deleted_at IS NULL ORDER BY created_at DESC'

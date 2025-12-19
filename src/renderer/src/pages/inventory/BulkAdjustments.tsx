@@ -40,6 +40,7 @@ import * as XLSX from 'xlsx'
 import { useToast } from '@renderer/contexts/ToastContext'
 import useBranchConfig from '@renderer/hooks/useBranchConfig'
 import type { Product, Store } from 'src/preload/api'
+import useAuth from '@renderer/hooks/useAuth'
 
 interface BulkAdjustmentData {
   row: number
@@ -56,6 +57,7 @@ export default function BulkStockAdjustmentsPage(): React.ReactElement {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const toast = useToast()
   const { storeId: branchStoreId } = useBranchConfig()
+  const { userName } = useAuth()
 
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -205,8 +207,7 @@ export default function BulkStockAdjustmentsPage(): React.ReactElement {
       }
 
       // Get current user
-      const userRes = await window.api.db.users.getCurrentUser()
-      if (!userRes.success || !userRes.data) {
+      if (!userName) {
         toast.error('Gagal mendapatkan informasi user')
         return
       }
@@ -217,7 +218,7 @@ export default function BulkStockAdjustmentsPage(): React.ReactElement {
         storeId: branchStoreId || selectedStoreId,
         difference: adj.quantity,
         note: adj.note,
-        performedBy: userRes.data.id
+        performedBy: userName
       }))
 
       // Call bulk API
@@ -324,9 +325,10 @@ export default function BulkStockAdjustmentsPage(): React.ReactElement {
 
       {/* Info Alert */}
       <Alert severity="info" sx={{ mb: 3 }}>
-        Upload file Excel dengan format: SKU, Quantity, Catatan.
-        Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok.
-        {branchStoreId && ` Semua penyesuaian akan dilakukan untuk toko: ${stores.find(s => s.id === branchStoreId)?.name || 'Current Store'}`}
+        Upload file Excel dengan format: SKU, Quantity, Catatan. Gunakan angka positif untuk
+        menambah stok, negatif untuk mengurangi stok.
+        {branchStoreId &&
+          ` Semua penyesuaian akan dilakukan untuk toko: ${stores.find((s) => s.id === branchStoreId)?.name || 'Current Store'}`}
       </Alert>
 
       {/* Selected File Info */}

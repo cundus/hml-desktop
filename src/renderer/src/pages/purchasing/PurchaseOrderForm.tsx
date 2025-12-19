@@ -250,26 +250,15 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     try {
       setSaving(true)
 
-      // Update PO status
-      await handleSave('RECEIVED')
+      // Call backend to receive order
+      const response = await window.api.db.purchaseOrders.receive(poId!)
 
-      // Create stock transactions and update inventory
-      for (const item of items) {
-        // Create inbound stock transaction
-        await window.api.db.stockTransactions.create({
-          productId: item.productId,
-          storeId,
-          type: 'INBOUND',
-          quantity: item.quantity,
-          reference: code
-        })
-
-        // Update inventory (add quantity)
-        await window.api.db.productLocations.adjustQuantity(item.productId, storeId, item.quantity)
+      if (response.success) {
+        globalAlert.success('Pesanan pembelian diterima! Inventori diperbarui.')
+        navigate('/purchasing/orders')
+      } else {
+        globalAlert.error(response.error || 'Gagal menerima pesanan pembelian')
       }
-
-      globalAlert.success('Pesanan pembelian diterima! Inventori diperbarui.')
-      navigate('/purchasing/orders')
     } catch (err) {
       globalAlert.error('Gagal menerima pesanan pembelian')
       console.error(err)

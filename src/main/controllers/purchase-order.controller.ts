@@ -121,5 +121,18 @@ export class PurchaseOrderController {
         }
       }
     })
+
+    // Receive purchase order
+    ipcMain.handle('db:purchaseOrders:receive', async (_, id: string) => {
+      try {
+        const result = await this.purchaseOrderService.receiveOrder(id)
+        return { success: true, data: result }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

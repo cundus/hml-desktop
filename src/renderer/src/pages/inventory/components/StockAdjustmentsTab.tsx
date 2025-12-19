@@ -23,12 +23,17 @@ interface StockAdjustmentsTabProps {
   onRefresh: () => void
 }
 
+import StockAdjustmentDetailsDialog from './StockAdjustmentDetailsDialog'
+
 export default function StockAdjustmentsTab({
   data
 }: StockAdjustmentsTabProps): React.ReactElement {
   const [searchText, setSearchText] = useState('')
   const [page, setPage] = useState(0)
   const [rowsPerPage, setRowsPerPage] = useState(25)
+  const [selectedAdjustment, setSelectedAdjustment] = useState<
+    (StockAdjustment & { productName: string; storeName: string }) | null
+  >(null)
 
   const filteredData = useMemo(() => {
     if (!searchText) return data
@@ -65,9 +70,14 @@ export default function StockAdjustmentsTab({
     }
   }
 
-  const handleViewDetails = (adjustment: StockAdjustment): void => {
-    // TODO: Implement view details dialog
-    console.log('View details for:', adjustment)
+  const handleViewDetails = (
+    adjustment: StockAdjustment & { productName: string; storeName: string }
+  ): void => {
+    setSelectedAdjustment(adjustment)
+  }
+
+  const handleCloseDetails = (): void => {
+    setSelectedAdjustment(null)
   }
 
   return (
@@ -166,6 +176,12 @@ export default function StockAdjustmentsTab({
         page={page}
         onPageChange={handleChangePage}
         onRowsPerPageChange={handleChangeRowsPerPage}
+      />
+
+      <StockAdjustmentDetailsDialog
+        open={!!selectedAdjustment}
+        onClose={handleCloseDetails}
+        adjustment={selectedAdjustment}
       />
     </Box>
   )

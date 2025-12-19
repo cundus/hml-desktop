@@ -16,6 +16,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import { Close as CloseIcon } from '@mui/icons-material'
 import { Product, Store } from 'src/preload/api'
+import useAuth from '@renderer/hooks/useAuth'
 
 interface StockAdjustmentDialogProps {
   open: boolean
@@ -28,6 +29,7 @@ export default function StockAdjustmentDialog({
   onClose,
   onSuccess
 }: StockAdjustmentDialogProps): React.JSX.Element {
+  const { userName } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(false)
@@ -108,8 +110,7 @@ export default function StockAdjustmentDialog({
     setError(null)
 
     try {
-      const user = await window.api.db.auth.getCurrentUser()
-      if (!user.success || !user.data) {
+      if (!userName) {
         setError('User not authenticated')
         return
       }
@@ -119,7 +120,7 @@ export default function StockAdjustmentDialog({
         storeId: formData.storeId,
         difference: parseInt(formData.difference),
         note: formData.note || undefined,
-        performedBy: user.data.name || user.data.id
+        performedBy: userName
       })
 
       if (result.success) {
@@ -228,7 +229,10 @@ export default function StockAdjustmentDialog({
             value={formData.difference}
             onChange={(e) => setFormData({ ...formData, difference: e.target.value })}
             error={!!fieldErrors.difference}
-            helperText={fieldErrors.difference || 'Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok'}
+            helperText={
+              fieldErrors.difference ||
+              'Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok'
+            }
           />
 
           {selectedProduct && (

@@ -72,5 +72,8 @@ export const purchaseOrderApi = {
     ipcRenderer.invoke('db:purchaseOrders:update', id, data) as Promise<ApiResponse<PurchaseOrder>>,
 
   delete: (id: string) =>
-    ipcRenderer.invoke('db:purchaseOrders:delete', id) as Promise<ApiResponse<PurchaseOrder>>
+    ipcRenderer.invoke('db:purchaseOrders:delete', id) as Promise<ApiResponse<PurchaseOrder>>,
+
+  receive: (id: string) =>
+    ipcRenderer.invoke('db:purchaseOrders:receive', id) as Promise<ApiResponse<PurchaseOrder>>
 }

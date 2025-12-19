@@ -452,7 +452,7 @@ export class ReceiptService {
     ${parseFloat(discount) > 0 ? `<div class="total-row"><span>Diskon</span><span>-${this.formatCurrency(discount)}</span></div>` : ''}
     ${parseFloat(tax) > 0 ? `<div class="total-row"><span>Pajak</span><span>${this.formatCurrency(tax)}</span></div>` : ''}
     <div class="total-row grand"><span>TOTAL</span><span>${this.formatCurrency(total)}</span></div>
-    ${parseFloat(transaction.totalWeight || '0') > 0 ? `<div class="total-row"><span>Total Berat</span><span>${this.formatWeight(transaction.totalWeight)}</span></div>` : ''}
+    ${parseFloat(transaction.totalWeight || '0') > 0 ? `<div class="total-row"><span>Tonase</span><span>${this.formatWeight(transaction.totalWeight)}</span></div>` : ''}
   </div>
 
   ${

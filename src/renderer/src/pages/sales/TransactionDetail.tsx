@@ -72,6 +72,7 @@ interface Product {
   name: string
   unit: string
   cost: string
+  weight?: string
 }
 
 interface Customer {
@@ -674,6 +675,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
                           category: 'Lainnya',
                           unit: newValue.unit,
                           cost: newValue.cost,
+                          weight: Number(newValue.weight) || 0,
                           price: Number(newValue.cost ?? '0')
                         }
 

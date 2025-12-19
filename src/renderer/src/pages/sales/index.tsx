@@ -14,7 +14,7 @@ import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import ProductBrowser, { type Product } from './components/ProductBrowser'
-import ProductSelectModal, { type ProductSelectResult } from './components/ProductSelectModal'
+import ProductSelectModal, { type ProductSelectResult, type ProductForSelection } from './components/ProductSelectModal'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentMethodDialog, {
@@ -192,7 +192,7 @@ export default function SalesPage(): React.JSX.Element {
             baseQuantity,
             price: unitPrice,
             total: unitPrice * quantity
-          }
+          } as CartItem
         ]
       }
     })
@@ -271,7 +271,7 @@ export default function SalesPage(): React.JSX.Element {
           const conv = item.conversionFactor ?? 1
           const baseQuantity = item.baseQuantity ?? item.quantity * conv
           // Weight calculation: base weight * base quantity (weight is per base unit)
-          const itemWeight = (parseFloat(item.weight) || 0) * baseQuantity
+          const itemWeight = (parseFloat(item.weight || '0') || 0) * baseQuantity
           totalWeight += itemWeight
           return {
             productId: item.productId ?? item.id,
@@ -629,7 +629,7 @@ export default function SalesPage(): React.JSX.Element {
 
         <ProductSelectModal
           open={productSelectModalOpen}
-          product={selectedProduct}
+          product={selectedProduct as ProductForSelection | null}
           storeId={defaultStoreId}
           enableMultiUomPricing={featureFlags.enableMultiUomPricing}
           onClose={() => {

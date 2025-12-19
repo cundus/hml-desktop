@@ -19,7 +19,7 @@ interface StockOverviewTabProps {
 
 export default function StockOverviewTab({ data }: StockOverviewTabProps): React.ReactElement {
   const [searchText, setSearchText] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading] = useState(false)
 
   const filteredData = useMemo(() => {
     if (!searchText) return data
@@ -122,18 +122,17 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
     console.log('Quick adjust for:', item)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleExport = async (): Promise<void> => {
-    setLoading(true)
-    try {
-      // TODO: Implement export functionality
-      console.log('Exporting stock overview...')
-    } catch (error) {
-      console.error('Export failed:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // const handleExport = async (): Promise<void> => {
+  //   setLoading(true)
+  //   try {
+  //     // TODO: Implement export functionality
+  //     console.log('Exporting stock overview...')
+  //   } catch (error) {
+  //     console.error('Export failed:', error)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
 
   return (
     <Box>

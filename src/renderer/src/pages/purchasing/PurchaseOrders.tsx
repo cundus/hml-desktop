@@ -17,6 +17,7 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Chip from '@mui/material/Chip'
 import Menu from '@mui/material/Menu'
+import Tooltip from '@mui/material/Tooltip'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -340,23 +341,67 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell align="right">{po.total}</TableCell>
                 <TableCell align="center">
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/purchasing/order-form?id=${po.id}`)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={(e) => handleMenuOpen(e, po)}>
-                    <MoreVertIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => handleDelete(po.id)}
-                    disabled={po.status === 'RECEIVED'}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                  <Stack direction="row" spacing={1} justifyContent="center">
+                    {/* Primary Action Breakdown */}
+                    {po.status === 'DRAFT' && (
+                      <Tooltip title="Edit / Kirim">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => navigate(`/purchasing/order-form?id=${po.id}`)}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    {po.status === 'ORDERED' && (
+                      <>
+                        <Tooltip title="Terima Barang">
+                          <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => navigate(`/purchasing/order-form?id=${po.id}`)}
+                          >
+                            <AddIcon /> {/* Or a better icon like SystemUpdateAlt or Inventory */}
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Edit Detail">
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/purchasing/order-form?id=${po.id}`)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      </>
+                    )}
+
+                    {po.status === 'RECEIVED' && (
+                      <Tooltip title="Lihat Detail">
+                        <IconButton
+                          size="small"
+                          onClick={() => navigate(`/purchasing/order-form?id=${po.id}`)}
+                        >
+                          <EditIcon /> {/* Using Edit icon as View since it opens same form */}
+                        </IconButton>
+                      </Tooltip>
+                    )}
+
+                    <Tooltip title="Ubah Status">
+                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, po)}>
+                        <MoreVertIcon />
+                      </IconButton>
+                    </Tooltip>
+
+                    {po.status !== 'RECEIVED' && (
+                      <Tooltip title="Hapus">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(po.id)}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}

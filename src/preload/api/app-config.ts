@@ -80,5 +80,10 @@ export const appConfigApi = {
    * Set multi-UOM pricing feature flag
    */
   setMultiUomPricing: (enabled: boolean) =>
-    ipcRenderer.invoke('app:config:setMultiUomPricing', enabled) as Promise<ApiResponse<void>>
+    ipcRenderer.invoke('app:config:setMultiUomPricing', enabled) as Promise<ApiResponse<void>>,
+
+  /**
+   * Reset transactional data
+   */
+  resetData: () => ipcRenderer.invoke('app:config:resetData') as Promise<ApiResponse<void>>
 }

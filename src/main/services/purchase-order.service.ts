@@ -78,12 +78,9 @@ export class PurchaseOrderService {
       throw new Error('Cannot receive order with no items')
     }
 
-    if (!this.stockTransactionService || !this.productLocationService) {
-      throw new Error('Inventory services not initialized')
-    }
-
+    // Use synchronous transaction to prevent event loop interleaving
     try {
-      this.db.exec('BEGIN TRANSACTION')
+      this.db.exec('SAVEPOINT receive_order')
       const now = Date.now()
 
       // 1. Update PO status
@@ -95,29 +92,74 @@ export class PurchaseOrderService {
 
       // 2. Update inventory and create stock transactions
       for (const item of po.items) {
-        // Create stock transaction
-        await this.stockTransactionService.create({
-          productId: item.productId,
-          storeId: po.storeId,
-          type: 'INBOUND',
-          quantity: item.quantity,
-          reference: po.code,
-          supplierId: po.supplierId,
-          performedBy: 'SYSTEM' // Or pass user ID if available
-        })
+        // A. Create stock transaction (Optimized inlining)
+        const transId = randomUUID()
+        this.db.run(
+          'INSERT INTO stock_transaction (id, product_id, store_id, type, quantity, reference, batch_id, supplier_id, customer_id, performed_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            transId,
+            item.productId,
+            po.storeId,
+            'INBOUND',
+            item.quantity,
+            po.code,
+            null, // batchId
+            po.supplierId,
+            null, // customerId
+            'SYSTEM',
+            now,
+            now
+          ]
+        )
 
-        // Update product location
-        await this.productLocationService.adjustQuantity(item.productId, po.storeId, item.quantity)
+        // B. Update product location (Optimized inlining)
+        // Check if location exists
+        const stmt = this.db.prepare(
+          'SELECT id, quantity, reserved_quantity FROM product_location WHERE product_id = ? AND store_id = ? AND deleted_at IS NULL'
+        )
+        stmt.bind([item.productId, po.storeId])
+
+        if (stmt.step()) {
+          // Update existing
+          const row = stmt.getAsObject()
+          const locId = row.id as string
+          const currentQty = row.quantity as number
+          const newQty = currentQty + item.quantity
+
+          this.db.run('UPDATE product_location SET quantity = ?, updated_at = ? WHERE id = ?', [
+            newQty,
+            now,
+            locId
+          ])
+        } else {
+          // Create new
+          const locId = randomUUID()
+          this.db.run(
+            'INSERT INTO product_location (id, product_id, store_id, quantity, reserved_quantity, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [locId, item.productId, po.storeId, item.quantity, 0, now, now]
+          )
+        }
+        stmt.free()
       }
 
-      this.db.exec('COMMIT')
-      saveDb(this.db)
+      this.db.exec('RELEASE receive_order')
+    } catch (error) {
+      try {
+        this.db.exec('ROLLBACK TO receive_order')
+      } catch (e) {
+        console.error('Failed to rollback savepoint:', e)
+      }
+      throw error
+    }
 
+    // Save and return result outside transaction block
+    try {
+      saveDb(this.db)
       const updated = await this.findById(id)
       if (!updated) throw new Error('Failed to retrieve updated PO')
       return updated
     } catch (error) {
-      this.db.exec('ROLLBACK')
+      console.error('Post-transaction error:', error)
       throw error
     }
   }
@@ -293,28 +335,55 @@ export class PurchaseOrderService {
   /**
    * Update purchase order
    */
-  async update(id: string, data: UpdatePurchaseOrderDto): Promise<PurchaseOrder> {
+  async update(
+    id: string,
+    data: UpdatePurchaseOrderDto & { items?: CreatePurchaseOrderItemDto[] }
+  ): Promise<PurchaseOrder> {
     const now = Date.now()
 
-    const fields: string[] = ['status = ?', 'updated_at = ?']
-    const values: any[] = [data.status, now]
+    try {
+      this.db.exec('BEGIN TRANSACTION')
 
-    if (data.total !== undefined) {
-      fields.unshift('total = ?')
-      values.unshift(data.total)
+      // 1. Update PO fields
+      const fields: string[] = ['status = ?', 'updated_at = ?']
+      const values: any[] = [data.status, now]
+
+      if (data.total !== undefined) {
+        fields.unshift('total = ?')
+        values.unshift(data.total)
+      }
+
+      values.push(id)
+
+      this.db.run(`UPDATE purchase_order SET ${fields.join(', ')} WHERE id = ?`, values)
+
+      // 2. Update items if provided
+      if (data.items) {
+        // Delete existing items
+        this.db.run('DELETE FROM purchase_order_item WHERE po_id = ?', [id])
+
+        // Insert new items
+        for (const item of data.items) {
+          const itemId = randomUUID()
+          this.db.run(
+            'INSERT INTO purchase_order_item (id, po_id, product_id, quantity, cost, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [itemId, id, item.productId, item.quantity, item.cost, now, now]
+          )
+        }
+      }
+
+      this.db.exec('COMMIT')
+      saveDb(this.db)
+
+      const updated = await this.findById(id)
+      if (!updated) {
+        throw new Error('Purchase order not found after update')
+      }
+      return updated
+    } catch (error) {
+      this.db.exec('ROLLBACK')
+      throw error
     }
-
-    values.push(id)
-
-    this.db.run(`UPDATE purchase_order SET ${fields.join(', ')} WHERE id = ?`, values)
-
-    saveDb(this.db)
-
-    const updated = await this.findById(id)
-    if (!updated) {
-      throw new Error('Purchase order not found after update')
-    }
-    return updated
   }
 
   /**

@@ -93,7 +93,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
           setCode(`PO-${Date.now()}`)
         } else {
           // Load existing PO
-          await loadPurchaseOrder(poId)
+          await loadPurchaseOrder(poId, productsRes.data ?? [])
         }
       }
     } catch (err) {
@@ -103,7 +103,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     }
   }
 
-  const loadPurchaseOrder = async (id: string): Promise<void> => {
+  const loadPurchaseOrder = async (id: string, currentProducts: Product[]): Promise<void> => {
     try {
       const response = await window.api.db.purchaseOrders.getById(id)
       if (response.success && response.data) {
@@ -115,7 +115,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
         // Load items
         if (po.items) {
-          const productsMap = new Map(products.map((p) => [p.id, p]))
+          const productsMap = new Map(currentProducts.map((p) => [p.id, p]))
           const loadedItems = po.items.map((item) => {
             const product = productsMap.get(item.productId)
             const cost = parseFloat(item.cost)
@@ -221,7 +221,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       if (poId) {
         response = await window.api.db.purchaseOrders.update(poId, {
           status: saveStatus,
-          total: total.toFixed(2)
+          total: total.toFixed(2),
+          items: poData.items
         })
       } else {
         response = await window.api.db.purchaseOrders.create(poData)
@@ -399,11 +400,20 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 0)}
                     size="small"
                     inputProps={{ min: 1 }}
-                    color="error"
+                    disabled={status === 'RECEIVED'}
+                    sx={{ width: 80 }}
+                  />
+                </TableCell>
+                <TableCell align="right">{item.cost.toLocaleString('id-ID')}</TableCell>
+                <TableCell align="right">{item.subtotal.toLocaleString('id-ID')}</TableCell>
+                <TableCell align="right">
+                  <IconButton
+                    size="small"
                     onClick={() => removeItem(index)}
                     disabled={status === 'RECEIVED'}
-                  />
-                  <DeleteIcon fontSize="small" />
+                  >
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
                 </TableCell>
               </TableRow>
             ))}

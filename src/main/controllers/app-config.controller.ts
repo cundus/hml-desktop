@@ -124,4 +124,13 @@ export function registerAppConfigHandlers(service: AppConfigService): void {
       }
     }
   )
+  // Reset transactional data
+  ipcMain.handle('app:config:resetData', async (): Promise<ApiResponse<void>> => {
+    try {
+      await service.resetData()
+      return { success: true }
+    } catch (error) {
+      return { success: false, error: (error as Error).message }
+    }
+  })
 }

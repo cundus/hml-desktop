@@ -4,6 +4,7 @@ import { StockTransactionService } from '../services/stock-transaction.service'
 import { StockAdjustmentService, StockAdjustment } from '../services/stock-adjustment.service'
 import { ProductService } from '../services/product.service'
 import { StoreService } from '../services/store.service'
+import { PurchaseOrderService } from '../services/purchase-order.service'
 import { getLocalDb } from '../localDb'
 
 export function registerInventoryHandlers(): void {
@@ -13,6 +14,7 @@ export function registerInventoryHandlers(): void {
   const stockAdjustmentService = new StockAdjustmentService(db)
   const productService = new ProductService(db)
   const storeService = new StoreService(db)
+  const purchaseOrderService = new PurchaseOrderService(db)
 
   // Get stock overview
   ipcMain.handle('inventory:stock-overview', async (_, storeId?: string) => {
@@ -23,6 +25,17 @@ export function registerInventoryHandlers(): void {
 
       for (const store of stores) {
         const locations = await productLocationService.findByStoreId(store)
+        const orderedPOs = await purchaseOrderService.findByStoreId(store)
+        const orderedQuantityMap = new Map<string, number>()
+
+        for (const po of orderedPOs) {
+          if (po.status === 'ORDERED' && po.items) {
+            for (const item of po.items) {
+              const current = orderedQuantityMap.get(item.productId) || 0
+              orderedQuantityMap.set(item.productId, current + item.quantity)
+            }
+          }
+        }
 
         for (const location of locations) {
           const product = await productService.findById(location.productId)
@@ -37,6 +50,7 @@ export function registerInventoryHandlers(): void {
               quantity: location.quantity,
               reservedQuantity: location.reservedQuantity,
               availableQuantity: location.quantity - location.reservedQuantity,
+              orderedQuantity: orderedQuantityMap.get(product.id) || 0,
               lowStockThreshold: 10, // TODO: Make this configurable per product
               isLowStock: location.quantity - location.reservedQuantity < 10
             })

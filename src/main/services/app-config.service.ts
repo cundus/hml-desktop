@@ -230,4 +230,44 @@ export class AppConfigService {
       enableMultiUomPricing: await this.isMultiUomPricingEnabled()
     }
   }
+
+  /**
+   * Reset all transactional data (Factory Reset - Data Only)
+   * Keeps users, roles, and master data (products, suppliers, etc.)
+   */
+  async resetData(): Promise<void> {
+    try {
+      this.db.exec('BEGIN TRANSACTION')
+
+      // Inventory
+      this.db.exec('DELETE FROM stock_transaction')
+      this.db.exec('DELETE FROM product_location')
+      this.db.exec('DELETE FROM stock_adjustment')
+
+      // Purchasing
+      this.db.exec('DELETE FROM purchase_order_item')
+      this.db.exec('DELETE FROM purchase_order')
+
+      // Sales
+      this.db.exec('DELETE FROM transaction_items')
+      this.db.exec('DELETE FROM transactions')
+
+      // Operations
+      this.db.exec('DELETE FROM expenses')
+      this.db.exec('DELETE FROM shift_history')
+      this.db.exec('DELETE FROM cashier_shift')
+
+      // Optional: Reset sequences for these tables if using AUTOINCREMENT (mostly UUIDs here, so ok)
+      // cleaning sqlite_sequence is good practice if any integer IDs are used and reset is desired
+      this.db.exec(
+        "DELETE FROM sqlite_sequence WHERE name IN ('stock_transaction', 'product_location', 'stock_adjustment', 'purchase_order', 'purchase_order_item', 'transaction_items', 'transactions', 'expenses', 'shift_history', 'cashier_shift')"
+      )
+
+      this.db.exec('COMMIT')
+      saveDb(this.db)
+    } catch (error) {
+      this.db.exec('ROLLBACK')
+      throw error
+    }
+  }
 }

@@ -150,10 +150,16 @@ const menus: MenuItem[] = [
   },
   {
     key: 'settings-group',
-    label: 'Pengaturan',
+    label: 'Menu Pengaturan',
     icon: <SettingsIcon fontSize="small" />,
     permissions: ['settings.view'],
     children: [
+      {
+        key: 'settings',
+        label: 'Pengaturan',
+        path: '/settings',
+        permissions: ['settings.view']
+      },
       {
         key: 'master',
         label: 'Data Master',
@@ -215,12 +221,7 @@ const menus: MenuItem[] = [
         path: '/access-control',
         permissions: ['settings.access-control.manage']
       },
-      {
-        key: 'app-config',
-        label: 'Konfigurasi Aplikasi',
-        path: '/settings/app-config',
-        permissions: ['settings.app-config.manage']
-      },
+
       {
         key: 'printer',
         label: 'Pengaturan Printer',

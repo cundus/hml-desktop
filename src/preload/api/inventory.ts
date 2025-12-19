@@ -272,6 +272,7 @@ export interface StockOverviewItem {
   quantity: number
   reservedQuantity: number
   availableQuantity: number
+  orderedQuantity: number
   lowStockThreshold: number
   isLowStock: boolean
 }

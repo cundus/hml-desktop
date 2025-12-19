@@ -61,7 +61,7 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
       )
     },
     {
-      field: 'reservedQuantity',
+      field: 'orderedQuantity',
       headerName: 'Dipesan',
       width: 120,
       type: 'number',

@@ -24,7 +24,6 @@ import PurchaseOrdersPage from './pages/purchasing/PurchaseOrders'
 import PurchaseOrderFormPage from './pages/purchasing/PurchaseOrderForm'
 import Settings from './pages/Settings'
 import AccessControlPage from './pages/settings/AccessControl'
-import AppConfigPage from './pages/settings/AppConfig'
 import PrinterSettings from './pages/settings/PrinterSettings'
 import CategoryPage from './pages/settings/master/Category'
 import CustomerPage from './pages/settings/master/Customer'
@@ -110,10 +109,6 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
             children: [{ path: 'access-control', element: <AccessControlPage /> }]
-          },
-          {
-            element: <RoleGuard requiredPermissions={['settings.app-config.manage']} />,
-            children: [{ path: 'settings/app-config', element: <AppConfigPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.printer.manage']} />,

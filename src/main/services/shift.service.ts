@@ -474,9 +474,9 @@ export class ShiftService {
     const now = Date.now()
 
     this.db.run(
-      `INSERT INTO shift_history (id, shift_id, user_id, action, notes, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, shiftId, userId, action, notes ?? null, now]
+      `INSERT INTO shift_history (id, shift_id, user_id, action, notes, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [id, shiftId, userId, action, notes ?? null, now, now]
     )
   }
 

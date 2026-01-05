@@ -641,6 +641,12 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+   try {
+    database.run(`ALTER TABLE shift_history ADD COLUMN updated_at INTEGER`)
+  } catch {
+    // Column already exists
+  }
+
   console.log('✓ Database tables initialized')
 }
 

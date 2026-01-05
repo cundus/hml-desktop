@@ -48,14 +48,14 @@ export interface UpdatePurchaseOrderDto {
   total?: string
 }
 
-import { StockTransactionService } from './stock-transaction.service'
-import { ProductLocationService } from './product-location.service'
+// import { StockTransactionService } from './stock-transaction.service'
+// import { ProductLocationService } from './product-location.service'
 
 export class PurchaseOrderService {
   constructor(
-    private db: Database,
-    private stockTransactionService?: StockTransactionService,
-    private productLocationService?: ProductLocationService
+    private db: Database
+    // private stockTransactionService?: StockTransactionService,
+    // private productLocationService?: ProductLocationService
   ) {}
 
   // ... (Rest of existing methods)

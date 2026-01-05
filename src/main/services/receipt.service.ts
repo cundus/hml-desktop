@@ -503,7 +503,7 @@ export class ReceiptService {
       netSales,
       expectedCash,
       totalExpenses,
-      expenseCount,
+      // expenseCount,
       paymentMethodStats,
       expenses
     } = data

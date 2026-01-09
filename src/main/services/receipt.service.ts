@@ -497,13 +497,14 @@ export class ReceiptService {
   private generateSettlementReportHtml(data: any): string {
     const {
       shift,
+      transactionCount,
       totalSales,
       totalDiscount,
       totalTax,
       netSales,
       expectedCash,
       totalExpenses,
-      // expenseCount,
+      expenseCount,
       paymentMethodStats,
       expenses
     } = data
@@ -588,6 +589,8 @@ export class ReceiptService {
   <div class="info-row"><span>Kasir:</span><span>${shift.userName || 'Unknown'}</span></div>
   <div class="info-row"><span>Buka:</span><span>${new Date(shift.openedAt).toLocaleString('id-ID')}</span></div>
   <div class="info-row"><span>Tutup:</span><span>${shift.closedAt ? new Date(shift.closedAt).toLocaleString('id-ID') : 'Sekarang'}</span></div>
+  <div class="info-row"><span>Jumlah Transaksi:</span><span>${transactionCount || 0}</span></div>
+  <div class="info-row"><span>Jumlah Pengeluaran:</span><span>${expenseCount || 0}</span></div>
 
   <div class="line"></div>
   <div class="section-title">RINGKASAN KAS</div>
@@ -595,7 +598,9 @@ export class ReceiptService {
   <div class="info-row"><span>Total Penjualan:</span><span>+${this.formatCurrency(netSales)}</span></div>
   <div class="info-row"><span>Total Pengeluaran:</span><span>-${this.formatCurrency(totalExpenses)}</span></div>
   <div class="line"></div>
-  <div class="info-row bold"><span>Ekspektasi Kas:</span><span>${this.formatCurrency(expectedCash)}</span></div>
+  <div class="info-row"><span>Ekspektasi Kas:</span><span>${this.formatCurrency(expectedCash)}</span></div>
+  <div class="info-row bold"><span>Kas Akhir:</span><span>${this.formatCurrency(shift.closingCash || '0')}</span></div>
+  <div class="info-row bold" style="margin-top: 1mm;"><span>SELISIH:</span><span style="color: ${parseFloat(shift.difference || '0') >= 0 ? '#228B22' : '#DC143C'};">${parseFloat(shift.difference || '0') >= 0 ? '+' : ''}${this.formatCurrency(shift.difference || '0')}</span></div>
 
   <div class="line"></div>
   <div class="section-title">DETAIL PENJUALAN</div>

@@ -87,13 +87,29 @@ export function ShiftProvider({ children }: { children: ReactNode }): React.JSX.
     async (closingCash: string, notes?: string) => {
       if (!token || !currentShift) throw new Error('No active shift')
 
-      const response = await window.api.db.shifts.close(currentShift.id, token, {
+      const shiftId = currentShift.id
+
+      const response = await window.api.db.shifts.close(shiftId, token, {
         closingCash,
         notes
       })
 
       if (!response.success) {
         throw new Error(response.error ?? 'Failed to close shift')
+      }
+
+      // Fetch shift summary and print settlement report
+      try {
+        const summaryRes = await window.api.db.shifts.getSummary(shiftId)
+        if (summaryRes.success && summaryRes.data) {
+          const printResult = await window.api.db.printer.printSettlementReport(summaryRes.data)
+          if (!printResult.success) {
+            console.error('Failed to print settlement report:', printResult.error)
+          }
+        }
+      } catch (printError) {
+        console.error('Error printing settlement report:', printError)
+        // Don't throw - shift is already closed, printing is secondary
       }
 
       setCurrentShift(null)

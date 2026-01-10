@@ -134,8 +134,8 @@ export async function bootstrap(): Promise<void> {
   // Initialize printer config service (uses local JSON file, not database)
   const printerConfigService = new PrinterConfigService()
 
-  // Initialize receipt service with printer config
-  const receiptService = new ReceiptService(appConfigService, productService, printerConfigService)
+  // Initialize receipt service with printer config and store service
+  const receiptService = new ReceiptService(appConfigService, productService, printerConfigService, storeService)
 
   // Initialize delivery order service
   const { DeliveryOrderService } = await import('./services/delivery-order.service')

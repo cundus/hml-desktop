@@ -36,6 +36,9 @@ export async function initLocalDb(): Promise<Database> {
   if (!db) throw new Error('Failed to initialize database')
   await createTables(db)
 
+  // Run migrations for existing databases
+  await runMigrations(db)
+
   // Save to disk
   saveDb(db, dbPath)
 
@@ -79,6 +82,8 @@ async function createTables(database: Database): Promise<void> {
       code TEXT NOT NULL UNIQUE,
       name TEXT NOT NULL,
       address TEXT,
+      phone TEXT,
+      email TEXT,
       type TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -792,4 +797,29 @@ export function timestampToDate(timestamp: number | null): Date | null {
  */
 export function dateToTimestamp(date: Date | null): number | null {
   return date ? date.getTime() : null
+}
+
+/**
+ * Run database migrations for existing databases
+ * This adds new columns to existing tables without losing data
+ */
+async function runMigrations(database: Database): Promise<void> {
+  console.log('Running database migrations...')
+  
+  // Migration: Add phone and email columns to store table
+  try {
+    database.run('ALTER TABLE store ADD COLUMN phone TEXT')
+    console.log('✓ Added phone column to store table')
+  } catch {
+    // Column already exists, ignore
+  }
+  
+  try {
+    database.run('ALTER TABLE store ADD COLUMN email TEXT')
+    console.log('✓ Added email column to store table')
+  } catch {
+    // Column already exists, ignore
+  }
+  
+  console.log('✓ Database migrations completed')
 }

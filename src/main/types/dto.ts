@@ -83,6 +83,8 @@ export interface CreateStoreDto {
   code: string
   name: string
   address?: string
+  phone?: string
+  email?: string
   type: string
 }
 
@@ -90,6 +92,8 @@ export interface UpdateStoreDto {
   code?: string
   name?: string
   address?: string
+  phone?: string
+  email?: string
   type?: string
 }
 

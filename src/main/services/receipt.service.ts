@@ -6,6 +6,7 @@ import { Transaction, TransactionItem } from './transaction.service'
 import { AppConfigService } from './app-config.service'
 import { ProductService } from './product.service'
 import { PrinterConfigService, PrinterPurpose } from './printer-config.service'
+import { StoreService, Store } from './store.service'
 
 export interface ReceiptConfig {
   printerName?: string
@@ -34,6 +35,13 @@ export interface ReceiptData {
   customerName?: string
   paidAmount?: string
   change?: string
+  // Branch info
+  branchInfo?: {
+    storeName: string
+    branchName: string
+    branchAddress: string
+    branchContact: string
+  }
 }
 
 export interface ExpenseReportData {
@@ -63,7 +71,8 @@ export class ReceiptService {
   constructor(
     private appConfigService: AppConfigService,
     private productService: ProductService,
-    private printerConfigService?: PrinterConfigService
+    private printerConfigService?: PrinterConfigService,
+    private storeService?: StoreService
   ) {
     this.config = this.getDefaultConfig()
     void this.loadConfig()
@@ -136,6 +145,52 @@ export class ReceiptService {
       connected: isConnected,
       printerName: configuredPrinter || availablePrinters[0],
       availablePrinters
+    }
+  }
+
+  /**
+   * Get branch header info for printing
+   * Format: Store Name (from settings), Branch Name, Branch Address, Branch Phone - Branch Email
+   */
+  private async getBranchHeaderInfo(storeId?: string): Promise<{
+    storeName: string
+    branchName: string
+    branchAddress: string
+    branchContact: string
+  }> {
+    let branch: Store | undefined
+
+    if (storeId && this.storeService) {
+      try {
+        branch = await this.storeService.findById(storeId)
+      } catch (error) {
+        console.warn('Failed to fetch branch info:', error)
+      }
+    }
+
+    if (branch) {
+      const contactParts: string[] = []
+      if (branch.phone) contactParts.push(branch.phone)
+      if (branch.email) contactParts.push(branch.email)
+      
+      return {
+        storeName: this.config.storeName,
+        branchName: branch.name,
+        branchAddress: branch.address || '',
+        branchContact: contactParts.join(' - ')
+      }
+    }
+
+    // Fallback to config if no branch found
+    const contactParts: string[] = []
+    if (this.config.storePhone) contactParts.push(this.config.storePhone)
+    if (this.config.storeEmail) contactParts.push(this.config.storeEmail)
+
+    return {
+      storeName: this.config.storeName,
+      branchName: '',
+      branchAddress: this.config.storeAddress,
+      branchContact: contactParts.join(' - ')
     }
   }
 
@@ -259,6 +314,9 @@ export class ReceiptService {
 
       const itemsWithNames = await this.fetchItemsWithProductNames(transaction.items || [])
 
+      // Get branch info from transaction's storeId
+      const branchInfo = await this.getBranchHeaderInfo(transaction.storeId)
+
       const receiptData: ReceiptData = {
         transaction,
         items: itemsWithNames,
@@ -269,7 +327,8 @@ export class ReceiptService {
         totalWeight: transaction.totalWeight ?? '0',
         customerName: options?.customerName,
         paidAmount: options?.paidAmount,
-        change: options?.change
+        change: options?.change,
+        branchInfo
       }
 
       const html = this.generateReceiptHtml(receiptData)
@@ -379,7 +438,7 @@ export class ReceiptService {
 
   // Generate receipt HTML with improved clarity for thermal printers
   private generateReceiptHtml(data: ReceiptData): string {
-    const { transaction, items, subtotal, discount, tax, total, totalWeight, customerName, paidAmount, change } = data
+    const { transaction, items, subtotal, discount, tax, total, totalWeight, customerName, paidAmount, change, branchInfo } = data
     const w = this.config.paperWidth
 
     const paymentMethodMap: Record<string, string> = {
@@ -503,10 +562,10 @@ export class ReceiptService {
 </head>
 <body>
   <div class="header center">
-    <div class="store-name">${this.config.storeName}</div>
-    <div>${this.config.storeAddress}</div>
-    <div>${this.config.storePhone}</div>
-    ${this.config.storeEmail ? `<div>${this.config.storeEmail}</div>` : ''}
+    <div class="store-name">${branchInfo?.storeName || this.config.storeName}</div>
+    ${branchInfo?.branchName ? `<div>${branchInfo.branchName}</div>` : ''}
+    <div>${branchInfo?.branchAddress || this.config.storeAddress}</div>
+    <div>${branchInfo?.branchContact || this.config.storePhone}</div>
   </div>
 
   <div class="double-line"></div>
@@ -908,7 +967,10 @@ export class ReceiptService {
       const printerSettings = await this.getPrinterForPurpose('do')
       console.log('Using printer for delivery order:', printerSettings.printerName || 'default')
 
-      const html = this.generateDeliveryOrderHtml(data)
+      // Get branch info
+      const branchInfo = await this.getBranchHeaderInfo(data.storeId)
+
+      const html = this.generateDeliveryOrderHtml(data, branchInfo)
       return await this.printHtml(html, printerSettings)
     } catch (error) {
       console.error('Delivery order printing failed:', error)
@@ -919,7 +981,10 @@ export class ReceiptService {
     }
   }
 
-  private generateDeliveryOrderHtml(data: DeliveryOrderPrintData): string {
+  private generateDeliveryOrderHtml(
+    data: DeliveryOrderPrintData,
+    branchInfo: { storeName: string; branchName: string; branchAddress: string; branchContact: string }
+  ): string {
     const {
       noSuratJalan,
       tanggalSuratJalan,
@@ -982,15 +1047,29 @@ export class ReceiptService {
       max-width: 210mm;
     }
     .header {
-      text-align: center;
+      display: flex;
+      justify-content: space-between;
       border-bottom: 1px solid #000;
       padding-bottom: 8px;
       margin-bottom: 10px;
     }
+    .header-left {
+      text-align: left;
+    }
+    .header-right {
+      text-align: right;
+    }
+    .store-name {
+      font-size: 12pt;
+      font-weight: bold;
+    }
+    .store-info {
+      font-size: 9pt;
+    }
     .title {
       font-size: 14pt;
       font-weight: bold;
-      margin-bottom: 5px;
+      margin-bottom: 3px;
     }
     .do-number {
       font-size: 11pt;
@@ -1074,9 +1153,17 @@ export class ReceiptService {
 </head>
 <body>
   <div class="header">
-    <div class="title">SURAT JALAN</div>
-    <div class="do-number">${noSuratJalan}</div>
-    <div>Tanggal: ${formatDate(tanggalSuratJalan)}</div>
+    <div class="header-left">
+      <div class="store-name">${branchInfo.storeName}</div>
+      ${branchInfo.branchName ? `<div class="store-info">${branchInfo.branchName}</div>` : ''}
+      <div class="store-info">${branchInfo.branchAddress}</div>
+      <div class="store-info">${branchInfo.branchContact}</div>
+    </div>
+    <div class="header-right">
+      <div class="title">SURAT JALAN</div>
+      <div class="do-number">${noSuratJalan}</div>
+      <div>Tanggal: ${formatDate(tanggalSuratJalan)}</div>
+    </div>
   </div>
 
   <div class="info-section">
@@ -1165,6 +1252,7 @@ export interface DeliveryOrderPrintData {
   sales: string | null
   customerName: string
   customerAddress: string | null
+  storeId?: string // For branch info lookup
   items: Array<{
     productName: string
     quantity: number

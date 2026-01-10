@@ -29,6 +29,8 @@ const storeSchema = z.object({
   code: z.string().min(1, 'Kode wajib diisi'),
   name: z.string().min(1, 'Nama wajib diisi'),
   address: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
   type: z.string().min(1, 'Tipe wajib diisi')
 })
 
@@ -54,7 +56,7 @@ export default function StorePage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<StoreFormValues>({
     resolver: zodResolver(storeSchema),
-    defaultValues: { code: '', name: '', address: '', type: 'RETAIL' }
+    defaultValues: { code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL' }
   })
 
   useEffect(() => {
@@ -80,7 +82,7 @@ export default function StorePage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', address: '', type: 'RETAIL' })
+    reset({ code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL' })
     setDialogOpen(true)
   }
 
@@ -90,6 +92,8 @@ export default function StorePage(): React.JSX.Element {
       code: store.code,
       name: store.name,
       address: store.address || '',
+      phone: store.phone || '',
+      email: store.email || '',
       type: store.type
     })
     setDialogOpen(true)
@@ -166,6 +170,8 @@ export default function StorePage(): React.JSX.Element {
                 <TableCell>Nama</TableCell>
                 <TableCell>Tipe</TableCell>
                 <TableCell>Alamat</TableCell>
+                <TableCell>Telepon</TableCell>
+                <TableCell>Email</TableCell>
                 <TableCell align="right">Aksi</TableCell>
               </TableRow>
             </TableHead>
@@ -176,6 +182,8 @@ export default function StorePage(): React.JSX.Element {
                   <TableCell>{store.name}</TableCell>
                   <TableCell>{store.type}</TableCell>
                   <TableCell>{store.address || '-'}</TableCell>
+                  <TableCell>{store.phone || '-'}</TableCell>
+                  <TableCell>{store.email || '-'}</TableCell>
                   <TableCell align="right">
                     <IconButton size="small" onClick={() => openEdit(store)}>
                       <EditIcon />
@@ -188,7 +196,7 @@ export default function StorePage(): React.JSX.Element {
               ))}
               {items.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} align="center">
+                  <TableCell colSpan={7} align="center">
                     Tidak ada toko
                   </TableCell>
                 </TableRow>
@@ -239,10 +247,30 @@ export default function StorePage(): React.JSX.Element {
               fullWidth
               margin="normal"
               multiline
-              rows={3}
+              rows={2}
               error={!!errors.address}
               helperText={errors.address?.message}
             />
+            <Stack direction="row" spacing={2}>
+              <TextField
+                {...register('phone')}
+                label="Telepon"
+                fullWidth
+                margin="normal"
+                placeholder="Contoh: (021) 123-4567"
+                error={!!errors.phone}
+                helperText={errors.phone?.message}
+              />
+              <TextField
+                {...register('email')}
+                label="Email"
+                fullWidth
+                margin="normal"
+                placeholder="Contoh: info@toko.com"
+                error={!!errors.email}
+                helperText={errors.email?.message}
+              />
+            </Stack>
           </DialogContent>
           <DialogActions>
             <Button onClick={closeDialog}>Batal</Button>
@@ -255,3 +283,4 @@ export default function StorePage(): React.JSX.Element {
     </>
   )
 }
+

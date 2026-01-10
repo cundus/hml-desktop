@@ -807,6 +807,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
                 id: transaction.id,
                 code: transaction.code,
                 createdAt: transaction.createdAt,
+                storeId: transaction.storeId,
                 customerId: transaction.customerId,
                 customerName: transaction.customerName,
                 items: transaction.items?.map((item: any) => ({

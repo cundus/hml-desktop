@@ -42,6 +42,7 @@ interface TransactionData {
   id: string
   code: string
   createdAt: Date
+  storeId?: string
   customerId: string | null
   customerName?: string
   customerAddress?: string
@@ -182,6 +183,7 @@ export default function DeliveryOrderModal({
         sales: sales.trim() || null, // Use form sales
         customerName: customerName, // Use form customerName
         customerAddress: manualCustomerAddress.trim() || null, // Use form address
+        storeId: transaction.storeId, // For branch info lookup
         items
       })
 

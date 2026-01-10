@@ -8,6 +8,8 @@ export interface Store {
   code: string
   name: string
   address: string | null
+  phone: string | null
+  email: string | null
   type: string
   createdAt: Date
   updatedAt: Date
@@ -74,8 +76,8 @@ export class StoreService {
     const now = Date.now()
 
     this.db.run(
-      'INSERT INTO store (id, code, name, address, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, data.code, data.name, data.address ?? null, data.type, now, now]
+      'INSERT INTO store (id, code, name, address, phone, email, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, data.code, data.name, data.address ?? null, data.phone ?? null, data.email ?? null, data.type, now, now]
     )
 
     saveDb(this.db)
@@ -85,6 +87,8 @@ export class StoreService {
       code: data.code,
       name: data.name,
       address: data.address ?? null,
+      phone: data.phone ?? null,
+      email: data.email ?? null,
       type: data.type,
       createdAt: new Date(now),
       updatedAt: new Date(now),
@@ -105,11 +109,13 @@ export class StoreService {
     const now = Date.now()
 
     this.db.run(
-      'UPDATE store SET code = ?, name = ?, address = ?, type = ?, updated_at = ? WHERE id = ?',
+      'UPDATE store SET code = ?, name = ?, address = ?, phone = ?, email = ?, type = ?, updated_at = ? WHERE id = ?',
       [
         data.code ?? existing.code,
         data.name ?? existing.name,
         data.address ?? existing.address ?? null,
+        data.phone ?? existing.phone ?? null,
+        data.email ?? existing.email ?? null,
         data.type ?? existing.type,
         now,
         id
@@ -168,6 +174,8 @@ export class StoreService {
       code: row.code as string,
       name: row.name as string,
       address: row.address as string | null,
+      phone: row.phone as string | null,
+      email: row.email as string | null,
       type: row.type as string,
       createdAt: new Date(row.created_at as number),
       updatedAt: new Date(row.updated_at as number),

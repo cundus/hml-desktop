@@ -7,6 +7,8 @@ export const stores = pgTable('store', {
   code: text('code').notNull(),
   name: text('name').notNull(),
   address: text('address'),
+  phone: text('phone'),
+  email: text('email'),
   type: text('type').notNull(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),

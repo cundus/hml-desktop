@@ -90,3 +90,21 @@ export const shiftHistory = pgTable('shift_history', {
   deletedAt: timestamp('deleted_at', { withTimezone: false }),
   deviceId: text('device_id')
 })
+
+export const deliveryOrders = pgTable('delivery_order', {
+  id: text('id').primaryKey(),
+  transactionId: text('transaction_id').notNull(),
+  noSuratJalan: text('no_surat_jalan').notNull().unique(),
+  sequenceNumber: integer('sequence_number').notNull(),
+  sequenceYear: integer('sequence_year').notNull(),
+  tanggal: timestamp('tanggal', { withTimezone: false }).notNull(),
+  sales: text('sales'),
+  customerId: text('customer_id'),
+  customerName: text('customer_name').notNull(),
+  customerAddress: text('customer_address'),
+  notes: text('notes'),
+  printedAt: timestamp('printed_at', { withTimezone: false }),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
+})

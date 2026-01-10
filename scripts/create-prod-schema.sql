@@ -75,6 +75,8 @@ CREATE TABLE IF NOT EXISTS store (
   code TEXT NOT NULL,
   name TEXT NOT NULL,
   address TEXT,
+  phone TEXT,
+  email TEXT,
   type TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -376,6 +378,23 @@ CREATE TABLE IF NOT EXISTS shift_history (
   synced_at TIMESTAMP,
   deleted_at TIMESTAMP,
   device_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS delivery_order (
+  id TEXT PRIMARY KEY,
+  transaction_id TEXT NOT NULL,
+  no_surat_jalan TEXT NOT NULL UNIQUE,
+  sequence_number INTEGER NOT NULL,
+  sequence_year INTEGER NOT NULL,
+  tanggal TIMESTAMP NOT NULL,
+  sales TEXT,
+  customer_id TEXT,
+  customer_name TEXT NOT NULL,
+  customer_address TEXT,
+  notes TEXT,
+  printed_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- ============================================

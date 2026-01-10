@@ -75,6 +75,7 @@ import { appConfigApi } from './app-config'
 import { pricingApi } from './pricing'
 import { priceCategoryApi } from './price-category'
 import { printerConfigApi } from './printer-config'
+import { deliveryOrderApi } from './delivery-order'
 
 // Receipt printing API
 const receiptApi = {
@@ -99,7 +100,8 @@ const printerApi = {
   printExpenseReport: (data: ExpenseReportData) =>
     ipcRenderer.invoke('printer:printExpenseReport', data),
   printSettlementReport: (data: any) => ipcRenderer.invoke('printer:printSettlementReport', data),
-  getAvailablePrinters: () => ipcRenderer.invoke('printer:getAvailablePrinters') as Promise<{ success: boolean; data?: string[]; error?: string }>
+  getAvailablePrinters: () => ipcRenderer.invoke('printer:getAvailablePrinters') as Promise<{ success: boolean; data?: string[]; error?: string }>,
+  printDeliveryOrder: (data: any) => ipcRenderer.invoke('printer:printDeliveryOrder', data) as Promise<{ success: boolean; error?: string }>
 }
 
 export const db = {
@@ -156,5 +158,8 @@ export const db = {
   printer: printerApi,
 
   // Printer Config (multi-printer)
-  printerConfigs: printerConfigApi
+  printerConfigs: printerConfigApi,
+
+  // Delivery Orders (Surat Jalan)
+  deliveryOrders: deliveryOrderApi
 }

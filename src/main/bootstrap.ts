@@ -27,6 +27,7 @@ import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
 import { registerPrinterConfigController } from './controllers/printer-config.controller'
+import { registerDeliveryOrderController } from './controllers/delivery-order.controller'
 import { getDb } from './db'
 import {
   seedAdmin,
@@ -136,6 +137,10 @@ export async function bootstrap(): Promise<void> {
   // Initialize receipt service with printer config
   const receiptService = new ReceiptService(appConfigService, productService, printerConfigService)
 
+  // Initialize delivery order service
+  const { DeliveryOrderService } = await import('./services/delivery-order.service')
+  const deliveryOrderService = new DeliveryOrderService(db)
+
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
 
@@ -210,6 +215,7 @@ export async function bootstrap(): Promise<void> {
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
   registerPrinterConfigController(printerConfigService)
+  registerDeliveryOrderController(deliveryOrderService)
 
   registerInventoryHandlers()
 

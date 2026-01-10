@@ -723,6 +723,27 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Delivery Order (Surat Jalan) table
+  database.run(`
+    CREATE TABLE IF NOT EXISTS delivery_order (
+      id TEXT PRIMARY KEY,
+      transaction_id TEXT NOT NULL,
+      no_surat_jalan TEXT NOT NULL UNIQUE,
+      sequence_number INTEGER NOT NULL,
+      sequence_year INTEGER NOT NULL,
+      tanggal INTEGER NOT NULL,
+      sales TEXT,
+      customer_id TEXT,
+      customer_name TEXT NOT NULL,
+      customer_address TEXT,
+      notes TEXT,
+      printed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    )
+  `)
+
   console.log('✓ Database tables initialized')
 }
 

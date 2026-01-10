@@ -122,5 +122,18 @@ export class ReceiptController {
         }
       }
     })
+
+    // Print delivery order (surat jalan)
+    ipcMain.handle('printer:printDeliveryOrder', async (_, data) => {
+      try {
+        const result = await this.receiptService.printDeliveryOrder(data)
+        return result
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

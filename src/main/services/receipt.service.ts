@@ -898,4 +898,277 @@ export class ReceiptService {
   async getConfig(): Promise<ReceiptConfig> {
     return this.config
   }
+
+  /**
+   * Print Delivery Order (Surat Jalan) for dot matrix printer
+   */
+  async printDeliveryOrder(data: DeliveryOrderPrintData): Promise<{ success: boolean; error?: string }> {
+    try {
+      // Get printer for DO purpose
+      const printerSettings = await this.getPrinterForPurpose('do')
+      console.log('Using printer for delivery order:', printerSettings.printerName || 'default')
+
+      const html = this.generateDeliveryOrderHtml(data)
+      return await this.printHtml(html, printerSettings)
+    } catch (error) {
+      console.error('Delivery order printing failed:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown printing error'
+      }
+    }
+  }
+
+  private generateDeliveryOrderHtml(data: DeliveryOrderPrintData): string {
+    const {
+      noSuratJalan,
+      tanggalSuratJalan,
+      receiptNumber,
+      receiptDate,
+      sales,
+      customerName,
+      customerAddress,
+      items
+    } = data
+
+    // Calculate totals
+    const totalQty = items.reduce((sum, item) => sum + item.quantity, 0)
+    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0)
+
+    const formatDate = (date: Date | string): string => {
+      const d = new Date(date)
+      return d.toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+      })
+    }
+
+    const formatWeight = (grams: number): string => {
+      if (grams >= 1000) {
+        return `${(grams / 1000).toFixed(2)} Kg`
+      }
+      return `${grams} gr`
+    }
+
+    const itemsHtml = items
+      .map(
+        (item, i) => `
+        <tr>
+          <td class="center">${i + 1}</td>
+          <td>${item.productName}</td>
+          <td class="center">${item.quantity}</td>
+          <td class="center">${item.uomCode}</td>
+          <td class="right">${formatWeight(item.weight)}</td>
+        </tr>`
+      )
+      .join('')
+
+    return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 10pt;
+      line-height: 1.4;
+      padding: 10mm;
+      max-width: 210mm;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 1px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .title {
+      font-size: 14pt;
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
+    .do-number {
+      font-size: 11pt;
+      font-weight: bold;
+    }
+    .info-section {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid #000;
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .info-left, .info-right {
+      width: 48%;
+    }
+    .info-row {
+      display: flex;
+      margin-bottom: 3px;
+    }
+    .info-label {
+      width: 100px;
+      flex-shrink: 0;
+    }
+    .info-value {
+      flex: 1;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 15px;
+    }
+    th, td {
+      border: 1px solid #000;
+      padding: 4px 6px;
+    }
+    th {
+      background-color: #f0f0f0;
+      font-weight: bold;
+    }
+    td.center, th.center {
+      text-align: center;
+    }
+    td.right {
+      text-align: right;
+    }
+    .footer-total td {
+      font-weight: bold;
+    }
+    .signatures {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      margin-bottom: 15px;
+    }
+    .sig-box {
+      width: 28%;
+      text-align: center;
+    }
+    .sig-title {
+      font-weight: bold;
+      margin-bottom: 50px;
+      padding-bottom: 3px;
+    }
+    .sig-line {
+      margin-top: 10px;
+      padding-top: 3px;
+    }
+    .notes-section {
+      margin-top: 15px;
+    }
+    .note-row {
+      margin-bottom: 10px;
+    }
+    .note-label {
+      display: inline-block;
+    }
+    @media print {
+      body { padding: 5mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">SURAT JALAN</div>
+    <div class="do-number">${noSuratJalan}</div>
+    <div>Tanggal: ${formatDate(tanggalSuratJalan)}</div>
+  </div>
+
+  <div class="info-section">
+    <div class="info-left">
+      <div class="info-row">
+        <span class="info-label">No. Nota</span>
+        <span class="info-value">: ${receiptNumber}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Tgl. Nota</span>
+        <span class="info-value">: ${formatDate(receiptDate)}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Sales</span>
+        <span class="info-value">: ${sales || '-'}</span>
+      </div>
+    </div>
+    <div class="info-right">
+      <div class="info-row">
+        <span class="info-label">Konsumen</span>
+        <span class="info-value">: ${customerName}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Alamat</span>
+        <span class="info-value">: ${customerAddress || '-'}</span>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="center" style="width: 40px">No</th>
+        <th>Nama Barang</th>
+        <th class="center" style="width: 60px">Qty</th>
+        <th class="center" style="width: 60px">Satuan</th>
+        <th class="center" style="width: 80px">Tonase</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemsHtml}
+    </tbody>
+    <tfoot>
+      <tr class="footer-total">
+        <td colspan="2" class="right">TOTAL</td>
+        <td class="center">${totalQty}</td>
+        <td class="center">-</td>
+        <td class="right">${formatWeight(totalWeight)}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="signatures">
+    <div class="sig-box">
+      <div class="sig-title">Sopir</div>
+      <div class="sig-line">( ________________ )</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-title">Kepala Toko/Gudang</div>
+      <div class="sig-line">( ________________ )</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-title">Penerima</div>
+      <div class="sig-line">( ________________ )</div>
+    </div>
+  </div>
+
+  <div class="notes-section">
+    <div class="note-row">
+      <span class="note-label">Nominal Uang Diterima: ...................................</span>
+    </div>
+    <div class="note-row">
+      <span class="note-label">Retur: ...................................</span>
+    </div>
+  </div>
+</body>
+</html>`
+  }
+}
+
+export interface DeliveryOrderPrintData {
+  noSuratJalan: string
+  tanggalSuratJalan: Date | string
+  receiptNumber: string
+  receiptDate: Date | string
+  sales: string | null
+  customerName: string
+  customerAddress: string | null
+  items: Array<{
+    productName: string
+    quantity: number
+    uomCode: string
+    weight: number // in grams
+  }>
 }

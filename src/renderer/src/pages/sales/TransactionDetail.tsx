@@ -33,6 +33,7 @@ import ProductSelectModal, {
   type ProductSelectResult,
   type ProductForSelection
 } from './components/ProductSelectModal'
+import DeliveryOrderModal from './components/DeliveryOrderModal'
 import { globalAlert } from '../../lib/globalAlert'
 import { formatCurrency } from '../../utils/currency'
 
@@ -42,7 +43,10 @@ interface TransactionItem {
   productName?: string
   productSku?: string
   quantity: number
+  displayQuantity?: number
+  uomCode?: string
   price: string
+  weight?: number
 }
 
 interface Transaction {
@@ -79,6 +83,7 @@ interface Customer {
   id: string
   name: string
   code: string
+  address?: string
 }
 
 export default function TransactionDetailPage(): React.JSX.Element {
@@ -103,6 +108,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
   const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [modalProduct, setModalProduct] = useState<ProductForSelection | null>(null)
+  const [deliveryOrderModalOpen, setDeliveryOrderModalOpen] = useState(false)
 
   useEffect(() => {
     if (transactionId) {
@@ -179,7 +185,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
           cost: p.cost ?? '0'
         }))
       )
-      setCustomers(custs.map((c) => ({ id: c.id, name: c.name, code: c.code ?? '' })))
+      setCustomers(custs.map((c) => ({ id: c.id, name: c.name, code: c.code ?? '', address: c.address ?? '' })))
 
       const prodMap = new Map<string, Product>(
         prods.map((p) => [
@@ -200,11 +206,15 @@ export default function TransactionDetailPage(): React.JSX.Element {
       const custMap = new Map(custs.map((c) => [c.id, c.name]))
 
       const txn = txnRes.data
-      const enrichedItems = (txn.items ?? []).map((item) => ({
-        ...item,
-        productName: prodMap.get(item.productId)?.name ?? 'Unknown',
-        productSku: prodMap.get(item.productId)?.sku ?? '-'
-      }))
+      const enrichedItems = (txn.items ?? []).map((item) => {
+        const product = prods.find((p) => p.id === item.productId)
+        return {
+          ...item,
+          productName: product?.name ?? 'Unknown',
+          productSku: product?.sku ?? '-',
+          weight: item.weight || Number(product?.weight ?? 0)
+        }
+      })
 
       setTransaction({
         ...txn,
@@ -456,6 +466,13 @@ export default function TransactionDetailPage(): React.JSX.Element {
             <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>
               Cetak Struk <Kbd keys={['P']} size="small" />
             </Button>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => setDeliveryOrderModalOpen(true)}
+            >
+              Cetak Surat Jalan
+            </Button>
             <Button variant="contained" startIcon={<EditIcon />} onClick={handleStartEdit}>
               Edit <Kbd keys={['E']} size="small" />
             </Button>
@@ -642,13 +659,16 @@ export default function TransactionDetailPage(): React.JSX.Element {
             <TableRow>
               <TableCell width={50}>#</TableCell>
               <TableCell>Produk</TableCell>
-              <TableCell align="right" width={100}>
+              <TableCell align="right" width={80}>
                 Qty
               </TableCell>
-              <TableCell align="right" width={150}>
+              <TableCell align="center" width={80}>
+                Satuan
+              </TableCell>
+              <TableCell align="right" width={130}>
                 Harga
               </TableCell>
-              <TableCell align="right" width={150}>
+              <TableCell align="right" width={130}>
                 Subtotal
               </TableCell>
               {isEditing && <TableCell width={60} />}
@@ -710,8 +730,11 @@ export default function TransactionDetailPage(): React.JSX.Element {
                       sx={{ width: 80 }}
                     />
                   ) : (
-                    item.quantity
+                    item.displayQuantity ?? item.quantity
                   )}
+                </TableCell>
+                <TableCell align="center">
+                  {item.uomCode || 'PCS'}
                 </TableCell>
                 <TableCell align="right">
                   {isEditing ? (
@@ -727,7 +750,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell align="right">
                   <Typography fontWeight={500}>
-                    {formatCurrency(Number(item.price) * item.quantity)}
+                    {formatCurrency(Number(item.price) * (item.displayQuantity ?? item.quantity))}
                   </Typography>
                 </TableCell>
                 {isEditing && (
@@ -750,7 +773,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
             ))}
             {(isEditing ? editItems : (transaction.items ?? [])).length === 0 && (
               <TableRow>
-                <TableCell colSpan={isEditing ? 6 : 5} align="center">
+                <TableCell colSpan={isEditing ? 7 : 6} align="center">
                   <Typography variant="body2" color="text.secondary">
                     Tidak ada item
                   </Typography>
@@ -775,6 +798,30 @@ export default function TransactionDetailPage(): React.JSX.Element {
           onConfirm={handleProductOptionsConfirm}
         />
       )}
+
+      <DeliveryOrderModal
+        open={deliveryOrderModalOpen}
+        transaction={
+          transaction
+            ? {
+                id: transaction.id,
+                code: transaction.code,
+                createdAt: transaction.createdAt,
+                customerId: transaction.customerId,
+                customerName: transaction.customerName,
+                items: transaction.items?.map((item: any) => ({
+                  productName: item.productName,
+                  displayQuantity: item.displayQuantity || item.quantity,
+                  quantity: item.quantity,
+                  uomCode: item.uomCode || 'PCS',
+                  weight: item.weight || 0
+                }))
+              }
+            : null
+        }
+        customers={customers.map((c) => ({ id: c.id, name: c.name, code: c.code, address: c.address }))}
+        onClose={() => setDeliveryOrderModalOpen(false)}
+      />
     </Box>
   )
 }

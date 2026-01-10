@@ -1049,7 +1049,6 @@ export class ReceiptService {
     .header {
       display: flex;
       justify-content: space-between;
-      border-bottom: 1px solid #000;
       padding-bottom: 8px;
       margin-bottom: 10px;
     }
@@ -1078,7 +1077,6 @@ export class ReceiptService {
     .info-section {
       display: flex;
       justify-content: space-between;
-      border-bottom: 1px solid #000;
       padding-bottom: 8px;
       margin-bottom: 10px;
     }
@@ -1102,11 +1100,9 @@ export class ReceiptService {
       margin-bottom: 15px;
     }
     th, td {
-      border: 1px solid #000;
       padding: 4px 6px;
     }
     th {
-      background-color: #f0f0f0;
       font-weight: bold;
     }
     td.center, th.center {
@@ -1146,6 +1142,11 @@ export class ReceiptService {
     .note-label {
       display: inline-block;
     }
+
+    hr {
+      margin: 2mm 0;
+    }
+
     @media print {
       body { padding: 5mm; }
     }
@@ -1165,6 +1166,8 @@ export class ReceiptService {
       <div>Tanggal: ${formatDate(tanggalSuratJalan)}</div>
     </div>
   </div>
+
+  <hr />
 
   <div class="info-section">
     <div class="info-left">
@@ -1193,6 +1196,8 @@ export class ReceiptService {
     </div>
   </div>
 
+  <hr />
+
   <table>
     <thead>
       <tr>
@@ -1215,6 +1220,8 @@ export class ReceiptService {
       </tr>
     </tfoot>
   </table>
+
+  <hr />
 
   <div class="signatures">
     <div class="sig-box">

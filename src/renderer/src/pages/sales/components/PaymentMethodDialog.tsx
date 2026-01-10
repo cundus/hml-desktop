@@ -24,7 +24,11 @@ export interface PaymentMethodDialogProps {
   open: boolean
   total: number
   onClose: () => void
-  onConfirm: (paymentMethod: PaymentMethod, paymentDeadline?: Date) => void
+  onConfirm: (
+    paymentMethod: PaymentMethod,
+    paymentDeadline?: Date,
+    cashDetails?: { paidAmount: string; change: string }
+  ) => void
 }
 
 export default function PaymentMethodDialog({
@@ -42,10 +46,25 @@ export default function PaymentMethodDialog({
     if (paymentMethod === 'credit' && !paymentDeadline) {
       return // Credit requires deadline
     }
-    onConfirm(paymentMethod, paymentMethod === 'credit' ? paymentDeadline || undefined : undefined)
+
+    const cashDetails =
+      paymentMethod === 'cash' && cashPaid > 0
+        ? {
+            paidAmount: cashPaid.toString(),
+            change: Math.max(0, cashPaid - total).toString()
+          }
+        : undefined
+
+    onConfirm(
+      paymentMethod,
+      paymentMethod === 'credit' ? paymentDeadline || undefined : undefined,
+      cashDetails
+    )
   }
 
-  const isConfirmDisabled = paymentMethod === 'credit' && !paymentDeadline
+  const isConfirmDisabled =
+    (paymentMethod === 'credit' && !paymentDeadline) ||
+    (paymentMethod === 'cash' && cashPaid < total)
 
   // Auto-focus cash input when dialog opens or when switching to cash
   useEffect(() => {

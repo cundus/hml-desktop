@@ -18,8 +18,10 @@ export interface ReceiptConfig {
 export interface ReceiptData {
   transaction: Transaction
   items: Array<{
+    sku: string
     name: string
     quantity: number
+    uomCode: string
     price: string
     total: string
   }>
@@ -27,6 +29,8 @@ export interface ReceiptData {
   discount: string
   tax: string
   total: string
+  totalWeight: string
+  customerName?: string
   paidAmount?: string
   change?: string
 }
@@ -135,39 +139,50 @@ export class ReceiptService {
 
   private async fetchItemsWithProductNames(items: TransactionItem[]): Promise<
     Array<{
+      sku: string
       name: string
       quantity: number
+      uomCode: string
       price: string
       total: string
     }>
   > {
     const itemsWithNames: Array<{
+      sku: string
       name: string
       quantity: number
+      uomCode: string
       price: string
       total: string
     }> = []
 
     for (const item of items) {
-      try {
-        const product = await this.productService.findById(item.productId)
-        const productName = product?.name || `Product ${item.productId}`
+      // Use stored display data if available, otherwise fallback to product lookup
+      let productName = item.productName
+      let productSku = item.productSku
+      const displayQty = item.displayQuantity ?? item.quantity
+      const uomCode = item.uomCode ?? 'PCS'
 
-        itemsWithNames.push({
-          name: productName,
-          quantity: item.quantity,
-          price: item.price,
-          total: (parseFloat(item.price) * item.quantity).toString()
-        })
-      } catch (error) {
-        console.warn(`Failed to fetch product ${item.productId}:`, error)
-        itemsWithNames.push({
-          name: `Product ${item.productId}`,
-          quantity: item.quantity,
-          price: item.price,
-          total: (parseFloat(item.price) * item.quantity).toString()
-        })
+      if (!productName || !productSku) {
+        try {
+          const product = await this.productService.findById(item.productId)
+          productName = productName || product?.name || `Product ${item.productId}`
+          productSku = productSku || product?.sku || '-'
+        } catch (error) {
+          console.warn(`Failed to fetch product ${item.productId}:`, error)
+          productName = productName || `Product ${item.productId}`
+          productSku = productSku || '-'
+        }
       }
+
+      itemsWithNames.push({
+        sku: productSku,
+        name: productName,
+        quantity: displayQty,
+        uomCode: uomCode,
+        price: item.price,
+        total: (parseFloat(item.price) * displayQty).toString()
+      })
     }
 
     return itemsWithNames
@@ -192,7 +207,10 @@ export class ReceiptService {
     return `${Math.round(grams)} gr`
   }
 
-  async printReceipt(transaction: Transaction): Promise<{ success: boolean; error?: string }> {
+  async printReceipt(
+    transaction: Transaction,
+    options?: { customerName?: string; paidAmount?: string; change?: string }
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const itemsWithNames = await this.fetchItemsWithProductNames(transaction.items || [])
 
@@ -202,7 +220,11 @@ export class ReceiptService {
         subtotal: transaction.subtotal,
         discount: transaction.discount,
         tax: transaction.tax,
-        total: transaction.total
+        total: transaction.total,
+        totalWeight: transaction.totalWeight ?? '0',
+        customerName: options?.customerName,
+        paidAmount: options?.paidAmount,
+        change: options?.change
       }
 
       const html = this.generateReceiptHtml(receiptData)
@@ -306,7 +328,7 @@ export class ReceiptService {
 
   // Generate receipt HTML with improved clarity for thermal printers
   private generateReceiptHtml(data: ReceiptData): string {
-    const { transaction, items, subtotal, discount, tax, total, paidAmount, change } = data
+    const { transaction, items, subtotal, discount, tax, total, totalWeight, customerName, paidAmount, change } = data
     const w = this.config.paperWidth
 
     const paymentMethodMap: Record<string, string> = {
@@ -316,20 +338,23 @@ export class ReceiptService {
       credit: 'Kredit'
     }
 
+    // New 2-row item format: Row1: SKU = NAME, Row2: QTY UOM x PRICE = TOTAL
     const itemsHtml = items
       .map(
         (item) => `
-        <div class="item">
-          <span class="item-name">${item.name}</span>
-          <span class="item-qty">${item.quantity}x</span>
-          <span class="item-price">${this.formatCurrency(item.price)}</span>
+        <div class="item-block">
+          <div class="item-row1">${item.sku} = ${item.name}</div>
+          <div class="item-row2">
+            <span>${item.quantity} ${item.uomCode} x ${this.formatCurrency(item.price)}</span>
+            <span class="item-total">= ${this.formatCurrency(item.total)}</span>
+          </div>
         </div>`
       )
       .join('')
 
     // Calculate printable width (58mm paper has ~48mm printable area)
     const printableWidth = w <= 58 ? 48 : 72 // 48mm for 58mm paper, 72mm for 80mm paper
-    const fontSize = w <= 58 ? 9 : 11 // Smaller font for narrow paper
+    const fontSize = w <= 58 ? 9 : 11 // Font size
 
     return `<!DOCTYPE html>
 <html>
@@ -387,27 +412,24 @@ export class ReceiptService {
       display: flex;
       justify-content: space-between;
       margin: 0.5mm 0;
-      font-size: ${fontSize - 1}pt;
+      font-size: ${fontSize}pt;
     }
-    .item {
+    .item-block {
+      margin: 1.5mm 0;
+      font-size: ${fontSize}pt;
+    }
+    .item-row1 {
+      font-weight: bold;
+      word-break: break-word;
+    }
+    .item-row2 {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin: 1mm 0;
-      font-size: ${fontSize - 1}pt;
+      padding-left: 2mm;
+      font-size: ${fontSize - 0.5}pt;
     }
-    .item-name {
-      flex: 1;
-      word-break: break-word;
-      padding-right: 1mm;
-    }
-    .item-qty {
-      min-width: 8mm;
-      text-align: center;
-    }
-    .item-price {
-      min-width: 18mm;
-      text-align: right;
+    .item-total {
+      font-weight: bold;
     }
     .total-section { margin-top: 2mm; }
     .total-row {
@@ -424,7 +446,7 @@ export class ReceiptService {
     .footer {
       margin-top: 3mm;
       text-align: center;
-      font-size: ${fontSize - 2}pt;
+      font-size: ${fontSize - 1}pt;
     }
   </style>
 </head>
@@ -441,6 +463,7 @@ export class ReceiptService {
   <div class="info-row"><span>No:</span><span>${transaction.code}</span></div>
   <div class="info-row"><span>Tanggal:</span><span>${new Date(transaction.createdAt).toLocaleString('id-ID')}</span></div>
   <div class="info-row"><span>Kasir:</span><span>${transaction.userId || 'System'}</span></div>
+  ${customerName ? `<div class="info-row"><span>Pelanggan:</span><span>${customerName}</span></div>` : ''}
   <div class="info-row"><span>Bayar:</span><span>${paymentMethodMap[transaction.paymentMethod] || transaction.paymentMethod}</span></div>
   ${transaction.paymentMethod === 'credit' && transaction.paymentDeadline ? `<div class="info-row"><span>Jatuh Tempo:</span><span>${new Date(transaction.paymentDeadline).toLocaleDateString('id-ID')}</span></div>` : ''}
 
@@ -457,7 +480,7 @@ export class ReceiptService {
     ${parseFloat(discount) > 0 ? `<div class="total-row"><span>Diskon</span><span>-${this.formatCurrency(discount)}</span></div>` : ''}
     ${parseFloat(tax) > 0 ? `<div class="total-row"><span>Pajak</span><span>${this.formatCurrency(tax)}</span></div>` : ''}
     <div class="total-row grand"><span>TOTAL</span><span>${this.formatCurrency(total)}</span></div>
-    ${parseFloat(transaction.totalWeight || '0') > 0 ? `<div class="total-row"><span>Tonase</span><span>${this.formatWeight(transaction.totalWeight)}</span></div>` : ''}
+    <div class="total-row"><span>Berat Total</span><span>${this.formatWeight(totalWeight)}</span></div>
   </div>
 
   ${

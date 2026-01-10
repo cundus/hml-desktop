@@ -256,7 +256,7 @@ export default function ProductSelectModal({
   const handleConfirm = useCallback((): void => {
     if (!product || !selectedUom || !selectedPrice || quantity < 1) return
 
-    const unitPrice = selectedPrice.price * selectedUom.conversionFactor
+    const unitPrice = selectedPrice.price
     const totalPrice = unitPrice * quantity
 
     onConfirm({
@@ -354,7 +354,7 @@ export default function ProductSelectModal({
 
   if (!product) return <></>
 
-  const unitPrice = (selectedPrice?.price ?? 0) * (selectedUom?.conversionFactor ?? 1)
+  const unitPrice = selectedPrice?.price ?? 0
   const totalPrice = unitPrice * quantity
 
   // INV-002: Calculate stock in selected UOM and check if quantity exceeds

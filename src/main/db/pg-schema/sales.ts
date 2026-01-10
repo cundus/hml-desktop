@@ -29,6 +29,10 @@ export const transactionItems = pgTable('transaction_items', {
   transactionId: text('transaction_id').notNull(),
   productId: text('product_id').notNull(),
   quantity: integer('quantity').notNull(),
+  displayQuantity: numeric('display_quantity'),
+  uomCode: text('uom_code'),
+  productName: text('product_name'),
+  productSku: text('product_sku'),
   price: numeric('price').notNull(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
@@ -65,6 +69,20 @@ export const cashierShifts = pgTable('cashier_shift', {
   notes: text('notes'),
   openedAt: timestamp('opened_at', { withTimezone: false }).notNull(),
   closedAt: timestamp('closed_at', { withTimezone: false }),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+
+export const shiftHistory = pgTable('shift_history', {
+  id: text('id').primaryKey(),
+  shiftId: text('shift_id').notNull(),
+  userId: text('user_id').notNull(),
+  action: text('action').notNull(),
+  notes: text('notes'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

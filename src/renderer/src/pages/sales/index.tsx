@@ -247,7 +247,11 @@ export default function SalesPage(): React.JSX.Element {
   }, [cartItems.length, defaultStoreId])
 
   const handleConfirmPayment = useCallback(
-    async (paymentMethod: DialogPaymentMethod, paymentDeadline?: Date): Promise<void> => {
+    async (
+      paymentMethod: DialogPaymentMethod,
+      paymentDeadline?: Date,
+      cashDetails?: { paidAmount: string; change: string }
+    ): Promise<void> => {
       if (cartItems.length === 0) return
       if (!defaultStoreId) {
         setSnackbar({
@@ -276,6 +280,10 @@ export default function SalesPage(): React.JSX.Element {
           return {
             productId: item.productId ?? item.id,
             quantity: baseQuantity,
+            displayQuantity: item.quantity,  // Original quantity user selected
+            uomCode: item.uomCode ?? item.unit,  // UOM user selected
+            productName: item.name,
+            productSku: item.sku,
             price: item.price.toString()
           }
         })
@@ -300,7 +308,16 @@ export default function SalesPage(): React.JSX.Element {
         if (result.success) {
           // Print receipt after successful transaction
           try {
-            const printResult = await window.api.db.receipt.printReceipt(result.data)
+            // Get customer name if selected
+            const customerName = selectedCustomerId
+              ? customers.find((c) => c.id === selectedCustomerId)?.name
+              : undefined
+
+            const printResult = await window.api.db.receipt.printReceipt(result.data, {
+              customerName,
+              paidAmount: cashDetails?.paidAmount,
+              change: cashDetails?.change
+            })
 
             if (printResult.success) {
               // Update receipt printed status

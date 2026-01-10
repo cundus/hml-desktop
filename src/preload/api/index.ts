@@ -77,7 +77,10 @@ import { priceCategoryApi } from './price-category'
 
 // Receipt printing API
 const receiptApi = {
-  printReceipt: (transaction: Transaction) => ipcRenderer.invoke('receipt:print', transaction),
+  printReceipt: (
+    transaction: Transaction,
+    options?: { customerName?: string; paidAmount?: string; change?: string }
+  ) => ipcRenderer.invoke('receipt:print', transaction, options),
   updateReceiptPrinted: (transactionId: string, printed: boolean) =>
     ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed),
   getConfig: () => ipcRenderer.invoke('receipt:getConfig'),

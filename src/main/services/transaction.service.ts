@@ -31,6 +31,10 @@ export interface TransactionItem {
   transactionId: string
   productId: string
   quantity: number
+  displayQuantity: number | null
+  uomCode: string | null
+  productName: string | null
+  productSku: string | null
   price: string
   createdAt: Date
   updatedAt: Date
@@ -55,6 +59,10 @@ export interface CreateTransactionDto {
 export interface CreateTransactionItemDto {
   productId: string
   quantity: number
+  displayQuantity?: number
+  uomCode?: string
+  productName?: string
+  productSku?: string
   price: string
 }
 
@@ -254,8 +262,20 @@ export class TransactionService {
     for (const item of data.items) {
       const itemId = randomUUID()
       this.db.run(
-        'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [itemId, id, item.productId, item.quantity, item.price, now, now]
+        'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, product_name, product_sku, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          itemId,
+          id,
+          item.productId,
+          item.quantity,
+          item.displayQuantity ?? item.quantity,
+          item.uomCode ?? null,
+          item.productName ?? null,
+          item.productSku ?? null,
+          item.price,
+          now,
+          now
+        ]
       )
 
       // INV-001: Record stock transaction and deduct inventory (quantity is already in base units)
@@ -693,6 +713,10 @@ export class TransactionService {
       transactionId: row.transaction_id as string,
       productId: row.product_id as string,
       quantity: row.quantity as number,
+      displayQuantity: row.display_quantity as number | null,
+      uomCode: row.uom_code as string | null,
+      productName: row.product_name as string | null,
+      productSku: row.product_sku as string | null,
       price: row.price as string,
       createdAt: new Date(row.created_at as number),
       updatedAt: new Date(row.updated_at as number)

@@ -13,17 +13,24 @@ export class ReceiptController {
 
   registerHandlers(): void {
     // Print receipt
-    ipcMain.handle('receipt:print', async (_, data: Transaction) => {
-      try {
-        const result = await this.receiptService.printReceipt(data)
-        return result
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
+    ipcMain.handle(
+      'receipt:print',
+      async (
+        _,
+        data: Transaction,
+        options?: { customerName?: string; paidAmount?: string; change?: string }
+      ) => {
+        try {
+          const result = await this.receiptService.printReceipt(data, options)
+          return result
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
         }
       }
-    })
+    )
 
     // Get receipt configuration
     ipcMain.handle('receipt:getConfig', async () => {

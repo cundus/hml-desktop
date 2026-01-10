@@ -527,6 +527,27 @@ async function createTables(database: Database): Promise<void> {
   } catch {
     // Column already exists
   }
+  // Migration: Add display info for receipt printing
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN display_quantity REAL`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN uom_code TEXT`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN product_name TEXT`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE transaction_items ADD COLUMN product_sku TEXT`)
+  } catch {
+    // Column already exists
+  }
 
   // Purchase Order table
   database.run(`
@@ -646,6 +667,45 @@ async function createTables(database: Database): Promise<void> {
   } catch {
     // Column already exists
   }
+
+  // Transfer Request table - stock transfers between stores
+  database.run(`
+    CREATE TABLE IF NOT EXISTS transfer_request (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      destination_id TEXT NOT NULL,
+      reference TEXT NOT NULL,
+      note TEXT,
+      created_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Transfer Item table - items in a transfer request
+  database.run(`
+    CREATE TABLE IF NOT EXISTS transfer_item (
+      id TEXT PRIMARY KEY,
+      transfer_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      deleted_at INTEGER
+    )
+  `)
+
+  // Audit Log table - tracks user actions for audit trail
+  database.run(`
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id TEXT PRIMARY KEY,
+      action TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
 
   console.log('✓ Database tables initialized')
 }

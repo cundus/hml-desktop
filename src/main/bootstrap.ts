@@ -146,6 +146,11 @@ export async function bootstrap(): Promise<void> {
     }
   }
 
+  // Store service references for app state (used by close guard)
+  const { setAppServices } = await import('./appState')
+  setAppServices(shiftService, syncService)
+
+
   // Initialize controllers
   const categoryController = new CategoryController(categoryService)
   const supplierController = new SupplierController(supplierService)

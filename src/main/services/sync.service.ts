@@ -1002,9 +1002,9 @@ export class SyncService {
   }
 
   /**
-   * Get count of unsynced records
+   * Get count of unsynced records (public for close guard)
    */
-  private getUnsyncedRecordsCount(): number {
+  getUnsyncedRecordsCount(): number {
     let total = 0
 
     for (const entity of SYNC_ENTITIES) {

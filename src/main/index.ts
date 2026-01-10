@@ -1,17 +1,21 @@
-import { app, shell, BrowserWindow, ipcMain, Menu } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, dialog } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { disconnectDb } from './db'
 import { bootstrap } from './bootstrap'
 import { config } from 'dotenv'
+import { checkCloseGuard, getSyncService } from './appState'
 
 // Load .env file for DATABASE_URL and other env vars
 config()
 
+let mainWindow: BrowserWindow | null = null
+let forceClose = false
+
 function createWindow(): void {
   // Create the browser window.
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 900,
     height: 670,
     show: false,
@@ -24,8 +28,82 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
-    mainWindow.maximize()
-    mainWindow.show()
+    mainWindow?.maximize()
+    mainWindow?.show()
+  })
+
+  // Close guard - prevent closing with open shifts or unsynced data
+  mainWindow.on('close', async (event) => {
+    if (forceClose) return // Allow close if user confirmed force close
+
+    const status = await checkCloseGuard()
+
+    if (!status.canClose) {
+      event.preventDefault()
+
+      // Build warning message
+      const warnings: string[] = []
+      if (status.hasOpenShift) {
+        warnings.push(`• Shift kasir "${status.shiftUserName || 'Unknown'}" masih terbuka`)
+      }
+      if (status.unsyncedCount > 0 && status.isCloudConnected) {
+        warnings.push(`• Ada ${status.unsyncedCount} record yang belum di-sync ke cloud`)
+      }
+
+      const buttons = ['Batal']
+      if (status.unsyncedCount > 0 && status.isCloudConnected) {
+        buttons.push('Sync Sekarang')
+      }
+      buttons.push('Tetap Tutup')
+
+      const result = await dialog.showMessageBox(mainWindow!, {
+        type: 'warning',
+        title: 'Peringatan Sebelum Menutup',
+        message: 'Aplikasi tidak dapat ditutup karena:',
+        detail: warnings.join('\n') + '\n\nApa yang ingin Anda lakukan?',
+        buttons,
+        defaultId: 0,
+        cancelId: 0
+      })
+
+      const clickedButton = buttons[result.response]
+
+      if (clickedButton === 'Sync Sekarang') {
+        // Trigger sync and show progress
+        try {
+          const syncService = getSyncService()
+          if (syncService) {
+            await dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'Sinkronisasi',
+              message: 'Memulai sinkronisasi data...',
+              detail: 'Silakan tunggu hingga selesai.',
+              buttons: ['OK']
+            })
+            await syncService.fullSync()
+            await dialog.showMessageBox(mainWindow!, {
+              type: 'info',
+              title: 'Sinkronisasi Selesai',
+              message: 'Data berhasil di-sync ke cloud.',
+              detail: 'Anda sekarang dapat menutup aplikasi.',
+              buttons: ['OK']
+            })
+          }
+        } catch (error) {
+          await dialog.showMessageBox(mainWindow!, {
+            type: 'error',
+            title: 'Gagal Sync',
+            message: 'Sinkronisasi gagal.',
+            detail: error instanceof Error ? error.message : 'Unknown error',
+            buttons: ['OK']
+          })
+        }
+      } else if (clickedButton === 'Tetap Tutup') {
+        forceClose = true
+        mainWindow?.close()
+      }
+      // 'Batal' does nothing, window stays open
+    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {

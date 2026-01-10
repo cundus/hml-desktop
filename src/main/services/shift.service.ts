@@ -96,6 +96,28 @@ export class ShiftService {
   }
 
   /**
+   * Check if there's ANY open shift across all users
+   * Used for app close guard
+   */
+  async hasAnyOpenShift(): Promise<{ hasOpen: boolean; shift: CashierShift | null }> {
+    const stmt = this.db.prepare(
+      `SELECT cs.*, u.name as user_name
+       FROM cashier_shift cs
+       LEFT JOIN user u ON cs.user_id = u.id
+       WHERE cs.status = 'OPEN' AND cs.deleted_at IS NULL
+       ORDER BY cs.opened_at DESC LIMIT 1`
+    )
+    if (stmt.step()) {
+      const result = this.mapRowToShift(stmt.getAsObject())
+      stmt.free()
+      return { hasOpen: true, shift: result }
+    }
+    stmt.free()
+    return { hasOpen: false, shift: null }
+  }
+
+
+  /**
    * Get current open shift for a store (any user)
    */
   async getCurrentStoreShift(storeId: string): Promise<CashierShift | null> {

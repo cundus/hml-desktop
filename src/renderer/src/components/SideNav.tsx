@@ -97,10 +97,23 @@ const menus: MenuItem[] = [
   },
   {
     key: 'operations',
-    label: 'Pengeluaran Harian',
+    label: 'Operasional',
     icon: <ReceiptIcon fontSize="small" />,
-    path: '/operations/expenses',
-    permissions: ['operations.expenses']
+    permissions: ['operations.expenses'],
+    children: [
+      {
+        key: 'operations-expenses',
+        label: 'Pengeluaran Harian',
+        path: '/operations/expenses',
+        permissions: ['operations.expenses']
+      },
+      {
+        key: 'operations-shifts',
+        label: 'Riwayat Shift',
+        path: '/operations/shifts',
+        permissions: ['operations.expenses']
+      }
+    ]
   },
   {
     key: 'pricing',

@@ -109,5 +109,18 @@ export class ReceiptController {
         }
       }
     })
+
+    // Get available printers from Windows
+    ipcMain.handle('printer:getAvailablePrinters', async () => {
+      try {
+        const printers = await this.receiptService.getAvailablePrinters()
+        return { success: true, data: printers }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

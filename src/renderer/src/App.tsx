@@ -151,7 +151,12 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['operations.expenses']} />,
             children: [
-              { path: 'operations/expenses', element: <ExpensesPage /> },
+              { path: 'operations/expenses', element: <ExpensesPage /> }
+            ]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['operations.shift_history']} />,
+            children: [
               { path: 'operations/shifts', element: <ShiftHistoryPage /> }
             ]
           }

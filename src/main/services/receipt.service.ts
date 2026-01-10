@@ -5,6 +5,7 @@ import { tmpdir } from 'os'
 import { Transaction, TransactionItem } from './transaction.service'
 import { AppConfigService } from './app-config.service'
 import { ProductService } from './product.service'
+import { PrinterConfigService, PrinterPurpose } from './printer-config.service'
 
 export interface ReceiptConfig {
   printerName?: string
@@ -61,7 +62,8 @@ export class ReceiptService {
 
   constructor(
     private appConfigService: AppConfigService,
-    private productService: ProductService
+    private productService: ProductService,
+    private printerConfigService?: PrinterConfigService
   ) {
     this.config = this.getDefaultConfig()
     void this.loadConfig()
@@ -207,11 +209,54 @@ export class ReceiptService {
     return `${Math.round(grams)} gr`
   }
 
+  /**
+   * Get printer configuration for a specific purpose (receipt, report, invoice, do)
+   * Falls back to legacy config if no printer is configured for the purpose
+   */
+  private async getPrinterForPurpose(purpose: PrinterPurpose): Promise<{
+    printerName?: string
+    paperWidth: number
+    printerType: 'thermal' | 'hvs' | 'dotmatrix'
+    copies: number
+  }> {
+    // Try to get configured printer for this purpose
+    if (this.printerConfigService) {
+      const printerConfig = await this.printerConfigService.getDefaultForPurpose(purpose)
+      if (printerConfig) {
+        // Map paper size to width in mm
+        const paperWidthMap: Record<string, number> = {
+          '58mm': 58,
+          '80mm': 80,
+          'A4': 210,
+          'A5': 148
+        }
+        return {
+          printerName: printerConfig.printerName,
+          paperWidth: paperWidthMap[printerConfig.paperSize] || 58,
+          printerType: printerConfig.printerType,
+          copies: printerConfig.copies
+        }
+      }
+    }
+
+    // Fallback to legacy config
+    return {
+      printerName: this.config.printerName,
+      paperWidth: this.config.paperWidth,
+      printerType: 'thermal',
+      copies: 1
+    }
+  }
+
   async printReceipt(
     transaction: Transaction,
     options?: { customerName?: string; paidAmount?: string; change?: string }
   ): Promise<{ success: boolean; error?: string }> {
     try {
+      // Get printer for receipt purpose
+      const printerSettings = await this.getPrinterForPurpose('receipt')
+      console.log('Using printer for receipt:', printerSettings.printerName || 'default')
+
       const itemsWithNames = await this.fetchItemsWithProductNames(transaction.items || [])
 
       const receiptData: ReceiptData = {
@@ -228,7 +273,7 @@ export class ReceiptService {
       }
 
       const html = this.generateReceiptHtml(receiptData)
-      return await this.printHtml(html)
+      return await this.printHtml(html, printerSettings)
     } catch (error) {
       console.error('Receipt printing failed:', error)
       return {
@@ -239,7 +284,10 @@ export class ReceiptService {
   }
 
   // Core HTML printing method using Electron
-  private async printHtml(html: string): Promise<{ success: boolean; error?: string }> {
+  private async printHtml(
+    html: string,
+    printerSettings?: { printerName?: string; paperWidth: number; copies?: number }
+  ): Promise<{ success: boolean; error?: string }> {
     return new Promise((resolve) => {
       const tempFile = join(tmpdir(), `receipt_${Date.now()}.html`)
 
@@ -261,7 +309,9 @@ export class ReceiptService {
         printWindow.loadFile(tempFile)
 
         printWindow.webContents.on('did-finish-load', async () => {
-          const printerName = this.config.printerName
+          // Use passed printer settings or fallback to legacy config
+          const printerName = printerSettings?.printerName || this.config.printerName
+          const paperWidth = printerSettings?.paperWidth || this.config.paperWidth
           console.log('Content loaded, printing to:', printerName || 'default printer')
 
           // Wait for paint to complete
@@ -272,7 +322,7 @@ export class ReceiptService {
           await new Promise((r) => setTimeout(r, 200))
 
           // Use printable width for page size
-          const printableWidth = this.config.paperWidth <= 58 ? 48 : 72
+          const printableWidth = paperWidth <= 58 ? 48 : paperWidth <= 80 ? 72 : paperWidth
 
           printWindow.webContents.print(
             {
@@ -281,6 +331,7 @@ export class ReceiptService {
               deviceName: printerName || undefined,
               margins: { marginType: 'none' },
               scaleFactor: 100, // No scaling
+              copies: printerSettings?.copies || 1,
               pageSize: {
                 width: printableWidth * 1000, // microns (48mm = 48000 microns)
                 height: 297000 // Auto height for continuous paper
@@ -506,8 +557,12 @@ export class ReceiptService {
 
   async printSettlementReport(data: any): Promise<{ success: boolean; error?: string }> {
     try {
+      // Get printer for report purpose
+      const printerSettings = await this.getPrinterForPurpose('report')
+      console.log('Using printer for settlement report:', printerSettings.printerName || 'default')
+
       const html = this.generateSettlementReportHtml(data)
-      return await this.printHtml(html)
+      return await this.printHtml(html, printerSettings)
     } catch (error) {
       console.error('Settlement report printing failed:', error)
       return {
@@ -718,8 +773,12 @@ export class ReceiptService {
 
   async printExpenseReport(data: ExpenseReportData): Promise<{ success: boolean; error?: string }> {
     try {
+      // Get printer for report purpose
+      const printerSettings = await this.getPrinterForPurpose('report')
+      console.log('Using printer for expense report:', printerSettings.printerName || 'default')
+
       const html = this.generateExpenseReportHtml(data)
-      return await this.printHtml(html)
+      return await this.printHtml(html, printerSettings)
     } catch (error) {
       console.error('Expense report printing failed:', error)
       return {

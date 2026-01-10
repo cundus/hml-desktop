@@ -26,6 +26,7 @@ import { registerInventoryHandlers } from './controllers/inventory.controller'
 import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
+import { registerPrinterConfigController } from './controllers/printer-config.controller'
 import { getDb } from './db'
 import {
   seedAdmin,
@@ -63,6 +64,7 @@ import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
 import { PriceCategoryService } from './services/price-category.service'
 import { PriceCategoryController } from './controllers/price-category.controller'
+import { PrinterConfigService } from './services/printer-config.service'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -128,8 +130,11 @@ export async function bootstrap(): Promise<void> {
   // Initialize app config service
   const appConfigService = new AppConfigService(db)
 
-  // Initialize receipt service
-  const receiptService = new ReceiptService(appConfigService, productService)
+  // Initialize printer config service (uses local JSON file, not database)
+  const printerConfigService = new PrinterConfigService()
+
+  // Initialize receipt service with printer config
+  const receiptService = new ReceiptService(appConfigService, productService, printerConfigService)
 
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
@@ -204,8 +209,9 @@ export async function bootstrap(): Promise<void> {
   expenseController.registerHandlers()
   registerShiftHandlers(shiftService)
   registerAppConfigHandlers(appConfigService)
+  registerPrinterConfigController(printerConfigService)
 
   registerInventoryHandlers()
 
-  console.log('✓ All 24 services and controllers initialized (sql.js local + cloud sync ready)')
+  console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')
 }

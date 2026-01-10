@@ -74,6 +74,7 @@ import { shiftApi } from './shift'
 import { appConfigApi } from './app-config'
 import { pricingApi } from './pricing'
 import { priceCategoryApi } from './price-category'
+import { printerConfigApi } from './printer-config'
 
 // Receipt printing API
 const receiptApi = {
@@ -97,7 +98,8 @@ const printerApi = {
   testPrint: () => ipcRenderer.invoke('printer:testPrint'),
   printExpenseReport: (data: ExpenseReportData) =>
     ipcRenderer.invoke('printer:printExpenseReport', data),
-  printSettlementReport: (data: any) => ipcRenderer.invoke('printer:printSettlementReport', data)
+  printSettlementReport: (data: any) => ipcRenderer.invoke('printer:printSettlementReport', data),
+  getAvailablePrinters: () => ipcRenderer.invoke('printer:getAvailablePrinters') as Promise<{ success: boolean; data?: string[]; error?: string }>
 }
 
 export const db = {
@@ -151,5 +153,8 @@ export const db = {
   receipt: receiptApi,
 
   // Printer
-  printer: printerApi
+  printer: printerApi,
+
+  // Printer Config (multi-printer)
+  printerConfigs: printerConfigApi
 }

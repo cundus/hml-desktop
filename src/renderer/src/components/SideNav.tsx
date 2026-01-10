@@ -99,7 +99,7 @@ const menus: MenuItem[] = [
     key: 'operations',
     label: 'Operasional',
     icon: <ReceiptIcon fontSize="small" />,
-    permissions: ['operations.expenses'],
+    permissions: ['operations.expenses', 'operations.shift_history'],
     children: [
       {
         key: 'operations-expenses',
@@ -111,7 +111,7 @@ const menus: MenuItem[] = [
         key: 'operations-shifts',
         label: 'Riwayat Shift',
         path: '/operations/shifts',
-        permissions: ['operations.expenses']
+        permissions: ['operations.shift_history']
       }
     ]
   },

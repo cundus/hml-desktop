@@ -707,6 +707,22 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Printer Configuration table - supports multiple printers with different types
+  database.run(`
+    CREATE TABLE IF NOT EXISTS printer_config (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      printer_name TEXT NOT NULL,
+      printer_type TEXT NOT NULL,
+      paper_size TEXT NOT NULL,
+      purpose TEXT NOT NULL,
+      is_default INTEGER NOT NULL DEFAULT 0,
+      copies INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )
+  `)
+
   console.log('✓ Database tables initialized')
 }
 

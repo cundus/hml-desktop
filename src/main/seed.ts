@@ -34,6 +34,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'purchasing.manage', name: 'Manage purchasing' },
   { id: 'operations.manage', name: 'Manage operations' },
   { id: 'operations.expenses', name: 'Manage expenses' },
+  { id: 'operations.shift_history', name: 'View shift history' },
   { id: 'operations.supplies', name: 'Manage supplies purchasing' },
   { id: 'pricing.manage', name: 'Manage pricing' },
   { id: 'pricing.products', name: 'Manage product pricing' },

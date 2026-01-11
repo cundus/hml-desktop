@@ -164,6 +164,11 @@ app.whenReady().then(() => {
   // IPC test
   ipcMain.on('ping', () => console.log('pong'))
 
+  // Close guard check for logout validation
+  ipcMain.handle('app:checkCloseGuard', async () => {
+    return checkCloseGuard()
+  })
+
   ipcMain.handle('open-master-customer-window', () => {
     createMasterCustomerWindow()
   })
@@ -197,8 +202,18 @@ app.on('window-all-closed', () => {
   }
 })
 
-// Clean up database connection before app quits
-app.on('before-quit', () => {
+// Clean up database connections before app quits
+app.on('before-quit', async () => {
+  // Disconnect cloud database first
+  const syncService = getSyncService()
+  if (syncService) {
+    try {
+      await syncService.disconnect()
+    } catch (error) {
+      console.error('Error disconnecting cloud database:', error)
+    }
+  }
+  // Then close local database
   disconnectDb()
 })
 

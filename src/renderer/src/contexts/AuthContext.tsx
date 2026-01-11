@@ -87,7 +87,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     }
   }, [])
 
-  const logout = useCallback((): void => {
+  const logout = useCallback(async (): Promise<void> => {
+    try {
+      // Check for open shifts and unsynced data
+      const status = await window.api.db.appConfig.checkCloseGuard()
+
+      if (!status.canClose) {
+        // Build warning messages
+        const warnings: string[] = []
+        if (status.hasOpenShift) {
+          warnings.push(`Shift kasir "${status.shiftUserName || 'Unknown'}" masih terbuka`)
+        }
+        if (status.unsyncedCount > 0 && status.isCloudConnected) {
+          warnings.push(`Ada ${status.unsyncedCount} record yang belum di-sync ke cloud`)
+        }
+
+        // Show confirmation dialog using React-friendly globalAlert
+        const { globalAlert } = await import('../lib/globalAlert')
+        const confirmed = await globalAlert.confirm(
+          `Peringatan:\n${warnings.join('\n')}\n\nApakah Anda yakin ingin keluar?`
+        )
+
+        if (!confirmed) {
+          return
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check close guard:', error)
+      // Continue with logout even if check fails
+    }
+
+    // Proceed with logout
     clearToken()
     clearUserName()
     clearUserRole()

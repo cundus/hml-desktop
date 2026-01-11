@@ -463,6 +463,30 @@ CREATE TABLE IF NOT EXISTS audit_log (
 );
 
 -- ============================================
+-- PAYMENT METHOD (Master Data for Non-Cash)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS payment_method (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  synced_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payment_method (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  synced_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
+
+-- ============================================
 -- INDEXES (Optional but recommended)
 -- ============================================
 

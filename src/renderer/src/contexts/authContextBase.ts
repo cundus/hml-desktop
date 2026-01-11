@@ -13,7 +13,7 @@ export type AuthContextValue = {
   isAuthenticated: boolean
   isReady: boolean
   login: (creds: Credentials) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   hasPermission: (required: string | string[]) => boolean
 }
 

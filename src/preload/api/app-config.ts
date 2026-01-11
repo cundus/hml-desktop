@@ -85,5 +85,17 @@ export const appConfigApi = {
   /**
    * Reset transactional data
    */
-  resetData: () => ipcRenderer.invoke('app:config:resetData') as Promise<ApiResponse<void>>
+  resetData: () => ipcRenderer.invoke('app:config:resetData') as Promise<ApiResponse<void>>,
+
+  /**
+   * Check close guard status (for logout validation)
+   */
+  checkCloseGuard: () =>
+    ipcRenderer.invoke('app:checkCloseGuard') as Promise<{
+      canClose: boolean
+      hasOpenShift: boolean
+      shiftUserName?: string
+      unsyncedCount: number
+      isCloudConnected: boolean
+    }>
 }

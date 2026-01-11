@@ -993,6 +993,7 @@ export class ReceiptService {
       sales,
       customerName,
       customerAddress,
+      customerPhone,
       items
     } = data
 
@@ -1193,6 +1194,10 @@ export class ReceiptService {
         <span class="info-label">Alamat</span>
         <span class="info-value">: ${customerAddress || '-'}</span>
       </div>
+      <div class="info-row">
+        <span class="info-label">Telepon</span>
+        <span class="info-value">: ${customerPhone || '-'}</span>
+      </div>
     </div>
   </div>
 
@@ -1259,6 +1264,7 @@ export interface DeliveryOrderPrintData {
   sales: string | null
   customerName: string
   customerAddress: string | null
+  customerPhone: string | null
   storeId?: string // For branch info lookup
   items: Array<{
     productName: string

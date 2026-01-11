@@ -26,6 +26,7 @@ import { globalAlert } from '../../../lib/globalAlert'
 interface Customer {
   id: string
   name: string
+  phone?: string
   address?: string
   code?: string
 }
@@ -74,6 +75,7 @@ export default function DeliveryOrderModal({
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
   const [manualCustomerName, setManualCustomerName] = useState<string>('')
   const [manualCustomerAddress, setManualCustomerAddress] = useState<string>('')
+  const [manualCustomerPhone, setManualCustomerPhone] = useState<string>('')
 
   useEffect(() => {
     if (open && transaction) {
@@ -105,6 +107,7 @@ export default function DeliveryOrderModal({
     setSales('')
     setManualCustomerName('')
     setManualCustomerAddress('')
+    setManualCustomerPhone('')
 
     // Pre-fill customer if exists
     if (transaction.customerId) {
@@ -113,6 +116,7 @@ export default function DeliveryOrderModal({
         setSelectedCustomer(customer)
         setManualCustomerName(customer.name)
         setManualCustomerAddress(customer.address || '')
+        setManualCustomerPhone(customer.phone || '')
       }
     } else if (transaction.customerName) {
       setManualCustomerName(transaction.customerName)
@@ -125,6 +129,7 @@ export default function DeliveryOrderModal({
     if (customer) {
       setManualCustomerName(customer.name)
       setManualCustomerAddress(customer.address || '')
+      setManualCustomerPhone(customer.phone || '')
     }
   }
 
@@ -183,6 +188,7 @@ export default function DeliveryOrderModal({
         sales: sales.trim() || null, // Use form sales
         customerName: customerName, // Use form customerName
         customerAddress: manualCustomerAddress.trim() || null, // Use form address
+        customerPhone: manualCustomerPhone.trim() || null, // Use form phone
         storeId: transaction.storeId, // For branch info lookup
         items
       })
@@ -298,15 +304,22 @@ export default function DeliveryOrderModal({
                   helperText={!manualCustomerName.trim() ? 'Wajib diisi' : ''}
                 />
                 <TextField
-                  label="Alamat"
-                  value={manualCustomerAddress}
-                  onChange={(e) => setManualCustomerAddress(e.target.value)}
+                  label="No. Telepon"
+                  value={manualCustomerPhone}
+                  onChange={(e) => setManualCustomerPhone(e.target.value)}
                   size="small"
                   fullWidth
-                  multiline
-                  rows={2}
                 />
               </Stack>
+              <TextField
+                label="Alamat"
+                value={manualCustomerAddress}
+                onChange={(e) => setManualCustomerAddress(e.target.value)}
+                size="small"
+                fullWidth
+                multiline
+                rows={2}
+              />
             </Stack>
           </Paper>
 
@@ -345,6 +358,9 @@ export default function DeliveryOrderModal({
               <Box flex={1}>
                 <Typography variant="body2">
                   <strong>Konsumen:</strong> {manualCustomerName || '-'}
+                </Typography>
+                <Typography variant="body2">
+                  <strong>Telepon:</strong> {manualCustomerPhone || '-'}
                 </Typography>
                 <Typography variant="body2">
                   <strong>Alamat:</strong> {manualCustomerAddress || '-'}

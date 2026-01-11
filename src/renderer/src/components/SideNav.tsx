@@ -225,6 +225,12 @@ const menus: MenuItem[] = [
             label: 'Satuan (UOM)',
             path: '/master-uom',
             permissions: ['master.uom.manage']
+          },
+          {
+            key: 'master-payment-method',
+            label: 'Metode Pembayaran',
+            path: '/master-payment-method',
+            permissions: ['settings.view']
           }
         ]
       },

@@ -8,7 +8,6 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import TextField from '@mui/material/TextField'
 import Stack from '@mui/material/Stack'
 import Divider from '@mui/material/Divider'
 import DeleteIcon from '@mui/icons-material/Delete'
@@ -17,6 +16,7 @@ import RemoveIcon from '@mui/icons-material/Remove'
 import { formatCurrency } from '../../../utils/currency'
 import type { Product } from './ProductBrowser'
 import Kbd from '@renderer/components/Kbd'
+import CurrencyInput, { type CurrencyInputRef } from '@renderer/components/CurrencyInput'
 
 export type CartItem = Product & {
   quantity: number
@@ -33,14 +33,14 @@ export type CartItem = Product & {
 export type CartPanelProps = {
   items: CartItem[]
   subtotal: number
-  discount: number
+  discount: number // Now represents nominal amount (Rupiah), not percentage
   total: number
   onQuantityChange: (id: string, quantity: number) => void
   onRemove: (id: string) => void
   onChangeDiscount: (value: number) => void
   onCheckout: () => void
   disabled?: boolean
-  discountInputRef?: React.Ref<HTMLInputElement>
+  discountInputRef?: React.RefObject<CurrencyInputRef | null>
 }
 
 export default function CartPanel({
@@ -55,95 +55,87 @@ export default function CartPanel({
   disabled,
   discountInputRef
 }: CartPanelProps): React.JSX.Element {
-  const handleQtyDelta = (id: string, delta: number): void => {
-    const item = items.find((i) => i.id === id)
-    if (!item) return
-    const next = Math.max(1, item.quantity + delta)
-    onQuantityChange(id, next)
-  }
+  // Calculate discount percentage from nominal
+  const discountPercentage = subtotal > 0 ? ((discount / subtotal) * 100).toFixed(1) : '0'
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', gap: 2 }}>
-      <Typography variant="h6">Keranjang Belanja</Typography>
-
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <Box sx={{ flex: 1, overflow: 'auto' }}>
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell>Item</TableCell>
-              <TableCell align="center">Satuan</TableCell>
+              <TableCell>Produk</TableCell>
+              <TableCell align="center">Qty</TableCell>
               <TableCell align="right">Harga</TableCell>
-              <TableCell align="center">Jml</TableCell>
-              <TableCell align="right">Total</TableCell>
-              <TableCell align="center">Aksi</TableCell>
+              <TableCell align="right">Subtotal</TableCell>
+              <TableCell align="center" width={50}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {items.length === 0 ? (
+            {items.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>
+                  <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                    {item.name}
+                  </Typography>
+                  {item.uomCode && (
+                    <Typography variant="caption" color="text.secondary">
+                      {item.uomCode}
+                      {item.priceCategoryName && ` • ${item.priceCategoryName}`}
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell align="center">
+                  <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                    <IconButton
+                      size="small"
+                      onClick={() => onQuantityChange(item.id, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <RemoveIcon fontSize="small" />
+                    </IconButton>
+                    <Typography variant="body2" sx={{ minWidth: 20, textAlign: 'center' }}>
+                      {item.quantity}
+                    </Typography>
+                    <IconButton
+                      size="small"
+                      onClick={() => onQuantityChange(item.id, item.quantity + 1)}
+                    >
+                      <AddIcon fontSize="small" />
+                    </IconButton>
+                  </Stack>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2">{formatCurrency(item.price)}</Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2" fontWeight="500">
+                    {formatCurrency(item.total)}
+                  </Typography>
+                </TableCell>
+                <TableCell align="center">
+                  <IconButton size="small" onClick={() => onRemove(item.id)} color="error">
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+            {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">
-                  <Typography variant="body2" color="text.secondary">
-                    Keranjang kosong.
+                <TableCell colSpan={5} align="center">
+                  <Typography variant="body2" color="text.secondary" sx={{ py: 4 }}>
+                    Keranjang kosong
                   </Typography>
                 </TableCell>
               </TableRow>
-            ) : (
-              items.map((item) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>
-                    <Typography variant="body2" fontWeight="500">
-                      {item.name}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {item.sku}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center">
-                    <Typography variant="body2">{item.uomCode ?? item.unit}</Typography>
-                  </TableCell>
-                  <TableCell align="right">{formatCurrency(item.price)}</TableCell>
-                  <TableCell align="center">
-                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleQtyDelta(item.id, -1)}
-                        disabled={disabled}
-                      >
-                        <RemoveIcon fontSize="small" />
-                      </IconButton>
-                      <Typography variant="body2" width={24} textAlign="center">
-                        {item.quantity}
-                      </Typography>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleQtyDelta(item.id, 1)}
-                        disabled={disabled}
-                      >
-                        <AddIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  </TableCell>
-                  <TableCell align="right">{formatCurrency(item.price * item.quantity)}</TableCell>
-                  <TableCell align="center">
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => onRemove(item.id)}
-                      disabled={disabled}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))
             )}
           </TableBody>
         </Table>
       </Box>
 
-      <Divider />
+      <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+        <Divider sx={{ mb: 2 }} />
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         <Stack direction="row" justifyContent="space-between">
           <Typography variant="body2" color="text.secondary">
             Subtotal
@@ -153,22 +145,23 @@ export default function CartPanel({
           </Typography>
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
           <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            Diskon (%) <Kbd keys={['F4']} size="small" />
+            Diskon <Kbd keys={['F4']} size="small" />
+            <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
+              ({discountPercentage}%)
+            </Typography>
           </Typography>
-          <TextField
+          <CurrencyInput
+            ref={discountInputRef}
             size="small"
-            type="number"
             value={discount}
-            onChange={(e) => onChangeDiscount(Number(e.target.value) || 0)}
+            onChange={(value) => onChangeDiscount(Math.min(value, subtotal))}
             sx={{ width: 140 }}
-            inputProps={{ min: 0, max: 100 }}
-            inputRef={discountInputRef}
           />
         </Stack>
 
-        <Stack direction="row" justifyContent="space-between">
+        <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
           <Typography variant="subtitle1">Total</Typography>
           <Typography variant="subtitle1" fontWeight="700">
             {formatCurrency(total)}

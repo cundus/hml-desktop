@@ -34,6 +34,7 @@ import SupplierPage from './pages/settings/master/Supplier'
 import UserPage from './pages/settings/master/User'
 import UomPage from './pages/settings/master/Uom'
 import PriceCategoryPage from './pages/settings/master/PriceCategory'
+import PaymentMethodPage from './pages/settings/master/PaymentMethod'
 import WarehousePricingListPage from './pages/warehouse/PricingList'
 import ProductPricingPage from './pages/warehouse/ProductPricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
@@ -106,6 +107,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['pricing.categories']} />,
             children: [{ path: 'pricing/categories', element: <PriceCategoryPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['settings.view']} />,
+            children: [{ path: 'master-payment-method', element: <PaymentMethodPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,

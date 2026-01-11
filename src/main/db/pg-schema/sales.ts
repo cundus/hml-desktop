@@ -1,6 +1,17 @@
 import { pgTable, text, integer, numeric, timestamp, boolean } from 'drizzle-orm/pg-core'
 
-// SALES: Transactions, TransactionItems
+// SALES: Transactions, TransactionItems, PaymentMethods
+
+export const paymentMethods = pgTable('payment_method', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
+})
 
 export const transactions = pgTable('transactions', {
   id: text('id').primaryKey(),

@@ -17,9 +17,7 @@ import ProductBrowser, { type Product } from './components/ProductBrowser'
 import ProductSelectModal, { type ProductSelectResult, type ProductForSelection } from './components/ProductSelectModal'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
-import PaymentMethodDialog, {
-  type PaymentMethod as DialogPaymentMethod
-} from './components/PaymentMethodDialog'
+import PaymentMethodDialog from './components/PaymentMethodDialog'
 import {
   OpenShiftDialog,
   CloseShiftDialog,
@@ -64,7 +62,7 @@ export default function SalesPage(): React.JSX.Element {
   const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null)
 
   const customerInputRef = useRef<HTMLInputElement | null>(null)
-  const discountInputRef = useRef<HTMLInputElement | null>(null)
+  const discountInputRef = useRef<import('@renderer/components/CurrencyInput').CurrencyInputRef | null>(null)
 
   // Load products, customers, categories, and prices from local DB
   useEffect(() => {
@@ -138,10 +136,9 @@ export default function SalesPage(): React.JSX.Element {
     [cartItems]
   )
 
+  // Discount is now a nominal value (Rupiah), not percentage
   const total = useMemo(() => {
-    const safePercent = Math.max(0, Math.min(100, discount))
-    const discountAmount = (subtotal * safePercent) / 100
-    return Math.max(0, subtotal - discountAmount)
+    return Math.max(0, subtotal - discount)
   }, [subtotal, discount])
 
   // Open product selection modal when clicking a product
@@ -228,7 +225,8 @@ export default function SalesPage(): React.JSX.Element {
   }
 
   const handleChangeDiscount = (value: number): void => {
-    setDiscount(Math.max(0, Math.min(100, value)))
+    // Discount cannot exceed subtotal
+    setDiscount(Math.max(0, Math.min(subtotal, value)))
   }
 
   const handleCheckout = useCallback((): void => {
@@ -248,9 +246,10 @@ export default function SalesPage(): React.JSX.Element {
 
   const handleConfirmPayment = useCallback(
     async (
-      paymentMethod: DialogPaymentMethod,
+      paymentMethod: string,
       paymentDeadline?: Date,
-      cashDetails?: { paidAmount: string; change: string }
+      cashDetails?: { paidAmount: string; change: string },
+      _downPayment?: number
     ): Promise<void> => {
       if (cartItems.length === 0) return
       if (!defaultStoreId) {
@@ -595,7 +594,7 @@ export default function SalesPage(): React.JSX.Element {
               Subtotal: {formatCurrency(subtotal)}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Diskon: {discount}%
+              Diskon: {formatCurrency(discount)}
             </Typography>
           </Box>
         </Box>

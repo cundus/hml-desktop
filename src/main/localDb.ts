@@ -749,6 +749,19 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Payment Method master data table (for non-cash payment methods)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS payment_method (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
+    )
+  `)
+
   console.log('✓ Database tables initialized')
 }
 

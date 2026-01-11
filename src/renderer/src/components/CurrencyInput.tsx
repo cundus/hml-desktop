@@ -76,7 +76,7 @@ const CurrencyInput = forwardRef<CurrencyInputRef, CurrencyInputProps>(
     return (
       <TextField
         {...textFieldProps}
-        ref={inputRef}
+        inputRef={inputRef}
         value={displayValue}
         onChange={handleChange}
         onBlur={handleBlur}

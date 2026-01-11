@@ -42,6 +42,7 @@ import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
 import ExpensesPage from './pages/operations/expenses'
 import ShiftHistoryPage from './pages/operations/shifts'
+import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
 import SetupPage from './pages/Setup'
 
 const router = createHashRouter([
@@ -162,7 +163,8 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['operations.shift_history']} />,
             children: [
-              { path: 'operations/shifts', element: <ShiftHistoryPage /> }
+              { path: 'operations/shifts', element: <ShiftHistoryPage /> },
+              { path: 'operations/shifts/:shiftId', element: <ShiftDetailPage /> }
             ]
           }
         ]

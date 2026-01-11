@@ -61,6 +61,8 @@ export interface ShiftSummary {
     id: string
     code: string
     total: string
+    discount: string
+    paymentMethod: string
     createdAt: Date
     customerName?: string
   }[]
@@ -438,6 +440,8 @@ export class ShiftService {
         id: row.id as string,
         code: row.code as string,
         total: row.total as string,
+        discount: row.discount as string || '0',
+        paymentMethod: row.payment_method as string || 'cash',
         createdAt: new Date(row.created_at as number),
         customerName: row.customer_name as string | undefined
       })

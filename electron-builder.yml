@@ -41,6 +41,6 @@ appImage:
 npmRebuild: false
 publish:
   provider: generic
-  url: https://example.com/auto-updates
+  url: https://server.hammielion.com/updates/petshop
 electronDownload:
   mirror: https://npmmirror.com/mirrors/electron/

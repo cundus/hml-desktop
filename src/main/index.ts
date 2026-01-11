@@ -6,6 +6,7 @@ import { disconnectDb } from './db'
 import { bootstrap } from './bootstrap'
 import { config } from 'dotenv'
 import { checkCloseGuard, getSyncService } from './appState'
+import { initAutoUpdater } from './updater'
 
 // Load .env file for DATABASE_URL and other env vars
 config()
@@ -171,6 +172,10 @@ app.whenReady().then(() => {
   bootstrap()
     .then(() => {
       createWindow()
+      // Initialize auto-updater after window is created
+      if (mainWindow) {
+        initAutoUpdater(mainWindow)
+      }
     })
     .catch((err) => {
       console.error('Failed to bootstrap application:', err)

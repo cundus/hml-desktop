@@ -1,6 +1,18 @@
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core'
 
-// STORE & CUSTOMER: Store, Customer, CustomerCategory
+// STORE & CUSTOMER: Store, Customer, CustomerCategory, SalesPerson
+
+// Sales Person for commission tracking
+export const salesPersons = pgTable('sales_person', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  isActive: boolean('is_active').notNull().default(true),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
+})
 
 export const stores = pgTable('store', {
   id: text('id').primaryKey(),
@@ -10,6 +22,7 @@ export const stores = pgTable('store', {
   phone: text('phone'),
   email: text('email'),
   type: text('type').notNull(),
+  defaultSalesId: text('default_sales_id'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
@@ -39,3 +52,4 @@ export const customerCategories = pgTable('customer_category', {
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
+

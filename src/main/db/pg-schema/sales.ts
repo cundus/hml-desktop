@@ -27,6 +27,8 @@ export const transactions = pgTable('transactions', {
   receiptPrinted: boolean('receipt_printed').notNull().default(false),
   customerId: text('customer_id'),
   userId: text('user_id'),
+  salesId: text('sales_id'),
+  salesName: text('sales_name'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

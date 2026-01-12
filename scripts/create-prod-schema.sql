@@ -70,6 +70,16 @@ CREATE TABLE IF NOT EXISTS role_permission (
 -- STORE & CUSTOMER TABLES
 -- ============================================
 
+CREATE TABLE IF NOT EXISTS sales_person (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  synced_at TIMESTAMP,
+  deleted_at TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS store (
   id TEXT PRIMARY KEY,
   code TEXT NOT NULL,
@@ -78,6 +88,7 @@ CREATE TABLE IF NOT EXISTS store (
   phone TEXT,
   email TEXT,
   type TEXT NOT NULL,
+  default_sales_id TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   synced_at TIMESTAMP,
@@ -310,6 +321,8 @@ CREATE TABLE IF NOT EXISTS transactions (
   receipt_printed BOOLEAN NOT NULL DEFAULT FALSE,
   customer_id TEXT,
   user_id TEXT,
+  sales_id TEXT,
+  sales_name TEXT,
   created_at TIMESTAMP NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
   synced_at TIMESTAMP,

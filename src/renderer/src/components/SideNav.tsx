@@ -231,6 +231,12 @@ const menus: MenuItem[] = [
             label: 'Metode Pembayaran',
             path: '/master-payment-method',
             permissions: ['settings.view']
+          },
+          {
+            key: 'master-sales-person',
+            label: 'Sales Person',
+            path: '/master-sales-person',
+            permissions: ['settings.view']
           }
         ]
       },

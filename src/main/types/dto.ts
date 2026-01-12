@@ -86,6 +86,7 @@ export interface CreateStoreDto {
   phone?: string
   email?: string
   type: string
+  defaultSalesId?: string
 }
 
 export interface UpdateStoreDto {
@@ -95,6 +96,7 @@ export interface UpdateStoreDto {
   phone?: string
   email?: string
   type?: string
+  defaultSalesId?: string
 }
 
 export interface CreateCustomerCategoryDto {

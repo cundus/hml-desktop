@@ -31,7 +31,8 @@ const storeSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
-  type: z.string().min(1, 'Tipe wajib diisi')
+  type: z.string().min(1, 'Tipe wajib diisi'),
+  defaultSalesId: z.string().optional()
 })
 
 type StoreFormValues = z.infer<typeof storeSchema>
@@ -40,10 +41,17 @@ type Store = StoreFormValues & {
   id: string
 }
 
+interface SalesPerson {
+  id: string
+  name: string
+  isActive: boolean
+}
+
 const storeTypes = ['RETAIL', 'WAREHOUSE', 'DISTRIBUTION']
 
 export default function StorePage(): React.JSX.Element {
   const [items, setItems] = useState<Store[]>([])
+  const [salesPersons, setSalesPersons] = useState<SalesPerson[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -56,11 +64,12 @@ export default function StorePage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<StoreFormValues>({
     resolver: zodResolver(storeSchema),
-    defaultValues: { code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL' }
+    defaultValues: { code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL', defaultSalesId: '' }
   })
 
   useEffect(() => {
     loadStores()
+    loadSalesPersons()
   }, [])
 
   const loadStores = async (): Promise<void> => {
@@ -80,9 +89,20 @@ export default function StorePage(): React.JSX.Element {
     }
   }
 
+  const loadSalesPersons = async (): Promise<void> => {
+    try {
+      const response = await window.api.db.salesPersons.getActive()
+      if (response.success) {
+        setSalesPersons(response.data ?? [])
+      }
+    } catch {
+      // Ignore - sales persons are optional
+    }
+  }
+
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL' })
+    reset({ code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL', defaultSalesId: '' })
     setDialogOpen(true)
   }
 
@@ -94,7 +114,8 @@ export default function StorePage(): React.JSX.Element {
       address: store.address || '',
       phone: store.phone || '',
       email: store.email || '',
-      type: store.type
+      type: store.type,
+      defaultSalesId: store.defaultSalesId || ''
     })
     setDialogOpen(true)
   }
@@ -271,6 +292,23 @@ export default function StorePage(): React.JSX.Element {
                 helperText={errors.email?.message}
               />
             </Stack>
+            <TextField
+              {...register('defaultSalesId')}
+              select
+              label="Default Sales"
+              fullWidth
+              margin="normal"
+              helperText="Sales yang akan otomatis dipilih saat transaksi di toko ini"
+            >
+              <MenuItem value="">
+                <em>Tidak ada</em>
+              </MenuItem>
+              {salesPersons.map((sp) => (
+                <MenuItem key={sp.id} value={sp.id}>
+                  {sp.name}
+                </MenuItem>
+              ))}
+            </TextField>
           </DialogContent>
           <DialogActions>
             <Button onClick={closeDialog}>Batal</Button>

@@ -77,6 +77,7 @@ import { priceCategoryApi } from './price-category'
 import { printerConfigApi } from './printer-config'
 import { deliveryOrderApi } from './delivery-order'
 import { paymentMethodApi } from './payment-method'
+import { salesPersonApi } from './sales-person'
 
 // Receipt printing API
 const receiptApi = {
@@ -165,5 +166,8 @@ export const db = {
   deliveryOrders: deliveryOrderApi,
 
   // Payment Methods (Non-cash)
-  paymentMethods: paymentMethodApi
+  paymentMethods: paymentMethodApi,
+
+  // Sales Persons
+  salesPersons: salesPersonApi
 }

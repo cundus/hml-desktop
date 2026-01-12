@@ -11,6 +11,7 @@ export interface Store {
   phone: string | null
   email: string | null
   type: string
+  defaultSalesId: string | null
   createdAt: Date
   updatedAt: Date
   syncedAt: Date | null
@@ -76,8 +77,8 @@ export class StoreService {
     const now = Date.now()
 
     this.db.run(
-      'INSERT INTO store (id, code, name, address, phone, email, type, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, data.code, data.name, data.address ?? null, data.phone ?? null, data.email ?? null, data.type, now, now]
+      'INSERT INTO store (id, code, name, address, phone, email, type, default_sales_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, data.code, data.name, data.address ?? null, data.phone ?? null, data.email ?? null, data.type, data.defaultSalesId ?? null, now, now]
     )
 
     saveDb(this.db)
@@ -90,6 +91,7 @@ export class StoreService {
       phone: data.phone ?? null,
       email: data.email ?? null,
       type: data.type,
+      defaultSalesId: data.defaultSalesId ?? null,
       createdAt: new Date(now),
       updatedAt: new Date(now),
       syncedAt: null,
@@ -109,7 +111,7 @@ export class StoreService {
     const now = Date.now()
 
     this.db.run(
-      'UPDATE store SET code = ?, name = ?, address = ?, phone = ?, email = ?, type = ?, updated_at = ? WHERE id = ?',
+      'UPDATE store SET code = ?, name = ?, address = ?, phone = ?, email = ?, type = ?, default_sales_id = ?, updated_at = ? WHERE id = ?',
       [
         data.code ?? existing.code,
         data.name ?? existing.name,
@@ -117,6 +119,7 @@ export class StoreService {
         data.phone ?? existing.phone ?? null,
         data.email ?? existing.email ?? null,
         data.type ?? existing.type,
+        data.defaultSalesId ?? existing.defaultSalesId ?? null,
         now,
         id
       ]
@@ -177,6 +180,7 @@ export class StoreService {
       phone: row.phone as string | null,
       email: row.email as string | null,
       type: row.type as string,
+      defaultSalesId: row.default_sales_id as string | null,
       createdAt: new Date(row.created_at as number),
       updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,

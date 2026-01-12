@@ -762,6 +762,19 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Sales Person master data table (for tracking sales commissions)
+  database.run(`
+    CREATE TABLE IF NOT EXISTS sales_person (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
+    )
+  `)
+
   console.log('✓ Database tables initialized')
 }
 
@@ -830,6 +843,29 @@ async function runMigrations(database: Database): Promise<void> {
   try {
     database.run('ALTER TABLE store ADD COLUMN email TEXT')
     console.log('✓ Added email column to store table')
+  } catch {
+    // Column already exists, ignore
+  }
+  
+  // Migration: Add default_sales_id to store table
+  try {
+    database.run('ALTER TABLE store ADD COLUMN default_sales_id TEXT')
+    console.log('✓ Added default_sales_id column to store table')
+  } catch {
+    // Column already exists, ignore
+  }
+  
+  // Migration: Add sales_id and sales_name to transactions table
+  try {
+    database.run('ALTER TABLE transactions ADD COLUMN sales_id TEXT')
+    console.log('✓ Added sales_id column to transactions table')
+  } catch {
+    // Column already exists, ignore
+  }
+  
+  try {
+    database.run('ALTER TABLE transactions ADD COLUMN sales_name TEXT')
+    console.log('✓ Added sales_name column to transactions table')
   } catch {
     // Column already exists, ignore
   }

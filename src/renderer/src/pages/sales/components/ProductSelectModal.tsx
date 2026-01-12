@@ -75,7 +75,9 @@ export default function ProductSelectModal({
   const [selectedPrice, setSelectedPrice] = useState<PriceCategory | null>(null)
   const [quantity, setQuantity] = useState(1)
   const [baseStock, setBaseStock] = useState<number>(0) // Stock in base units
+  const [manualPrice, setManualPrice] = useState<number>(0) // For Manual price category
   const quantityInputRef = useRef<HTMLInputElement>(null)
+  const manualPriceInputRef = useRef<HTMLInputElement>(null)
 
   // Load UOMs and set up price categories when product changes
   useEffect(() => {
@@ -208,6 +210,9 @@ export default function ProductSelectModal({
       })
       const availablePrices = pricesRes.data ?? []
 
+      // Always add MANUAL category at the end
+      const manualCategory: PriceCategory = { id: 'MANUAL', name: 'Manual', price: 0, source: 'default' }
+
       if (availablePrices.length > 0) {
         const categories: PriceCategory[] = availablePrices.map((ap) => ({
           id: ap.priceCategoryId,
@@ -215,6 +220,7 @@ export default function ProductSelectModal({
           price: Number(ap.price) || 0,
           source: ap.source
         }))
+        categories.push(manualCategory)
         setPriceCategories(categories)
         // Default to RETAIL if available, otherwise first
         const retail = categories.find((c) => c.id === 'RETAIL')
@@ -223,7 +229,8 @@ export default function ProductSelectModal({
         // No prices configured - fallback to product's legacy price
         const basePrice = product?.price ?? 0
         const categories: PriceCategory[] = [
-          { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 }
+          { id: 'RETAIL', name: 'Retail', price: basePrice, margin: 0 },
+          manualCategory
         ]
         setPriceCategories(categories)
         setSelectedPrice(categories[0])
@@ -256,18 +263,31 @@ export default function ProductSelectModal({
   const handleConfirm = useCallback((): void => {
     if (!product || !selectedUom || !selectedPrice || quantity < 1) return
 
-    const unitPrice = selectedPrice.price
+    // Use manualPrice if MANUAL category is selected
+    const unitPrice = selectedPrice.id === 'MANUAL' ? manualPrice : selectedPrice.price
+    
+    // Validate manual price
+    if (selectedPrice.id === 'MANUAL' && unitPrice <= 0) {
+      manualPriceInputRef.current?.focus()
+      return
+    }
+
     const totalPrice = unitPrice * quantity
+
+    // Create a copy of selectedPrice with the actual price for MANUAL
+    const finalPrice = selectedPrice.id === 'MANUAL' 
+      ? { ...selectedPrice, price: unitPrice }
+      : selectedPrice
 
     onConfirm({
       product,
       selectedUom,
-      selectedPrice,
+      selectedPrice: finalPrice,
       quantity,
       unitPrice,
       totalPrice
     })
-  }, [product, selectedUom, selectedPrice, quantity, onConfirm])
+  }, [product, selectedUom, selectedPrice, quantity, manualPrice, onConfirm])
 
   // Handle keyboard navigation - scoped to dialog only
   const handleKeyDown = useCallback(
@@ -354,7 +374,8 @@ export default function ProductSelectModal({
 
   if (!product) return <></>
 
-  const unitPrice = selectedPrice?.price ?? 0
+  // Use manualPrice for MANUAL category in display as well
+  const unitPrice = selectedPrice?.id === 'MANUAL' ? manualPrice : (selectedPrice?.price ?? 0)
   const totalPrice = unitPrice * quantity
 
   // INV-002: Calculate stock in selected UOM and check if quantity exceeds
@@ -422,7 +443,7 @@ export default function ProductSelectModal({
                       <Typography variant="caption">{cat.name}</Typography>
                     </Box>
                     <Typography variant="body2" fontWeight="bold">
-                      {formatCurrency(cat.price)}
+                      {cat.id === 'MANUAL' ? 'Input' : formatCurrency(cat.price)}
                     </Typography>
                   </Box>
                 }
@@ -432,6 +453,31 @@ export default function ProductSelectModal({
               />
             ))}
           </Stack>
+
+          {/* Manual Price Input - shown when MANUAL category is selected */}
+          {selectedPrice?.id === 'MANUAL' && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom color="warning.main">
+                Masukkan Harga Manual
+              </Typography>
+              <TextField
+                inputRef={manualPriceInputRef}
+                type="number"
+                value={manualPrice || ''}
+                onChange={(e) => setManualPrice(Number(e.target.value) || 0)}
+                placeholder="0"
+                size="small"
+                fullWidth
+                autoFocus
+                InputProps={{
+                  startAdornment: <Typography sx={{ mr: 1 }}>Rp</Typography>
+                }}
+                sx={{ maxWidth: 200 }}
+                error={manualPrice <= 0}
+                helperText={manualPrice <= 0 ? 'Harga harus lebih dari 0' : ''}
+              />
+            </Box>
+          )}
         </Box>
 
         <Divider sx={{ my: 2 }} />

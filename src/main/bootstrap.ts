@@ -68,6 +68,8 @@ import { PriceCategoryController } from './controllers/price-category.controller
 import { PrinterConfigService } from './services/printer-config.service'
 import { PaymentMethodService } from './services/payment-method.service'
 import { PaymentMethodController } from './controllers/payment-method.controller'
+import { SalesPersonService } from './services/sales-person.service'
+import { SalesPersonController } from './controllers/sales-person.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -146,6 +148,9 @@ export async function bootstrap(): Promise<void> {
   // Initialize payment method service
   const paymentMethodService = new PaymentMethodService(db)
 
+  // Initialize sales person service
+  const salesPersonService = new SalesPersonService(db)
+
   // Initialize sync service (sql.js local + Drizzle+pg cloud)
   const syncService = new SyncService(db)
 
@@ -192,6 +197,7 @@ export async function bootstrap(): Promise<void> {
   const pricingController = new PricingController(pricingService)
   const priceCategoryController = new PriceCategoryController(priceCategoryService)
   new PaymentMethodController(paymentMethodService)
+  const salesPersonController = new SalesPersonController(salesPersonService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -222,6 +228,7 @@ export async function bootstrap(): Promise<void> {
   registerAppConfigHandlers(appConfigService)
   registerPrinterConfigController(printerConfigService)
   registerDeliveryOrderController(deliveryOrderService)
+  salesPersonController.registerHandlers()
 
   registerInventoryHandlers()
 

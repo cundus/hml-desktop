@@ -53,6 +53,8 @@ export interface CreateTransactionDto {
   receiptPrinted?: boolean
   customerId?: string
   userId?: string
+  salesId?: string
+  salesName?: string
   items: CreateTransactionItemDto[]
 }
 
@@ -238,7 +240,7 @@ export class TransactionService {
 
     // Insert transaction
     this.db.run(
-      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, sales_id, sales_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.code,
@@ -253,6 +255,8 @@ export class TransactionService {
         (data.receiptPrinted ?? false) ? 1 : 0,
         data.customerId ?? null,
         data.userId ?? null,
+        data.salesId ?? null,
+        data.salesName ?? null,
         now,
         now
       ]

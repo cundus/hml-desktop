@@ -6,7 +6,11 @@ import {
   DialogContent,
   DialogActions,
   Snackbar,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material'
 import Button from '@mui/material/Button'
 import Typography from '@mui/material/Typography'
@@ -60,6 +64,9 @@ export default function SalesPage(): React.JSX.Element {
 
   // For transaction: we need a default store. In real app, this would come from user context.
   const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null)
+  const [defaultSalesId, setDefaultSalesId] = useState<string | undefined>(undefined)
+  const [selectedSalesId, setSelectedSalesId] = useState<string>('')
+  const [salesPersons, setSalesPersons] = useState<{ id: string; name: string; isActive: boolean }[]>([])
 
   const customerInputRef = useRef<HTMLInputElement | null>(null)
   const discountInputRef = useRef<import('@renderer/components/CurrencyInput').CurrencyInputRef | null>(null)
@@ -113,13 +120,32 @@ export default function SalesPage(): React.JSX.Element {
         // Use branch store ID if available, otherwise pick first store (HQ mode)
         if (branchStoreId) {
           setDefaultStoreId(branchStoreId)
+          // Branch mode - get store info to get default sales
+          const storeRes = await window.api.db.stores.getById(branchStoreId)
+          if (storeRes.success && storeRes.data?.defaultSalesId) {
+            setDefaultSalesId(storeRes.data.defaultSalesId)
+          }
         } else {
           // HQ mode - pick first store as default
           const storesRes = await window.api.db.stores.getAll()
           const stores = storesRes.data ?? []
           if (stores.length > 0) {
             setDefaultStoreId(stores[0].id)
+            // Set default sales from store
+            if (stores[0].defaultSalesId) {
+              setDefaultSalesId(stores[0].defaultSalesId)
+            }
           }
+        }
+
+        // Load sales persons
+        try {
+          const salesRes = await window.api.db.salesPersons.getActive()
+          if (salesRes.success) {
+            setSalesPersons(salesRes.data ?? [])
+          }
+        } catch {
+          // Sales persons optional
         }
       } catch (err) {
         console.error('Failed to load sales data:', err)
@@ -130,6 +156,13 @@ export default function SalesPage(): React.JSX.Element {
     }
     void loadData()
   }, [branchStoreId])
+
+  // Set selectedSalesId when defaultSalesId changes
+  useEffect(() => {
+    if (defaultSalesId && !selectedSalesId) {
+      setSelectedSalesId(defaultSalesId)
+    }
+  }, [defaultSalesId, selectedSalesId])
 
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -239,10 +272,18 @@ export default function SalesPage(): React.JSX.Element {
       })
       return
     }
+    if (!selectedSalesId) {
+      setSnackbar({
+        open: true,
+        message: 'Silakan pilih sales person terlebih dahulu.',
+        severity: 'error'
+      })
+      return
+    }
 
     // Show payment method dialog instead of creating transaction directly
     setPaymentMethodDialogOpen(true)
-  }, [cartItems.length, defaultStoreId])
+  }, [cartItems.length, defaultStoreId, selectedSalesId])
 
   const handleConfirmPayment = useCallback(
     async (
@@ -287,7 +328,7 @@ export default function SalesPage(): React.JSX.Element {
           }
         })
 
-        // Create transaction via IPC with payment method
+        // Create transaction via IPC with payment method and sales
         const result = await window.api.db.transactions.create({
           code,
           storeId: defaultStoreId,
@@ -301,6 +342,8 @@ export default function SalesPage(): React.JSX.Element {
           receiptPrinted: false,
           customerId: selectedCustomerId ?? undefined,
           userId: userName ?? undefined,
+          salesId: selectedSalesId || undefined,
+          salesName: selectedSalesId ? salesPersons.find(sp => sp.id === selectedSalesId)?.name : undefined,
           items: transactionItems
         })
 
@@ -562,6 +605,41 @@ export default function SalesPage(): React.JSX.Element {
           >
             Tambah pelanggan
           </Button>
+        </Box>
+
+        {/* Sales Person selector */}
+        <Box
+          sx={{
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 1,
+            bgcolor: 'background.default',
+            border: '1px solid',
+            borderColor: selectedSalesId ? 'divider' : 'error.main'
+          }}
+        >
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+              Sales Person *
+            </Typography>
+            <FormControl fullWidth size="small" error={!selectedSalesId}>
+              <InputLabel>Pilih Sales</InputLabel>
+              <Select
+                value={selectedSalesId}
+                label="Pilih Sales"
+                onChange={(e) => setSelectedSalesId(e.target.value)}
+              >
+                {salesPersons.map((sp) => (
+                  <MenuItem key={sp.id} value={sp.id}>
+                    {sp.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
         </Box>
 
         {/* Summary */}

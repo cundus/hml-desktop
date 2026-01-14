@@ -4,9 +4,9 @@ import { join } from 'path'
 import { tmpdir } from 'os'
 import { Transaction, TransactionItem } from './transaction.service'
 import { AppConfigService } from './app-config.service'
-import { ProductService } from './product.service'
+import { ProductCloudService } from './product-cloud.service'
 import { PrinterConfigService, PrinterPurpose } from './printer-config.service'
-import { StoreService, Store } from './store.service'
+import { StoreCloudService, Store } from './store-cloud.service'
 
 export interface ReceiptConfig {
   printerName?: string
@@ -70,9 +70,9 @@ export class ReceiptService {
 
   constructor(
     private appConfigService: AppConfigService,
-    private productService: ProductService,
+    private productService: ProductCloudService,
     private printerConfigService?: PrinterConfigService,
-    private storeService?: StoreService
+    private storeService?: StoreCloudService
   ) {
     this.config = this.getDefaultConfig()
     void this.loadConfig()
@@ -561,7 +561,7 @@ export class ReceiptService {
   </style>
 </head>
 <body>
-  <div class="header center">
+  <div class="header center" style="margin-topm: 2mm">
     <div class="store-name">${branchInfo?.storeName || this.config.storeName}</div>
     ${branchInfo?.branchName ? `<div>${branchInfo.branchName}</div>` : ''}
     <div>${branchInfo?.branchAddress || this.config.storeAddress}</div>

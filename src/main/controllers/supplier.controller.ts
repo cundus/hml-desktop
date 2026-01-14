@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { SupplierService } from '../services/supplier.service'
+import { SupplierCloudService } from '../services/supplier-cloud.service'
 import { CreateSupplierDto, UpdateSupplierDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
 
 export class SupplierController {
-  constructor(private supplierService: SupplierService) {}
+  constructor(private supplierService: SupplierCloudService) {}
 
   /**
    * Register all IPC handlers for supplier operations

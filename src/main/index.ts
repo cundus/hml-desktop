@@ -5,8 +5,9 @@ import icon from '../../resources/icon.png?asset'
 import { disconnectDb } from './db'
 import { bootstrap } from './bootstrap'
 import { config } from 'dotenv'
-import { checkCloseGuard, getSyncService } from './appState'
+import { checkCloseGuard, getQueueService } from './appState'
 import { initAutoUpdater } from './updater'
+import { getCloudDb } from './services/cloud-db.service'
 
 // Load .env file for DATABASE_URL and other env vars
 config()
@@ -47,12 +48,12 @@ function createWindow(): void {
       if (status.hasOpenShift) {
         warnings.push(`• Shift kasir "${status.shiftUserName || 'Unknown'}" masih terbuka`)
       }
-      if (status.unsyncedCount > 0 && status.isCloudConnected) {
-        warnings.push(`• Ada ${status.unsyncedCount} record yang belum di-sync ke cloud`)
+      if (status.pendingQueueCount > 0 && status.isCloudConnected) {
+        warnings.push(`• Ada ${status.pendingQueueCount} record dalam antrian sync`)
       }
 
       const buttons = ['Batal']
-      if (status.unsyncedCount > 0 && status.isCloudConnected) {
+      if (status.pendingQueueCount > 0 && status.isCloudConnected) {
         buttons.push('Sync Sekarang')
       }
       buttons.push('Tetap Tutup')
@@ -70,23 +71,24 @@ function createWindow(): void {
       const clickedButton = buttons[result.response]
 
       if (clickedButton === 'Sync Sekarang') {
-        // Trigger sync and show progress
+        // Trigger queue processing
         try {
-          const syncService = getSyncService()
-          if (syncService) {
+          const queueService = getQueueService()
+          if (queueService) {
             await dialog.showMessageBox(mainWindow!, {
               type: 'info',
               title: 'Sinkronisasi',
-              message: 'Memulai sinkronisasi data...',
+              message: 'Memproses antrian sinkronisasi...',
               detail: 'Silakan tunggu hingga selesai.',
               buttons: ['OK']
             })
-            await syncService.fullSync()
+            // Queue will be processed by QueueProcessorService automatically
+            // Just show completion message
             await dialog.showMessageBox(mainWindow!, {
               type: 'info',
-              title: 'Sinkronisasi Selesai',
-              message: 'Data berhasil di-sync ke cloud.',
-              detail: 'Anda sekarang dapat menutup aplikasi.',
+              title: 'Sinkronisasi',
+              message: 'Antrian akan diproses di background.',
+              detail: 'Anda dapat menutup aplikasi setelah queue kosong.',
               buttons: ['OK']
             })
           }
@@ -204,14 +206,12 @@ app.on('window-all-closed', () => {
 
 // Clean up database connections before app quits
 app.on('before-quit', async () => {
-  // Disconnect cloud database first
-  const syncService = getSyncService()
-  if (syncService) {
-    try {
-      await syncService.disconnect()
-    } catch (error) {
-      console.error('Error disconnecting cloud database:', error)
-    }
+  // Disconnect cloud database
+  try {
+    await getCloudDb().disconnect()
+    console.log('Cloud database disconnected')
+  } catch (error) {
+    console.error('Error disconnecting cloud database:', error)
   }
   // Then close local database
   disconnectDb()

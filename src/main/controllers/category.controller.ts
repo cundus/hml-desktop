@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { CategoryService } from '../services/category.service'
+import { CategoryCloudService } from '../services/category-cloud.service'
 import { CreateCategoryDto, UpdateCategoryDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
 
 export class CategoryController {
-  constructor(private categoryService: CategoryService) {}
+  constructor(private categoryService: CategoryCloudService) {}
 
   /**
    * Register all IPC handlers for category operations

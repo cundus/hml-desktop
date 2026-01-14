@@ -15,7 +15,6 @@ import {
   StockTransactionController,
   StoreController,
   SupplierController,
-  SyncController,
   TransactionController,
   UomController,
   UserController,
@@ -34,42 +33,47 @@ import {
   seedUoms,
   seedPriceCategories,
   backfillProductUomsAndStorePrices,
-  seedPermissions
+  seedPermissions,
+  resetAndReseedPermissions
 } from './seed'
 import {
-  AuthService,
-  BatchService,
-  CategoryService,
-  CustomerCategoryService,
-  CustomerService,
-  ExpenseService,
-  PermissionService,
-  ProductLocationService,
-  ProductPriceService,
-  ProductService,
   PurchaseOrderService,
   ReceiptService,
-  RolePermissionService,
-  RoleService,
-  StockTransactionService,
-  StoreService,
-  SupplierService,
-  SyncService,
   TransactionService,
-  UomService,
-  UserService,
-  UserRoleService,
   PricingService
 } from './services'
 import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
-import { PriceCategoryService } from './services/price-category.service'
 import { PriceCategoryController } from './controllers/price-category.controller'
 import { PrinterConfigService } from './services/printer-config.service'
 import { PaymentMethodService } from './services/payment-method.service'
 import { PaymentMethodController } from './controllers/payment-method.controller'
 import { SalesPersonService } from './services/sales-person.service'
+import { QueueService } from './services/queue.service'
+import { getCloudDb } from './services/cloud-db.service'
+import { getConnectivity } from './services/connectivity.service'
+import { QueueProcessorService } from './services/queue-processor.service'
+import { CategoryCloudService } from './services/category-cloud.service'
+import { CustomerCloudService } from './services/customer-cloud.service'
+import { StoreCloudService } from './services/store-cloud.service'
+import { SupplierCloudService } from './services/supplier-cloud.service'
+import { UserCloudService } from './services/user-cloud.service'
+import { AuthCloudService } from './services/auth-cloud.service'
+import { UomCloudService } from './services/uom-cloud.service'
+import { CustomerCategoryCloudService } from './services/customer-category-cloud.service'
+import { RoleCloudService } from './services/role-cloud.service'
+import { PermissionCloudService } from './services/permission-cloud.service'
+import { BatchCloudService } from './services/batch-cloud.service'
+import { UserRoleCloudService } from './services/user-role-cloud.service'
+import { RolePermissionCloudService } from './services/role-permission-cloud.service'
+import { ExpenseCloudService } from './services/expense-cloud.service'
+import { ProductPriceCloudService } from './services/product-price-cloud.service'
+import { ProductLocationCloudService } from './services/product-location-cloud.service'
+import { StockTransactionCloudService } from './services/stock-transaction-cloud.service'
+import { PriceCategoryCloudService } from './services/price-category-cloud.service'
 import { SalesPersonController } from './controllers/sales-person.controller'
+import { ProductCloudService } from './services/product-cloud.service'
+import { QueueController } from './controllers/queue.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -79,37 +83,45 @@ export async function bootstrap(): Promise<void> {
   const db = await getDb()
 
   // Seed static reference data
-  // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
+  await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
   await seedPermissions(db)
   await seedAdmin(db)
   await seedUoms(db)
   await seedPriceCategories(db)
   await backfillProductUomsAndStorePrices(db)
 
-  // Initialize master data services
-  const categoryService = new CategoryService(db)
-  const supplierService = new SupplierService(db)
-  const storeService = new StoreService(db)
-  const customerCategoryService = new CustomerCategoryService(db)
-  const customerService = new CustomerService(db)
-  const uomService = new UomService(db)
+  // Initialize cloud-first infrastructure
+  const queueService = new QueueService(db)
+  const queueProcessor = new QueueProcessorService(queueService)
+  
+  // Start queue processor (background worker)
+  queueProcessor.start()
+  console.log('[Bootstrap] Queue processor started')
+
+  // Initialize master data services (cloud-first where available)
+  const categoryService = new CategoryCloudService(db, queueService)
+  const supplierService = new SupplierCloudService(db, queueService)
+  const storeService = new StoreCloudService(db, queueService)
+  const customerCategoryService = new CustomerCategoryCloudService(db, queueService)
+  const customerService = new CustomerCloudService(db, queueService)
+  const uomService = new UomCloudService(db, queueService)
 
   // Initialize core entity services
-  const userService = new UserService(db)
-  const productService = new ProductService(db)
-  const roleService = new RoleService(db)
-  const userRoleService = new UserRoleService(db)
-  const permissionService = new PermissionService(db)
-  const rolePermissionService = new RolePermissionService(db)
-  const authService = new AuthService(db)
+  const userService = new UserCloudService(db, queueService)
+  const productService = new ProductCloudService(db, queueService)
+  const roleService = new RoleCloudService(db, queueService)
+  const userRoleService = new UserRoleCloudService(db, queueService)
+  const permissionService = new PermissionCloudService(db)
+  const rolePermissionService = new RolePermissionCloudService(db, queueService)
+  const authService = new AuthCloudService(db)
 
   // Initialize inventory services
-  const productPriceService = new ProductPriceService(db)
-  const productLocationService = new ProductLocationService(db)
-  const batchService = new BatchService(db)
-  const stockTransactionService = new StockTransactionService(db)
+  const productPriceService = new ProductPriceCloudService(db, queueService)
+  const productLocationService = new ProductLocationCloudService(db, queueService)
+  const batchService = new BatchCloudService(db, queueService)
+  const stockTransactionService = new StockTransactionCloudService(db, queueService)
   const pricingService = new PricingService(db)
-  const priceCategoryService = new PriceCategoryService(db)
+  const priceCategoryService = new PriceCategoryCloudService(db, queueService)
 
   // Initialize sales/POS service (with inventory integration for INV-001)
   const transactionService = new TransactionService(
@@ -127,7 +139,7 @@ export async function bootstrap(): Promise<void> {
   )
 
   // Initialize expense service
-  const expenseService = new ExpenseService(db)
+  const expenseService = new ExpenseCloudService(db, queueService)
 
   // Initialize shift service
   const shiftService = new ShiftService(db, expenseService)
@@ -151,15 +163,18 @@ export async function bootstrap(): Promise<void> {
   // Initialize sales person service
   const salesPersonService = new SalesPersonService(db)
 
-  // Initialize sync service (sql.js local + Drizzle+pg cloud)
-  const syncService = new SyncService(db)
-
   // Auto-connect to cloud if PG_DATABASE_URL or DATABASE_URL is set
   const pgUrl = process.env.PG_DATABASE_URL || process.env.DATABASE_URL
   if (pgUrl) {
     try {
-      await syncService.initCloudConnection(pgUrl)
-      console.log('✓ Auto-connected to cloud database')
+      // Initialize cloud DB connection (new cloud-first system)
+      await getCloudDb().connect(pgUrl)
+      console.log('✓ CloudDb connected')
+
+      // Start connectivity monitoring and queue processor
+      getConnectivity().startMonitoring()
+      queueProcessor.start()
+      console.log('✓ Cloud connected')
     } catch (error) {
       console.warn('⚠ Cloud auto-connect failed:', error instanceof Error ? error.message : error)
       console.log('  App will run in offline mode. You can connect manually later.')
@@ -168,7 +183,7 @@ export async function bootstrap(): Promise<void> {
 
   // Store service references for app state (used by close guard)
   const { setAppServices } = await import('./appState')
-  setAppServices(shiftService, syncService)
+  setAppServices(shiftService, queueService)
 
 
   // Initialize controllers
@@ -185,7 +200,6 @@ export async function bootstrap(): Promise<void> {
   const stockTransactionController = new StockTransactionController(stockTransactionService)
   const transactionController = new TransactionController(transactionService)
   const purchaseOrderController = new PurchaseOrderController(purchaseOrderService)
-  const syncController = new SyncController(syncService)
   const roleController = new RoleController(roleService)
   const userRoleController = new UserRoleController(userRoleService)
   const permissionController = new PermissionController(permissionService)
@@ -215,7 +229,6 @@ export async function bootstrap(): Promise<void> {
   stockTransactionController.registerHandlers()
   transactionController.registerHandlers()
   purchaseOrderController.registerHandlers()
-  syncController.registerHandlers()
   roleController.registerHandlers()
   userRoleController.registerHandlers()
   permissionController.registerHandlers()
@@ -230,6 +243,9 @@ export async function bootstrap(): Promise<void> {
   registerDeliveryOrderController(deliveryOrderService)
   salesPersonController.registerHandlers()
 
+  // Register queue controller
+  const queueController = new QueueController(queueService, queueProcessor)
+  queueController.registerHandlers()
   registerInventoryHandlers()
 
   console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')

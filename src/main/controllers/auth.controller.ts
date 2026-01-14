@@ -1,9 +1,9 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { AuthService } from '../services/auth.service'
+import { AuthCloudService } from '../services/auth-cloud.service'
 import { ApiResponse } from '../types/response'
 
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthCloudService) {}
 
   registerHandlers(): void {
     ipcMain.handle('auth:login', this.login.bind(this))

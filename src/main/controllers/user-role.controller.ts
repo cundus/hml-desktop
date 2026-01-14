@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { UserRoleService } from '../services/user-role.service'
+import { UserRoleCloudService } from '../services/user-role-cloud.service'
 import { ApiResponse } from '../types/response'
 
 export class UserRoleController {
-  constructor(private userRoleService: UserRoleService) {}
+  constructor(private userRoleService: UserRoleCloudService) {}
 
   /**
    * Register all IPC handlers for user-role operations

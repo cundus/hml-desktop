@@ -78,6 +78,7 @@ import { printerConfigApi } from './printer-config'
 import { deliveryOrderApi } from './delivery-order'
 import { paymentMethodApi } from './payment-method'
 import { salesPersonApi } from './sales-person'
+import { queueApi } from './queue'
 
 // Receipt printing API
 const receiptApi = {
@@ -169,5 +170,8 @@ export const db = {
   paymentMethods: paymentMethodApi,
 
   // Sales Persons
-  salesPersons: salesPersonApi
+  salesPersons: salesPersonApi,
+
+  // Queue (cloud-first sync queue)
+  queue: queueApi
 }

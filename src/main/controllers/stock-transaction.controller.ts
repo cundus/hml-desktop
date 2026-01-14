@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { StockTransactionService } from '../services/stock-transaction.service'
+import { StockTransactionCloudService } from '../services/stock-transaction-cloud.service'
 
 export class StockTransactionController {
-  constructor(private stockTransactionService: StockTransactionService) {}
+  constructor(private stockTransactionService: StockTransactionCloudService) {}
 
   registerHandlers(): void {
     // Get all stock transactions

@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { ProductLocationService } from '../services/product-location.service'
+import { ProductLocationCloudService } from '../services/product-location-cloud.service'
 
 export class ProductLocationController {
-  constructor(private productLocationService: ProductLocationService) {}
+  constructor(private productLocationService: ProductLocationCloudService) {}
 
   registerHandlers(): void {
     // Get all product locations

@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { RolePermissionService } from '../services/role-permission.service'
+import { RolePermissionCloudService } from '../services/role-permission-cloud.service'
 import { ApiResponse } from '../types/response'
 
 export class RolePermissionController {
-  constructor(private rolePermissionService: RolePermissionService) {}
+  constructor(private rolePermissionService: RolePermissionCloudService) {}
 
   registerHandlers(): void {
     ipcMain.handle('db:rolePermissions:getAll', this.getAll.bind(this))

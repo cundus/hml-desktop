@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { CustomerService } from '../services/customer.service'
+import { CustomerCloudService } from '../services/customer-cloud.service'
 
 export class CustomerController {
-  constructor(private customerService: CustomerService) {}
+  constructor(private customerService: CustomerCloudService) {}
 
   registerHandlers(): void {
     // Get all customers

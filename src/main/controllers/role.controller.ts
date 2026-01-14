@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { RoleService } from '../services/role.service'
+import { RoleCloudService } from '../services/role-cloud.service'
 import { ApiResponse } from '../types/response'
 import { CreateRoleDto, UpdateRoleDto } from '../types/dto'
 
 export class RoleController {
-  constructor(private roleService: RoleService) {}
+  constructor(private roleService: RoleCloudService) {}
 
   /**
    * Register all IPC handlers for role operations

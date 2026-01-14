@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { UomService, CreateUomDto, UpdateUomDto } from '../services/uom.service'
+import { UomCloudService, CreateUomDto, UpdateUomDto } from '../services/uom-cloud.service'
 import { ApiResponse } from '../types/response'
 
 export class UomController {
-  constructor(private uomService: UomService) {}
+  constructor(private uomService: UomCloudService) {}
 
   /**
    * Register all IPC handlers for UOM operations

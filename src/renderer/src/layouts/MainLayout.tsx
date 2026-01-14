@@ -15,7 +15,7 @@ import Brightness7Icon from '@mui/icons-material/Brightness7'
 import PersonIcon from '@mui/icons-material/Person'
 import StorefrontIcon from '@mui/icons-material/Storefront'
 import SideNav from '../components/SideNav'
-import SyncButton from '../components/SyncButton'
+import { QueueStatusIndicator } from '../components/QueueStatusIndicator'
 import useThemeMode from '../hooks/useThemeMode'
 import useAuth from '../hooks/useAuth'
 import { Paper } from '@mui/material'
@@ -126,7 +126,7 @@ export default function MainLayout(): React.JSX.Element {
               {day}, {date} • {time}
             </Typography>
           </Box>
-          <SyncButton />
+          <QueueStatusIndicator />
           <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>

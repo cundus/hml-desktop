@@ -36,6 +36,13 @@
       "when": 1768044737193,
       "tag": "0004_chunky_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1768299313347,
+      "tag": "0005_broken_guardsmen",
+      "breakpoints": true
     }
   ]
 }

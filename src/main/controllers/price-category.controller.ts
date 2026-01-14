@@ -1,10 +1,10 @@
 import { ipcMain } from 'electron'
 import {
-  PriceCategoryService,
+  PriceCategoryCloudService,
   PriceCategory,
   CreatePriceCategoryDto,
   UpdatePriceCategoryDto
-} from '../services/price-category.service'
+} from '../services/price-category-cloud.service'
 
 export interface ApiResponse<T> {
   success: boolean
@@ -13,7 +13,7 @@ export interface ApiResponse<T> {
 }
 
 export class PriceCategoryController {
-  constructor(private service: PriceCategoryService) {}
+  constructor(private service: PriceCategoryCloudService) {}
 
   registerHandlers(): void {
     ipcMain.handle('db:priceCategories:getAll', async (): Promise<ApiResponse<PriceCategory[]>> => {

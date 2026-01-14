@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { StoreService } from '../services/store.service'
+import { StoreCloudService } from '../services/store-cloud.service'
 import { CreateStoreDto, UpdateStoreDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
 
 export class StoreController {
-  constructor(private storeService: StoreService) {}
+  constructor(private storeService: StoreCloudService) {}
 
   /**
    * Register all IPC handlers for store operations

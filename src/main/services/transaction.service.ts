@@ -1,8 +1,8 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
-import { StockTransactionService } from './stock-transaction.service'
-import { ProductLocationService } from './product-location.service'
+import { StockTransactionCloudService } from './stock-transaction-cloud.service'
+import { ProductLocationCloudService } from './product-location-cloud.service'
 
 export interface Transaction {
   id: string
@@ -89,8 +89,8 @@ export interface UpdateTransactionItemDto {
 export class TransactionService {
   constructor(
     private db: Database,
-    private stockTransactionService?: StockTransactionService,
-    private productLocationService?: ProductLocationService
+    private stockTransactionService?: StockTransactionCloudService,
+    private productLocationService?: ProductLocationCloudService
   ) {}
 
   /**

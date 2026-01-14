@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { ProductPriceService } from '../services/product-price.service'
+import { ProductPriceCloudService } from '../services/product-price-cloud.service'
 
 export class ProductPriceController {
-  constructor(private productPriceService: ProductPriceService) {}
+  constructor(private productPriceService: ProductPriceCloudService) {}
 
   registerHandlers(): void {
     // Get all product prices

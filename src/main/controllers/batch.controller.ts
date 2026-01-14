@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { BatchService } from '../services/batch.service'
+import { BatchCloudService } from '../services/batch-cloud.service'
 
 export class BatchController {
-  constructor(private batchService: BatchService) {}
+  constructor(private batchService: BatchCloudService) {}
 
   registerHandlers(): void {
     // Get all batches

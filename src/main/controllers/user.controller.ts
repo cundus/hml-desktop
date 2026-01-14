@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { UserService } from '../services/user.service'
+import { UserCloudService } from '../services/user-cloud.service'
 import { CreateUserDto, UpdateUserDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
 
 export class UserController {
-  constructor(private userService: UserService) {}
+  constructor(private userService: UserCloudService) {}
 
   /**
    * Register all IPC handlers for user operations

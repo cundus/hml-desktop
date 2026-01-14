@@ -4,29 +4,30 @@
  */
 
 import { ShiftService } from './services/shift.service'
-import { SyncService } from './services/sync.service'
+import { QueueService } from './services/queue.service'
+import { getConnectivity } from './services/connectivity.service'
 
 let shiftService: ShiftService | null = null
-let syncService: SyncService | null = null
+let queueService: QueueService | null = null
 
-export function setAppServices(shift: ShiftService, sync: SyncService): void {
+export function setAppServices(shift: ShiftService, queue: QueueService): void {
   shiftService = shift
-  syncService = sync
+  queueService = queue
 }
 
 export function getShiftService(): ShiftService | null {
   return shiftService
 }
 
-export function getSyncService(): SyncService | null {
-  return syncService
+export function getQueueService(): QueueService | null {
+  return queueService
 }
 
 export interface CloseGuardStatus {
   canClose: boolean
   hasOpenShift: boolean
   shiftUserName?: string
-  unsyncedCount: number
+  pendingQueueCount: number
   isCloudConnected: boolean
 }
 
@@ -34,7 +35,7 @@ export async function checkCloseGuard(): Promise<CloseGuardStatus> {
   const result: CloseGuardStatus = {
     canClose: true,
     hasOpenShift: false,
-    unsyncedCount: 0,
+    pendingQueueCount: 0,
     isCloudConnected: false
   }
 
@@ -51,20 +52,19 @@ export async function checkCloseGuard(): Promise<CloseGuardStatus> {
     }
   }
 
-  // Check for unsynced data
-  if (syncService) {
-    try {
-      result.isCloudConnected = syncService.isCloudConnected()
-      if (result.isCloudConnected) {
-        result.unsyncedCount = syncService.getUnsyncedRecordsCount()
-      }
-    } catch (error) {
-      console.error('Failed to check sync status:', error)
+  // Check connectivity and pending queue
+  try {
+    result.isCloudConnected = getConnectivity().isOnline()
+    if (queueService) {
+      result.pendingQueueCount = queueService.getPendingCount()
     }
+  } catch (error) {
+    console.error('Failed to check connectivity/queue status:', error)
   }
 
   // Determine if close is allowed without warning
-  result.canClose = !result.hasOpenShift && (result.unsyncedCount === 0 || !result.isCloudConnected)
+  // Allow close if: no open shift AND (queue is empty OR offline)
+  result.canClose = !result.hasOpenShift && (result.pendingQueueCount === 0 || !result.isCloudConnected)
 
   return result
 }

@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { ExpenseService } from '../services/expense.service'
+import { ExpenseCloudService } from '../services/expense-cloud.service'
 
 export class ExpenseController {
-  constructor(private expenseService: ExpenseService) {}
+  constructor(private expenseService: ExpenseCloudService) {}
 
   registerHandlers(): void {
     // Get all expenses

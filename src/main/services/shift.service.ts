@@ -1,7 +1,7 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
-import { ExpenseService, Expense } from './expense.service'
+import { ExpenseCloudService, Expense } from './expense-cloud.service'
 
 export interface CashierShift {
   id: string
@@ -73,7 +73,7 @@ export interface ShiftSummary {
 export class ShiftService {
   constructor(
     private db: Database,
-    private expenseService: ExpenseService
+    private expenseService: ExpenseCloudService
   ) {}
 
   /**

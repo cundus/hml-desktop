@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { ProductService } from '../services/product.service'
+import { ProductCloudService } from '../services/product-cloud.service'
 import { ExcelService, ExcelColumn } from '../services/excel.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
@@ -30,7 +30,7 @@ const PRODUCT_COLUMN_MAPPING: Record<string, string> = {
 export class ProductController {
   private excelService: ExcelService
 
-  constructor(private productService: ProductService) {
+  constructor(private productService: ProductCloudService) {
     this.excelService = new ExcelService()
   }
 

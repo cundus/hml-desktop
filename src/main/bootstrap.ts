@@ -74,6 +74,7 @@ import { PriceCategoryCloudService } from './services/price-category-cloud.servi
 import { SalesPersonController } from './controllers/sales-person.controller'
 import { ProductCloudService } from './services/product-cloud.service'
 import { QueueController } from './controllers/queue.controller'
+import { CloudController } from './controllers/cloud.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -247,6 +248,11 @@ export async function bootstrap(): Promise<void> {
   // Register queue controller
   const queueController = new QueueController(queueService, queueProcessor)
   queueController.registerHandlers()
+  
+  // Register cloud controller (handles sync:* IPC)
+  const cloudController = new CloudController(queueProcessor)
+  cloudController.registerHandlers()
+  
   registerInventoryHandlers()
 
   console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')

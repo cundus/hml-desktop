@@ -1,5 +1,4 @@
 import type React from 'react'
-import { Box, Typography } from '@mui/material'
 import Autocomplete from '@mui/material/Autocomplete'
 import TextField from '@mui/material/TextField'
 
@@ -21,21 +20,21 @@ export default function CustomerSelector({
   const value = customers.find((c) => c.id === selectedCustomerId) ?? null
 
   return (
-    <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        Pelanggan
-      </Typography>
-      <Autocomplete
-        size="small"
-        options={customers}
-        value={value}
-        onChange={(_, newValue) => onChange(newValue ? newValue.id : null)}
-        getOptionLabel={(option) => option.name}
-        renderInput={(params) => (
-          <TextField {...params} inputRef={inputRef} placeholder="Pelanggan umum" />
-        )}
-        clearOnEscape
-      />
-    </Box>
+    <Autocomplete
+      size="small"
+      options={customers}
+      value={value}
+      onChange={(_, newValue) => onChange(newValue ? newValue.id : null)}
+      getOptionLabel={(option) => option.name}
+      renderInput={(params) => (
+        <TextField 
+          {...params} 
+          inputRef={inputRef} 
+          label="Pilih Pelanggan"
+          placeholder="Pelanggan umum" 
+        />
+      )}
+      clearOnEscape
+    />
   )
 }

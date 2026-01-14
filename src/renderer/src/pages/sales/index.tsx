@@ -573,24 +573,35 @@ export default function SalesPage(): React.JSX.Element {
 
         <Divider sx={{ mb: 2 }} />
 
-        {/* Customer selector at top */}
+        {/* Customer and Sales Section */}
         <Box
           sx={{
             mb: 2,
             p: 2,
             borderRadius: 2,
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 1,
             bgcolor: 'background.default',
             border: '1px solid',
-            borderColor: 'divider'
+            borderColor: 'divider',
+            display: 'flex',
+            gap: 2,
+            flexDirection: { xs: 'column', md: 'row' }
           }}
         >
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
-              Pelanggan <Kbd keys={['F3']} size="small" />
-            </Typography>
+          {/* Customer Column */}
+          <Box sx={{ flex: 1, width: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                Pelanggan <Kbd keys={['F3']} size="small" />
+              </Typography>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => window.api?.openMasterCustomerWindow?.()}
+                sx={{ fontSize: '0.75rem', p: 0, minWidth: 'auto', height: 20 }}
+              >
+                + Baru
+              </Button>
+            </Box>
             <CustomerSelector
               customers={customers}
               selectedCustomerId={selectedCustomerId}
@@ -598,30 +609,12 @@ export default function SalesPage(): React.JSX.Element {
               inputRef={customerInputRef}
             />
           </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => window.api?.openMasterCustomerWindow?.()}
-          >
-            Tambah pelanggan
-          </Button>
-        </Box>
 
-        {/* Sales Person selector */}
-        <Box
-          sx={{
-            mb: 2,
-            p: 2,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 1,
-            bgcolor: 'background.default',
-            border: '1px solid',
-            borderColor: selectedSalesId ? 'divider' : 'error.main'
-          }}
-        >
-          <Box sx={{ flex: 1 }}>
+          {/* Divider visible only on md+ */}
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' } }} />
+
+          {/* Sales Person Column */}
+          <Box sx={{ flex: 1, width: '100%' }}>
             <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
               Sales Person *
             </Typography>

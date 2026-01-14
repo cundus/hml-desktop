@@ -127,7 +127,8 @@ export async function bootstrap(): Promise<void> {
   const transactionService = new TransactionService(
     db,
     stockTransactionService,
-    productLocationService
+    productLocationService,
+    queueService
   )
 
   // Initialize purchasing service

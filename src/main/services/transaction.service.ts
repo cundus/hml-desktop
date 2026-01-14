@@ -3,6 +3,7 @@ import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
 import { StockTransactionCloudService } from './stock-transaction-cloud.service'
 import { ProductLocationCloudService } from './product-location-cloud.service'
+import { QueueService } from './queue.service'
 
 export interface Transaction {
   id: string
@@ -90,7 +91,8 @@ export class TransactionService {
   constructor(
     private db: Database,
     private stockTransactionService?: StockTransactionCloudService,
-    private productLocationService?: ProductLocationCloudService
+    private productLocationService?: ProductLocationCloudService,
+    private queueService?: QueueService
   ) {}
 
   /**
@@ -237,8 +239,34 @@ export class TransactionService {
   async create(data: CreateTransactionDto): Promise<Transaction> {
     const id = randomUUID()
     const now = Date.now()
+    const nowIso = new Date(now).toISOString()
 
-    // Insert transaction
+    // 1. Queue Transaction Header INSERT (Cloud-First pattern: queue it immediately)
+    // We queue BEFORE local insert to ensure we capture the intent, though strictly for offline-fallback it doesn't matter much.
+    // Important: Header must be queued BEFORE items for FK constraints.
+    if (this.queueService) {
+      await this.queueService.add('INSERT', 'transactions', {
+        id,
+        code: data.code,
+        store_id: data.storeId,
+        subtotal: data.subtotal,
+        discount: data.discount ?? '0',
+        tax: data.tax ?? '0',
+        total: data.total,
+        total_weight: data.totalWeight ?? '0',
+        payment_method: data.paymentMethod ?? 'cash',
+        payment_deadline: data.paymentDeadline ? data.paymentDeadline.toISOString() : null,
+        receipt_printed: (data.receiptPrinted ?? false) ? 1 : 0,
+        customer_id: data.customerId ?? null,
+        user_id: data.userId ?? null,
+        sales_id: data.salesId ?? null,
+        sales_name: data.salesName ?? null,
+        created_at: nowIso,
+        updated_at: nowIso
+      })
+    }
+
+    // 2. Insert transaction locally
     this.db.run(
       'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, sales_id, sales_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
@@ -262,9 +290,28 @@ export class TransactionService {
       ]
     )
 
-    // Insert transaction items and process inventory
+    // 3. Process Items
     for (const item of data.items) {
       const itemId = randomUUID()
+
+      // 3a. Queue Item INSERT
+      if (this.queueService) {
+        await this.queueService.add('INSERT', 'transaction_items', {
+          id: itemId,
+          transaction_id: id,
+          product_id: item.productId,
+          quantity: item.quantity,
+          display_quantity: item.displayQuantity ?? item.quantity,
+          uom_code: item.uomCode ?? null,
+          product_name: item.productName ?? null,
+          product_sku: item.productSku ?? null,
+          price: item.price,
+          created_at: nowIso,
+          updated_at: nowIso
+        })
+      }
+
+      // 3b. Insert Item Locally
       this.db.run(
         'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, product_name, product_sku, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
@@ -282,9 +329,9 @@ export class TransactionService {
         ]
       )
 
-      // INV-001: Record stock transaction and deduct inventory (quantity is already in base units)
+      // 3c. Inventory Side Logic (INV-001)
       if (this.stockTransactionService && this.productLocationService) {
-        // Create SALE stock transaction for audit trail
+        // Create SALE stock transaction
         await this.stockTransactionService.create({
           productId: item.productId,
           storeId: data.storeId,
@@ -295,7 +342,7 @@ export class TransactionService {
           performedBy: data.userId
         })
 
-        // Deduct from product_location (negative delta)
+        // Deduct from product_location
         await this.productLocationService.adjustQuantity(
           item.productId,
           data.storeId,

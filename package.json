@@ -17,10 +17,11 @@
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
     "postinstall": "",
+    "bump-version": "node scripts/bump-version.js",
     "build:unpack": "npm run build && electron-builder --dir",
-    "build:win": "npm run build && electron-builder --win",
-    "build:mac": "electron-vite build && electron-builder --mac",
-    "build:linux": "electron-vite build && electron-builder --linux"
+    "build:win": "npm run bump-version && npm run build && electron-builder --win",
+    "build:mac": "npm run bump-version && electron-vite build && electron-builder --mac",
+    "build:linux": "npm run bump-version && electron-vite build && electron-builder --linux"
   },
   "dependencies": {
     "@electron-toolkit/preload": "^3.0.2",

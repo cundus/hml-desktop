@@ -75,6 +75,8 @@ import { SalesPersonController } from './controllers/sales-person.controller'
 import { ProductCloudService } from './services/product-cloud.service'
 import { QueueController } from './controllers/queue.controller'
 import { CloudController } from './controllers/cloud.controller'
+import { SyncService } from './services/sync.service'
+import { initPeriodicSync } from './services/periodic-sync.service'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -182,6 +184,13 @@ export async function bootstrap(): Promise<void> {
       getConnectivity().startMonitoring()
       queueProcessor.start()
       console.log('✓ Cloud connected')
+
+      // Start periodic full sync (every 5 minutes)
+      const syncService = new SyncService(db)
+      await syncService.initCloudConnection(pgUrl)
+      const periodicSync = initPeriodicSync(syncService)
+      periodicSync.start()
+      console.log('✓ Periodic sync started (5 min interval)')
     } catch (error) {
       console.warn('⚠ Cloud auto-connect failed:', error instanceof Error ? error.message : error)
       console.log('  App will run in offline mode. You can connect manually later.')

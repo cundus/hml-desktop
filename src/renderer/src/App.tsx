@@ -44,6 +44,7 @@ import WarehouseStocksPage from './pages/warehouse/Stocks'
 import ExpensesPage from './pages/operations/expenses'
 import ShiftHistoryPage from './pages/operations/shifts'
 import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
+import { CashFlowPage, ProfitLossPage } from './pages/finance'
 import SetupPage from './pages/Setup'
 
 const router = createHashRouter([
@@ -169,6 +170,14 @@ const router = createHashRouter([
               { path: 'operations/shifts', element: <ShiftHistoryPage /> },
               { path: 'operations/shifts/:shiftId', element: <ShiftDetailPage /> }
             ]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['finance.cashflow']} />,
+            children: [{ path: 'finance/cashflow', element: <CashFlowPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['finance.profit-loss']} />,
+            children: [{ path: 'finance/profit-loss', element: <ProfitLossPage /> }]
           }
         ]
       }

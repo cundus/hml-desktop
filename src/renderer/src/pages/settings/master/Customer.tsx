@@ -9,11 +9,6 @@ import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -21,6 +16,7 @@ import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
 import MenuItem from '@mui/material/MenuItem'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -232,52 +228,48 @@ export default function CustomerPage(): React.JSX.Element {
           <CircularProgress />
         </Box>
       ) : (
-        <Paper>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Nama</TableCell>
-                <TableCell>Telepon</TableCell>
-                <TableCell>Kategori</TableCell>
-                <TableCell align="right">Aksi</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : items?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} align="center">
-                    Tidak ada pelanggan
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items?.map((customer) => (
-                  <TableRow key={customer.id} hover>
-                    <TableCell>{customer.name}</TableCell>
-                    <TableCell>{customer.phone}</TableCell>
-                    <TableCell>{customer.categoryName}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(customer)}>
+        <Paper sx={{ height: 500 }}>
+          <DataGrid
+            rows={items}
+            columns={
+              [
+                { field: 'name', headerName: 'Nama', flex: 1, minWidth: 200 },
+                { field: 'phone', headerName: 'Telepon', width: 150 },
+                { field: 'categoryName', headerName: 'Kategori', width: 150 },
+                { field: 'address', headerName: 'Alamat', flex: 1, minWidth: 200 },
+                {
+                  field: 'actions',
+                  headerName: 'Aksi',
+                  width: 100,
+                  sortable: false,
+                  filterable: false,
+                  renderCell: (params: GridRenderCellParams<Customer>) => (
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" onClick={() => openEdit(params.row)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => void handleDelete(customer)}
+                        onClick={() => void handleDelete(params.row)}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </Stack>
+                  )
+                }
+              ] as GridColDef[]
+            }
+            pageSizeOptions={[10, 25, 50, 100]}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25 } }
+            }}
+            disableRowSelectionOnClick
+            sx={{
+              '& .MuiDataGrid-cell:focus': { outline: 'none' },
+              '& .MuiDataGrid-cell:focus-within': { outline: 'none' }
+            }}
+          />
         </Paper>
       )}
 

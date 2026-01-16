@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ReceiptIcon from '@mui/icons-material/Receipt'
@@ -14,16 +14,11 @@ import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import useBranchConfig from '../../hooks/useBranchConfig'
-import Kbd from '../../components/Kbd'
 import { formatCurrency } from '../../utils/currency'
 
 interface Store {
@@ -76,65 +71,10 @@ export default function SalesReportsPage(): React.JSX.Element {
   const [endDate, setEndDate] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState<number>(-1)
-  const tableRef = useRef<HTMLTableElement>(null)
 
   useEffect(() => {
     loadData()
   }, [branchStoreId])
-
-  // Reset selection when filtered transactions change
-  useEffect(() => {
-    setSelectedIndex(-1)
-  }, [filteredTransactions.length])
-
-  // Keyboard navigation
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input
-      const target = e.target as HTMLElement
-      if (
-        target.tagName === 'INPUT' ||
-        target.tagName === 'TEXTAREA' ||
-        target.tagName === 'SELECT'
-      )
-        return
-
-      if (filteredTransactions.length === 0) return
-
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev < filteredTransactions.length - 1 ? prev + 1 : prev))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0))
-      } else if (e.key === 'Enter' && selectedIndex >= 0) {
-        e.preventDefault()
-        const txn = filteredTransactions[selectedIndex]
-        if (txn) {
-          navigate(`/sales/transaction/${txn.id}`)
-        }
-      } else if (e.key === 'Escape') {
-        setSelectedIndex(-1)
-      }
-    },
-    [filteredTransactions, selectedIndex, navigate]
-  )
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
-
-  // Scroll selected row into view
-  useEffect(() => {
-    if (selectedIndex >= 0 && tableRef.current) {
-      const rows = tableRef.current.querySelectorAll('tbody tr')
-      if (rows[selectedIndex]) {
-        rows[selectedIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-      }
-    }
-  }, [selectedIndex])
 
   useEffect(() => {
     applyFilters()
@@ -358,111 +298,122 @@ export default function SalesReportsPage(): React.JSX.Element {
         </Stack>
       </Paper>
 
-      {/* Transactions Table */}
-      <Paper>
-        <Box sx={{ p: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Stack direction="row" alignItems="center" spacing={2}>
-            <Typography variant="body2" color="text.secondary">
-              Navigasi:
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Kbd keys={['↑']} size="small" />
-              <Kbd keys={['↓']} size="small" />
-              <Typography variant="body2">Pilih</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Kbd keys={['Enter']} size="small" />
-              <Typography variant="body2">Buka Detail</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-              <Kbd keys={['Esc']} size="small" />
-              <Typography variant="body2">Batal Pilih</Typography>
-            </Box>
-          </Stack>
-        </Box>
-        <Table ref={tableRef}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Tanggal/Waktu</TableCell>
-              <TableCell>Kode Transaksi</TableCell>
-              <TableCell>Toko</TableCell>
-              <TableCell>Pelanggan</TableCell>
-              <TableCell>Pembayaran</TableCell>
-              <TableCell align="right">Subtotal</TableCell>
-              <TableCell align="right">Diskon</TableCell>
-              <TableCell align="right">Total</TableCell>
-              <TableCell align="center">Aksi</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredTransactions.map((txn, index) => (
-              <TableRow
-                key={txn.id}
-                hover
-                selected={index === selectedIndex}
-                sx={{
-                  cursor: 'pointer',
-                  backgroundColor: index === selectedIndex ? 'action.selected' : 'inherit',
-                  '&:hover': {
-                    backgroundColor: index === selectedIndex ? 'action.selected' : 'action.hover'
-                  }
-                }}
-                onClick={() => {
-                  setSelectedIndex(index)
-                  navigate(`/sales/transaction/${txn.id}`)
-                }}
-              >
-                <TableCell>{formatDate(txn.createdAt)}</TableCell>
-                <TableCell>
+      {/* Transactions DataGrid */}
+      <Paper sx={{ height: 500 }}>
+        <DataGrid
+          rows={filteredTransactions}
+          columns={
+            [
+              {
+                field: 'createdAt',
+                headerName: 'Tanggal/Waktu',
+                width: 160,
+                valueFormatter: (value: Date) => formatDate(value)
+              },
+              {
+                field: 'code',
+                headerName: 'Kode Transaksi',
+                width: 140,
+                renderCell: (params: GridRenderCellParams<Transaction>) => (
                   <Typography variant="body2" fontWeight={500}>
-                    {txn.code}
+                    {params.value}
                   </Typography>
-                </TableCell>
-                <TableCell>{txn.storeName || txn.storeId}</TableCell>
-                <TableCell>{txn.customerName || '-'}</TableCell>
-                <TableCell>
+                )
+              },
+              {
+                field: 'storeName',
+                headerName: 'Toko',
+                width: 150,
+                valueGetter: (_value, row) => row.storeName || row.storeId
+              },
+              {
+                field: 'customerName',
+                headerName: 'Pelanggan',
+                width: 150,
+                valueGetter: (_value, row) => row.customerName || '-'
+              },
+              {
+                field: 'paymentMethod',
+                headerName: 'Pembayaran',
+                width: 120,
+                renderCell: (params: GridRenderCellParams<Transaction>) => (
                   <Chip
-                    label={getPaymentMethodLabel(txn.paymentMethod)}
+                    label={getPaymentMethodLabel(params.value as string)}
                     size="small"
-                    color={txn.paymentMethod === 'credit' ? 'warning' : 'default'}
+                    color={params.value === 'credit' ? 'warning' : 'default'}
                     variant="outlined"
                   />
-                </TableCell>
-                <TableCell align="right">{formatCurrency(Number(txn.subtotal) || 0)}</TableCell>
-                <TableCell align="right">
-                  {Number(txn.discount) > 0 && (
+                )
+              },
+              {
+                field: 'subtotal',
+                headerName: 'Subtotal',
+                width: 130,
+                align: 'right',
+                headerAlign: 'right',
+                valueFormatter: (value: string) => formatCurrency(Number(value) || 0)
+              },
+              {
+                field: 'discount',
+                headerName: 'Diskon',
+                width: 120,
+                align: 'right',
+                headerAlign: 'right',
+                renderCell: (params: GridRenderCellParams<Transaction>) => {
+                  const discount = Number(params.value) || 0
+                  return discount > 0 ? (
                     <Typography variant="body2" color="error">
-                      -{formatCurrency(Number(txn.discount))}
+                      -{formatCurrency(discount)}
                     </Typography>
-                  )}
-                </TableCell>
-                <TableCell align="right">
-                  <Typography fontWeight="bold">{formatCurrency(Number(txn.total))}</Typography>
-                </TableCell>
-                <TableCell align="center">
+                  ) : null
+                }
+              },
+              {
+                field: 'total',
+                headerName: 'Total',
+                width: 130,
+                align: 'right',
+                headerAlign: 'right',
+                renderCell: (params: GridRenderCellParams<Transaction>) => (
+                  <Typography fontWeight="bold">
+                    {formatCurrency(Number(params.value) || 0)}
+                  </Typography>
+                )
+              },
+              {
+                field: 'actions',
+                headerName: 'Aksi',
+                width: 80,
+                sortable: false,
+                filterable: false,
+                align: 'center',
+                headerAlign: 'center',
+                renderCell: (params: GridRenderCellParams<Transaction>) => (
                   <Tooltip title="Lihat Detail">
                     <IconButton
                       size="small"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        navigate(`/sales/transaction/${txn.id}`)
-                      }}
+                      onClick={() => navigate(`/sales/transaction/${params.row.id}`)}
                     >
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                </TableCell>
-              </TableRow>
-            ))}
-            {filteredTransactions.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={9} align="center">
-                  Tidak ada transaksi
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+                )
+              }
+            ] as GridColDef[]
+          }
+          pageSizeOptions={[10, 25, 50, 100]}
+          initialState={{
+            pagination: { paginationModel: { pageSize: 25 } },
+            sorting: { sortModel: [{ field: 'createdAt', sort: 'desc' }] }
+          }}
+          onRowClick={(params) => navigate(`/sales/transaction/${params.row.id}`)}
+          disableRowSelectionOnClick
+          sx={{
+            '& .MuiDataGrid-cell:focus': { outline: 'none' },
+            '& .MuiDataGrid-cell:focus-within': { outline: 'none' },
+            '& .MuiDataGrid-row': { cursor: 'pointer' }
+          }}
+        />
       </Paper>
     </Box>
   )

@@ -289,12 +289,23 @@ export default function ProfitLossPage(): React.JSX.Element {
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'primary.light', color: 'primary.contrastText' }}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'primary.light',
+                  color: 'primary.contrastText'
+                }}
+              >
                 <PaymentsIcon />
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">Pendapatan Bersih</Typography>
-                <Typography variant="h6" fontWeight={600}>{formatCurrency(summary.netRevenue)}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  Pendapatan Bersih
+                </Typography>
+                <Typography variant="h6" fontWeight={600}>
+                  {formatCurrency(summary.netRevenue)}
+                </Typography>
               </Box>
             </Stack>
           </CardContent>
@@ -303,12 +314,23 @@ export default function ProfitLossPage(): React.JSX.Element {
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'warning.light', color: 'warning.contrastText' }}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: 'warning.light',
+                  color: 'warning.contrastText'
+                }}
+              >
                 <MoneyOffIcon />
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">HPP (Cost of Goods)</Typography>
-                <Typography variant="h6" fontWeight={600}>{formatCurrency(summary.costOfGoodsSold)}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  HPP (Cost of Goods)
+                </Typography>
+                <Typography variant="h6" fontWeight={600}>
+                  {formatCurrency(summary.costOfGoodsSold)}
+                </Typography>
               </Box>
             </Stack>
           </CardContent>
@@ -317,12 +339,20 @@ export default function ProfitLossPage(): React.JSX.Element {
         <Card sx={{ flex: 1 }}>
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.light', color: 'info.contrastText' }}>
+              <Box
+                sx={{ p: 1.5, borderRadius: 2, bgcolor: 'info.light', color: 'info.contrastText' }}
+              >
                 <AccountBalanceIcon />
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">Laba Kotor</Typography>
-                <Typography variant="h6" fontWeight={600} color={summary.grossProfit >= 0 ? 'success.main' : 'error.main'}>
+                <Typography variant="caption" color="text.secondary">
+                  Laba Kotor
+                </Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={600}
+                  color={summary.grossProfit >= 0 ? 'success.main' : 'error.main'}
+                >
                   {formatCurrency(summary.grossProfit)}
                 </Typography>
               </Box>
@@ -333,12 +363,25 @@ export default function ProfitLossPage(): React.JSX.Element {
         <Card sx={{ flex: 1, bgcolor: summary.netProfit >= 0 ? 'success.50' : 'error.50' }}>
           <CardContent>
             <Stack direction="row" alignItems="center" spacing={2}>
-              <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: summary.netProfit >= 0 ? 'success.main' : 'error.main', color: 'white' }}>
+              <Box
+                sx={{
+                  p: 1.5,
+                  borderRadius: 2,
+                  bgcolor: summary.netProfit >= 0 ? 'success.main' : 'error.main',
+                  color: 'white'
+                }}
+              >
                 {summary.netProfit >= 0 ? <SavingsIcon /> : <TrendingDownIcon />}
               </Box>
               <Box>
-                <Typography variant="caption" color="text.secondary">Laba Bersih</Typography>
-                <Typography variant="h6" fontWeight={700} color={summary.netProfit >= 0 ? 'success.main' : 'error.main'}>
+                <Typography variant="caption" color="text.secondary">
+                  Laba Bersih
+                </Typography>
+                <Typography
+                  variant="h6"
+                  fontWeight={700}
+                  color={summary.netProfit >= 0 ? 'success.main' : 'error.main'}
+                >
                   {formatCurrency(summary.netProfit)}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
@@ -418,9 +461,7 @@ export default function ProfitLossPage(): React.JSX.Element {
 
             {/* Net Profit */}
             <TableRow sx={{ bgcolor: summary.netProfit >= 0 ? 'success.100' : 'error.100' }}>
-              <TableCell sx={{ fontWeight: 700, fontSize: '1.1rem' }}>
-                LABA BERSIH
-              </TableCell>
+              <TableCell sx={{ fontWeight: 700, fontSize: '1.1rem' }}>LABA BERSIH</TableCell>
               <TableCell
                 align="right"
                 sx={{
@@ -476,8 +517,18 @@ export default function ProfitLossPage(): React.JSX.Element {
                         py: 0.5,
                         borderRadius: 1,
                         fontSize: '0.75rem',
-                        bgcolor: cat.margin >= 20 ? 'success.100' : cat.margin >= 0 ? 'warning.100' : 'error.100',
-                        color: cat.margin >= 20 ? 'success.dark' : cat.margin >= 0 ? 'warning.dark' : 'error.dark'
+                        bgcolor:
+                          cat.margin >= 20
+                            ? 'success.100'
+                            : cat.margin >= 0
+                              ? 'warning.100'
+                              : 'error.100',
+                        color:
+                          cat.margin >= 20
+                            ? 'success.dark'
+                            : cat.margin >= 0
+                              ? 'warning.dark'
+                              : 'error.dark'
                       }}
                     >
                       {cat.margin.toFixed(1)}%
@@ -506,7 +557,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 {formatCurrency(summary.netRevenue)}
               </Typography>
             </Stack>
-            <Box sx={{ height: 24, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ height: 24, borderRadius: 1, overflow: 'hidden' }}>
               <Box sx={{ height: '100%', width: '100%', bgcolor: 'primary.main' }} />
             </Box>
           </Box>
@@ -519,7 +570,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 -{formatCurrency(summary.costOfGoodsSold)}
               </Typography>
             </Stack>
-            <Box sx={{ height: 24, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ height: 24, borderRadius: 1, overflow: 'hidden' }}>
               <Box
                 sx={{
                   height: '100%',
@@ -538,7 +589,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 -{formatCurrency(summary.operatingExpenses)}
               </Typography>
             </Stack>
-            <Box sx={{ height: 24, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ height: 24, borderRadius: 1, overflow: 'hidden' }}>
               <Box
                 sx={{
                   height: '100%',
@@ -552,7 +603,9 @@ export default function ProfitLossPage(): React.JSX.Element {
           {/* Net Profit Bar */}
           <Box>
             <Stack direction="row" justifyContent="space-between" mb={0.5}>
-              <Typography variant="body2" fontWeight={600}>Laba Bersih</Typography>
+              <Typography variant="body2" fontWeight={600}>
+                Laba Bersih
+              </Typography>
               <Typography
                 variant="body2"
                 fontWeight={600}
@@ -561,7 +614,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 {formatCurrency(summary.netProfit)} ({summary.profitMargin.toFixed(1)}%)
               </Typography>
             </Stack>
-            <Box sx={{ height: 24, bgcolor: 'grey.200', borderRadius: 1, overflow: 'hidden' }}>
+            <Box sx={{ height: 24, borderRadius: 1, overflow: 'hidden' }}>
               <Box
                 sx={{
                   height: '100%',

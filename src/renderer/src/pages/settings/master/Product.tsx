@@ -9,11 +9,6 @@ import DialogActions from '@mui/material/DialogActions'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import Paper from '@mui/material/Paper'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import IconButton from '@mui/material/IconButton'
 import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
@@ -30,6 +25,7 @@ import DescriptionIcon from '@mui/icons-material/Description'
 import Menu from '@mui/material/Menu'
 import Snackbar from '@mui/material/Snackbar'
 import Alert from '@mui/material/Alert'
+import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -500,71 +496,73 @@ export default function ProductPage(): React.JSX.Element {
           <CircularProgress />
         </Box>
       ) : (
-        <Paper>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>SKU</TableCell>
-                <TableCell>Nama</TableCell>
-                <TableCell>Kategori</TableCell>
-                <TableCell>Supplier</TableCell>
-                <TableCell>Tipe</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Aksi</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : items?.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} align="center">
-                    Tidak ada produk
-                  </TableCell>
-                </TableRow>
-              ) : (
-                items?.map((product) => (
-                  <TableRow key={product.id} hover>
-                    <TableCell>{product.sku}</TableCell>
-                    <TableCell>{product.name}</TableCell>
-                    <TableCell>{product.categoryName}</TableCell>
-                    <TableCell>{product.supplierName}</TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={product.isService ? 'Jasa' : 'Produk'}
-                        color={product.isService ? 'info' : 'default'}
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        size="small"
-                        label={product.isActive ? 'Aktif' : 'Nonaktif'}
-                        color={product.isActive ? 'success' : 'default'}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(product)}>
+        <Paper sx={{ height: 600 }}>
+          <DataGrid
+            rows={items}
+            columns={
+              [
+                { field: 'sku', headerName: 'SKU', width: 120 },
+                { field: 'name', headerName: 'Nama', flex: 1, minWidth: 200 },
+                { field: 'categoryName', headerName: 'Kategori', width: 150 },
+                { field: 'supplierName', headerName: 'Supplier', width: 150 },
+                {
+                  field: 'isService',
+                  headerName: 'Tipe',
+                  width: 100,
+                  renderCell: (params: GridRenderCellParams<Product>) => (
+                    <Chip
+                      size="small"
+                      label={params.value ? 'Jasa' : 'Produk'}
+                      color={params.value ? 'info' : 'default'}
+                      variant="outlined"
+                    />
+                  )
+                },
+                {
+                  field: 'isActive',
+                  headerName: 'Status',
+                  width: 100,
+                  renderCell: (params: GridRenderCellParams<Product>) => (
+                    <Chip
+                      size="small"
+                      label={params.value ? 'Aktif' : 'Nonaktif'}
+                      color={params.value ? 'success' : 'default'}
+                    />
+                  )
+                },
+                {
+                  field: 'actions',
+                  headerName: 'Aksi',
+                  width: 100,
+                  sortable: false,
+                  filterable: false,
+                  renderCell: (params: GridRenderCellParams<Product>) => (
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton size="small" onClick={() => openEdit(params.row)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
                       <IconButton
                         size="small"
                         color="error"
-                        onClick={() => void handleDelete(product)}
+                        onClick={() => void handleDelete(params.row)}
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                    </Stack>
+                  )
+                }
+              ] as GridColDef[]
+            }
+            pageSizeOptions={[10, 25, 50, 100]}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25 } }
+            }}
+            disableRowSelectionOnClick
+            sx={{
+              '& .MuiDataGrid-cell:focus': { outline: 'none' },
+              '& .MuiDataGrid-cell:focus-within': { outline: 'none' }
+            }}
+          />
         </Paper>
       )}
 

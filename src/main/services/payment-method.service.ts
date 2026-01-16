@@ -113,15 +113,12 @@ export class PaymentMethodService {
 
     const now = Date.now()
 
-    this.db.run(
-      'UPDATE payment_method SET name = ?, is_active = ?, updated_at = ? WHERE id = ?',
-      [
-        data.name ?? existing.name,
-        data.isActive !== undefined ? (data.isActive ? 1 : 0) : (existing.isActive ? 1 : 0),
-        now,
-        id
-      ]
-    )
+    this.db.run('UPDATE payment_method SET name = ?, is_active = ?, updated_at = ? WHERE id = ?', [
+      data.name ?? existing.name,
+      data.isActive !== undefined ? (data.isActive ? 1 : 0) : existing.isActive ? 1 : 0,
+      now,
+      id
+    ])
 
     saveDb(this.db)
 

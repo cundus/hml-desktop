@@ -43,7 +43,9 @@ export const printerConfigApi = {
     ipcRenderer.invoke('db:printerConfig:getAll') as Promise<ApiResponse<PrinterConfig[]>>,
 
   findById: (id: string) =>
-    ipcRenderer.invoke('db:printerConfig:findById', id) as Promise<ApiResponse<PrinterConfig | null>>,
+    ipcRenderer.invoke('db:printerConfig:findById', id) as Promise<
+      ApiResponse<PrinterConfig | null>
+    >,
 
   getDefaultForPurpose: (purpose: PrinterPurpose) =>
     ipcRenderer.invoke('db:printerConfig:getDefaultForPurpose', purpose) as Promise<

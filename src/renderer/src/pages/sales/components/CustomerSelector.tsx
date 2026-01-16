@@ -27,11 +27,11 @@ export default function CustomerSelector({
       onChange={(_, newValue) => onChange(newValue ? newValue.id : null)}
       getOptionLabel={(option) => option.name}
       renderInput={(params) => (
-        <TextField 
-          {...params} 
-          inputRef={inputRef} 
+        <TextField
+          {...params}
+          inputRef={inputRef}
           label="Pilih Pelanggan"
-          placeholder="Pelanggan umum" 
+          placeholder="Pelanggan umum"
         />
       )}
       clearOnEscape

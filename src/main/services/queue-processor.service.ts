@@ -79,13 +79,13 @@ export class QueueProcessorService {
           console.log(`[QueueProcessor] Waiting ${delay}ms before retry ${item.retryCount}...`)
           await this.sleep(delay)
         }
-        
+
         this.queueService.markProcessing(item.id)
         await this.executeItem(item)
         this.queueService.markComplete(item.id)
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error)
-        
+
         if (item.retryCount >= MAX_RETRIES - 1) {
           this.queueService.markFailed(item.id, errorMsg)
           console.error(`[QueueProcessor] Max retries exceeded for ${item.id}`)
@@ -98,7 +98,7 @@ export class QueueProcessorService {
     this.isProcessing = false
     console.log('[QueueProcessor] Processing complete')
   }
-  
+
   /**
    * Get processing statistics
    */
@@ -115,7 +115,7 @@ export class QueueProcessorService {
    * Sleep utility for exponential backoff
    */
   private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms))
+    return new Promise((resolve) => setTimeout(resolve, ms))
   }
 
   /**
@@ -171,17 +171,14 @@ export class QueueProcessorService {
     payload: Record<string, unknown>
   ): Promise<void> {
     const id = payload.id
-    const columns = Object.keys(payload).filter(k => k !== 'id')
-    const values = columns.map(c => payload[c])
+    const columns = Object.keys(payload).filter((k) => k !== 'id')
+    const values = columns.map((c) => payload[c])
     values.push(id)
-    
+
     const setClause = columns.map((c, i) => `${c} = $${i + 1}`).join(', ')
     const tableName = this.quoteTable(entity)
 
-    await pool.query(
-      `UPDATE ${tableName} SET ${setClause} WHERE id = $${values.length}`,
-      values
-    )
+    await pool.query(`UPDATE ${tableName} SET ${setClause} WHERE id = $${values.length}`, values)
   }
 
   /**
@@ -194,12 +191,9 @@ export class QueueProcessorService {
   ): Promise<void> {
     const id = payload.id
     const tableName = this.quoteTable(entity)
-    
+
     // Soft delete by setting deleted_at
-    await pool.query(
-      `UPDATE ${tableName} SET deleted_at = NOW() WHERE id = $1`,
-      [id]
-    )
+    await pool.query(`UPDATE ${tableName} SET deleted_at = NOW() WHERE id = $1`, [id])
   }
 
   /**

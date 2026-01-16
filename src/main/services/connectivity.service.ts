@@ -58,7 +58,7 @@ export class ConnectivityService extends EventEmitter {
 
     try {
       const cloudDb = getCloudDb()
-      
+
       if (!cloudDb.isConnected()) {
         // Try to connect
         await cloudDb.connect()
@@ -74,7 +74,7 @@ export class ConnectivityService extends EventEmitter {
     if (!wasChecking && previousStatus !== this.status) {
       console.log(`[Connectivity] Status changed: ${previousStatus} -> ${this.status}`)
       this.emit('statusChange', this.status)
-      
+
       if (this.status === 'online') {
         this.emit('online')
       } else {

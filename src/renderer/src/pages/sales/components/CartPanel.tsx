@@ -146,7 +146,11 @@ export default function CartPanel({
         </Stack>
 
         <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mt: 1 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+          >
             Diskon <Kbd keys={['F4']} size="small" />
             <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 0.5 }}>
               ({discountPercentage}%)

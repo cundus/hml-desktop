@@ -216,7 +216,6 @@ export default function ProductPage(): React.JSX.Element {
   }
 
   const onSubmit = async (values: ProductFormValues): Promise<void> => {
-
     try {
       const createPayload = {
         sku: values.sku,

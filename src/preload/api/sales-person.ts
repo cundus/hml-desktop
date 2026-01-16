@@ -22,8 +22,7 @@ export interface UpdateSalesPersonDto {
 }
 
 export const salesPersonApi = {
-  getAll: () =>
-    ipcRenderer.invoke('db:salesPersons:getAll') as Promise<ApiResponse<SalesPerson[]>>,
+  getAll: () => ipcRenderer.invoke('db:salesPersons:getAll') as Promise<ApiResponse<SalesPerson[]>>,
 
   getActive: () =>
     ipcRenderer.invoke('db:salesPersons:getActive') as Promise<ApiResponse<SalesPerson[]>>,

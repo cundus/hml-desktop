@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file contains MOCK data for development/testing only.
+ * Production code uses window.api.db.* for real database operations via IPC.
+ * TODO: Remove this file when no longer needed for testing.
+ */
+
 // import axios, {
 //   AxiosError,
 //   AxiosHeaders,

@@ -310,7 +310,11 @@ export default function PaymentMethodDialog({
                   )}
                 </Stack>
 
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ mt: 1, display: 'block' }}
+                >
                   Pelanggan harus melunasi pembayaran sebelum tanggal jatuh tempo
                 </Typography>
               </Box>

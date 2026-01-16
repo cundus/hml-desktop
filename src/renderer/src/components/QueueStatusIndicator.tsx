@@ -20,7 +20,9 @@ export function QueueStatusIndicator(): React.JSX.Element {
   // Load stats on mount and periodically
   useEffect(() => {
     void loadStats()
-    const interval = setInterval(() => { void loadStats() }, 5000)
+    const interval = setInterval(() => {
+      void loadStats()
+    }, 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -50,7 +52,7 @@ export function QueueStatusIndicator(): React.JSX.Element {
   if (!stats) return <></>
 
   const { isOnline, pending, failed, isProcessing } = stats
-  
+
   // Determine status color
   const getStatusColor = (): string => {
     if (!isOnline) return '#9ca3af' // gray
@@ -90,8 +92,13 @@ export function QueueStatusIndicator(): React.JSX.Element {
           {loading || isProcessing ? (
             <CircularProgress size={20} sx={{ color: 'inherit' }} />
           ) : isOnline ? (
-            failed > 0 ? <ErrorIcon fontSize="small" /> :
-            pending > 0 ? <Sync fontSize="small" /> : <Cloud fontSize="small" />
+            failed > 0 ? (
+              <ErrorIcon fontSize="small" />
+            ) : pending > 0 ? (
+              <Sync fontSize="small" />
+            ) : (
+              <Cloud fontSize="small" />
+            )
           ) : (
             <CloudOff fontSize="small" />
           )}

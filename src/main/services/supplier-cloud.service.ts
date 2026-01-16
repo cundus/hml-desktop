@@ -35,8 +35,10 @@ export class SupplierCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[SupplierCloud] findAll error:', error)
         return this.findAllLocal()
@@ -46,7 +48,9 @@ export class SupplierCloudService {
   }
 
   private findAllLocal(): Supplier[] {
-    const stmt = this.localDb.prepare('SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC'
+    )
     const results: Supplier[] = []
     while (stmt.step()) {
       results.push(this.mapLocalRow(stmt.getAsObject()))
@@ -87,8 +91,14 @@ export class SupplierCloudService {
     const now = new Date()
 
     const supplier: Supplier = {
-      id, name: data.name, phone: data.phone ?? null, address: data.address ?? null,
-      createdAt: now, updatedAt: now, syncedAt: null, deletedAt: null
+      id,
+      name: data.name,
+      phone: data.phone ?? null,
+      address: data.address ?? null,
+      createdAt: now,
+      updatedAt: now,
+      syncedAt: null,
+      deletedAt: null
     }
 
     if (this.isOnline()) {
@@ -107,8 +117,12 @@ export class SupplierCloudService {
 
     this.saveToLocal(supplier)
     await this.queueService.add('INSERT', this.tableName, {
-      id, name: data.name, phone: data.phone ?? null, address: data.address ?? null,
-      created_at: now.toISOString(), updated_at: now.toISOString()
+      id,
+      name: data.name,
+      phone: data.phone ?? null,
+      address: data.address ?? null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
     })
     return supplier
   }
@@ -142,7 +156,11 @@ export class SupplierCloudService {
 
     this.updateLocal(updated)
     await this.queueService.add('UPDATE', this.tableName, {
-      id, name: updated.name, phone: updated.phone, address: updated.address, updated_at: now.toISOString()
+      id,
+      name: updated.name,
+      phone: updated.phone,
+      address: updated.address,
+      updated_at: now.toISOString()
     })
     return updated
   }
@@ -157,7 +175,11 @@ export class SupplierCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE supplier SET deleted_at = $1, updated_at = $2 WHERE id = $3', [now, now, id])
+        await pool.query('UPDATE supplier SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         return deleted
       } catch (error) {
         console.error('[SupplierCloud] delete error, queuing:', error)
@@ -174,12 +196,18 @@ export class SupplierCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE supplier SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [now, id])
+        await pool.query('UPDATE supplier SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[SupplierCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE supplier SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now.getTime(), id])
+    this.localDb.run('UPDATE supplier SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const restored = await this.findById(id)
     if (!restored) throw new Error('Supplier not found after restore')
@@ -195,21 +223,30 @@ export class SupplierCloudService {
   }
 
   private updateLocal(s: Supplier): void {
-    this.localDb.run('UPDATE supplier SET name = ?, phone = ?, address = ?, updated_at = ? WHERE id = ?',
-      [s.name, s.phone, s.address, s.updatedAt.getTime(), s.id])
+    this.localDb.run(
+      'UPDATE supplier SET name = ?, phone = ?, address = ?, updated_at = ? WHERE id = ?',
+      [s.name, s.phone, s.address, s.updatedAt.getTime(), s.id]
+    )
     saveDb(this.localDb)
   }
 
   private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE supplier SET deleted_at = ?, updated_at = ? WHERE id = ?', [now.getTime(), now.getTime(), id])
+    this.localDb.run('UPDATE supplier SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
   }
 
   private mapCloudRow(row: Record<string, unknown>): Supplier {
     return {
-      id: row.id as string, name: row.name as string,
-      phone: row.phone as string | null, address: row.address as string | null,
-      createdAt: new Date(row.created_at as string), updatedAt: new Date(row.updated_at as string),
+      id: row.id as string,
+      name: row.name as string,
+      phone: row.phone as string | null,
+      address: row.address as string | null,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
     }
@@ -217,9 +254,12 @@ export class SupplierCloudService {
 
   private mapLocalRow(row: Record<string, unknown>): Supplier {
     return {
-      id: row.id as string, name: row.name as string,
-      phone: row.phone as string | null, address: row.address as string | null,
-      createdAt: new Date(row.created_at as number), updatedAt: new Date(row.updated_at as number),
+      id: row.id as string,
+      name: row.name as string,
+      phone: row.phone as string | null,
+      address: row.address as string | null,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null
     }

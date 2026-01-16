@@ -55,7 +55,7 @@ export class CustomerCloudService {
         const result = await pool.query(
           'SELECT * FROM customer WHERE deleted_at IS NULL ORDER BY name ASC'
         )
-        return result.rows.map(row => this.mapCloudRow(row))
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[CustomerCloud] findAll error:', error)
         return this.findAllLocal()
@@ -114,7 +114,7 @@ export class CustomerCloudService {
           'SELECT * FROM customer WHERE deleted_at IS NULL AND (name ILIKE $1 OR phone ILIKE $1) LIMIT 50',
           [pattern]
         )
-        return result.rows.map(row => this.mapCloudRow(row))
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[CustomerCloud] search error:', error)
       }
@@ -140,7 +140,7 @@ export class CustomerCloudService {
           'SELECT * FROM customer WHERE category_id = $1 AND deleted_at IS NULL ORDER BY name ASC',
           [categoryId]
         )
-        return result.rows.map(row => this.mapCloudRow(row))
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[CustomerCloud] findByCategory error:', error)
       }
@@ -179,7 +179,15 @@ export class CustomerCloudService {
         const pool = getCloudDb().getPool()
         await pool.query(
           'INSERT INTO customer (id, name, phone, address, category_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [id, data.name, data.phone ?? null, data.address ?? null, data.categoryId ?? null, now, now]
+          [
+            id,
+            data.name,
+            data.phone ?? null,
+            data.address ?? null,
+            data.categoryId ?? null,
+            now,
+            now
+          ]
         )
         console.log('[CustomerCloud] Created in cloud:', id)
         return customer
@@ -191,8 +199,13 @@ export class CustomerCloudService {
     // Offline: save local + queue
     this.saveToLocal(customer)
     await this.queueService.add('INSERT', this.tableName, {
-      id, name: data.name, phone: data.phone ?? null, address: data.address ?? null,
-      category_id: data.categoryId ?? null, created_at: now.toISOString(), updated_at: now.toISOString()
+      id,
+      name: data.name,
+      phone: data.phone ?? null,
+      address: data.address ?? null,
+      category_id: data.categoryId ?? null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
     })
     console.log('[CustomerCloud] Queued:', id)
     return customer
@@ -228,8 +241,12 @@ export class CustomerCloudService {
 
     this.updateLocal(updated)
     await this.queueService.add('UPDATE', this.tableName, {
-      id, name: updated.name, phone: updated.phone, address: updated.address,
-      category_id: updated.categoryId, updated_at: now.toISOString()
+      id,
+      name: updated.name,
+      phone: updated.phone,
+      address: updated.address,
+      category_id: updated.categoryId,
+      updated_at: now.toISOString()
     })
     return updated
   }
@@ -244,7 +261,11 @@ export class CustomerCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE customer SET deleted_at = $1, updated_at = $2 WHERE id = $3', [now, now, id])
+        await pool.query('UPDATE customer SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         console.log('[CustomerCloud] Deleted in cloud:', id)
         return deleted
       } catch (error) {
@@ -262,12 +283,18 @@ export class CustomerCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE customer SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [now, id])
+        await pool.query('UPDATE customer SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[CustomerCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE customer SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now.getTime(), id])
+    this.localDb.run('UPDATE customer SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const restored = await this.findById(id)
     if (!restored) throw new Error('Customer not found after restore')
@@ -292,7 +319,11 @@ export class CustomerCloudService {
   }
 
   private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE customer SET deleted_at = ?, updated_at = ? WHERE id = ?', [now.getTime(), now.getTime(), id])
+    this.localDb.run('UPDATE customer SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
   }
 

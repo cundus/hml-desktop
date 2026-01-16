@@ -17,7 +17,7 @@ export interface Category {
 
 /**
  * CategoryCloudService - Cloud-first category service
- * 
+ *
  * Pattern:
  * - Online: Direct PostgreSQL operations
  * - Offline: Queue operations for later replay
@@ -49,7 +49,7 @@ export class CategoryCloudService {
         const result = await pool.query(
           'SELECT * FROM category WHERE deleted_at IS NULL ORDER BY name ASC'
         )
-        return result.rows.map(row => this.mapCloudRowToCategory(row))
+        return result.rows.map((row) => this.mapCloudRowToCategory(row))
       } catch (error) {
         console.error('[CategoryCloud] findAll cloud error:', error)
         // Fallback to local on error
@@ -172,10 +172,11 @@ export class CategoryCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query(
-          'UPDATE category SET name = $1, updated_at = $2 WHERE id = $3',
-          [updated.name, now, id]
-        )
+        await pool.query('UPDATE category SET name = $1, updated_at = $2 WHERE id = $3', [
+          updated.name,
+          now,
+          id
+        ])
         console.log('[CategoryCloud] Updated in cloud:', id)
         return updated
       } catch (error) {
@@ -214,10 +215,11 @@ export class CategoryCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query(
-          'UPDATE category SET deleted_at = $1, updated_at = $2 WHERE id = $3',
-          [now, now, id]
-        )
+        await pool.query('UPDATE category SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         console.log('[CategoryCloud] Deleted in cloud:', id)
         return deleted
       } catch (error) {
@@ -242,20 +244,20 @@ export class CategoryCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query(
-          'UPDATE category SET deleted_at = NULL, updated_at = $1 WHERE id = $2',
-          [now, id]
-        )
+        await pool.query('UPDATE category SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[CategoryCloud] restore cloud error:', error)
       }
     }
 
     // Update local
-    this.localDb.run(
-      'UPDATE category SET deleted_at = NULL, updated_at = ? WHERE id = ?',
-      [now.getTime(), id]
-    )
+    this.localDb.run('UPDATE category SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
 
     const restored = await this.findById(id)
@@ -276,18 +278,20 @@ export class CategoryCloudService {
   }
 
   private updateLocal(cat: Category): void {
-    this.localDb.run(
-      'UPDATE category SET name = ?, updated_at = ? WHERE id = ?',
-      [cat.name, cat.updatedAt.getTime(), cat.id]
-    )
+    this.localDb.run('UPDATE category SET name = ?, updated_at = ? WHERE id = ?', [
+      cat.name,
+      cat.updatedAt.getTime(),
+      cat.id
+    ])
     saveDb(this.localDb)
   }
 
   private deleteLocal(id: string, now: Date): void {
-    this.localDb.run(
-      'UPDATE category SET deleted_at = ?, updated_at = ? WHERE id = ?',
-      [now.getTime(), now.getTime(), id]
-    )
+    this.localDb.run('UPDATE category SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
   }
 

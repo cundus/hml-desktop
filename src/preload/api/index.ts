@@ -103,8 +103,17 @@ const printerApi = {
   printExpenseReport: (data: ExpenseReportData) =>
     ipcRenderer.invoke('printer:printExpenseReport', data),
   printSettlementReport: (data: any) => ipcRenderer.invoke('printer:printSettlementReport', data),
-  getAvailablePrinters: () => ipcRenderer.invoke('printer:getAvailablePrinters') as Promise<{ success: boolean; data?: string[]; error?: string }>,
-  printDeliveryOrder: (data: any) => ipcRenderer.invoke('printer:printDeliveryOrder', data) as Promise<{ success: boolean; error?: string }>
+  getAvailablePrinters: () =>
+    ipcRenderer.invoke('printer:getAvailablePrinters') as Promise<{
+      success: boolean
+      data?: string[]
+      error?: string
+    }>,
+  printDeliveryOrder: (data: any) =>
+    ipcRenderer.invoke('printer:printDeliveryOrder', data) as Promise<{
+      success: boolean
+      error?: string
+    }>
 }
 
 export const db = {

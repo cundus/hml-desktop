@@ -64,7 +64,15 @@ export default function StorePage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<StoreFormValues>({
     resolver: zodResolver(storeSchema),
-    defaultValues: { code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL', defaultSalesId: '' }
+    defaultValues: {
+      code: '',
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      type: 'RETAIL',
+      defaultSalesId: ''
+    }
   })
 
   useEffect(() => {
@@ -102,7 +110,15 @@ export default function StorePage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ code: '', name: '', address: '', phone: '', email: '', type: 'RETAIL', defaultSalesId: '' })
+    reset({
+      code: '',
+      name: '',
+      address: '',
+      phone: '',
+      email: '',
+      type: 'RETAIL',
+      defaultSalesId: ''
+    })
     setDialogOpen(true)
   }
 
@@ -321,4 +337,3 @@ export default function StorePage(): React.JSX.Element {
     </>
   )
 }
-

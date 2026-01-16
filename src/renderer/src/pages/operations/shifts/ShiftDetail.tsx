@@ -193,24 +193,32 @@ export default function ShiftDetailPage(): React.JSX.Element {
       {/* Summary Cards */}
       <Stack direction="row" spacing={2} mb={3}>
         <Paper sx={{ p: 2, flex: 1 }}>
-          <Typography variant="subtitle2" color="text.secondary">Waktu Buka</Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            Waktu Buka
+          </Typography>
           <Typography variant="h6">{formatDate(shift.openedAt)}</Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1 }}>
-          <Typography variant="subtitle2" color="text.secondary">Waktu Tutup</Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            Waktu Tutup
+          </Typography>
           <Typography variant="h6">{shift.closedAt ? formatDate(shift.closedAt) : '-'}</Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1, textAlign: 'center' }}>
           <Typography variant="h4" fontWeight="bold" color="primary">
             {summary.transactionCount}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Transaksi</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Transaksi
+          </Typography>
         </Paper>
         <Paper sx={{ p: 2, flex: 1, textAlign: 'center' }}>
           <Typography variant="h4" fontWeight="bold" color="warning.main">
             {summary.expenseCount}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Pengeluaran</Typography>
+          <Typography variant="body2" color="text.secondary">
+            Pengeluaran
+          </Typography>
         </Paper>
       </Stack>
 
@@ -221,23 +229,31 @@ export default function ShiftDetailPage(): React.JSX.Element {
         </Typography>
         <Stack direction="row" spacing={4}>
           <Box>
-            <Typography variant="body2" color="text.secondary">Kas Awal</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Kas Awal
+            </Typography>
             <Typography variant="h6">{formatCurrency(parseFloat(shift.initialCash))}</Typography>
           </Box>
           <Box>
-            <Typography variant="body2" color="text.secondary">Penjualan Bersih</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Penjualan Bersih
+            </Typography>
             <Typography variant="h6" color="success.main">
               +{formatCurrency(parseFloat(summary.netSales))}
             </Typography>
           </Box>
           <Box>
-            <Typography variant="body2" color="text.secondary">Pengeluaran</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Pengeluaran
+            </Typography>
             <Typography variant="h6" color="error.main">
               -{formatCurrency(parseFloat(summary.totalExpenses || '0'))}
             </Typography>
           </Box>
           <Box>
-            <Typography variant="body2" color="text.secondary">Kas Diharapkan</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Kas Diharapkan
+            </Typography>
             <Typography variant="h6" fontWeight="bold">
               {formatCurrency(parseFloat(summary.expectedCash))}
             </Typography>
@@ -245,11 +261,17 @@ export default function ShiftDetailPage(): React.JSX.Element {
           {shift.closingCash && (
             <>
               <Box>
-                <Typography variant="body2" color="text.secondary">Kas Akhir</Typography>
-                <Typography variant="h6">{formatCurrency(parseFloat(shift.closingCash))}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Kas Akhir
+                </Typography>
+                <Typography variant="h6">
+                  {formatCurrency(parseFloat(shift.closingCash))}
+                </Typography>
               </Box>
               <Box>
-                <Typography variant="body2" color="text.secondary">Selisih</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Selisih
+                </Typography>
                 <Chip
                   label={formatCurrency(parseFloat(shift.difference || '0'))}
                   color={getDifferenceColor(shift.difference)}
@@ -289,7 +311,9 @@ export default function ShiftDetailPage(): React.JSX.Element {
                 transactions.map((tx) => (
                   <TableRow key={tx.id} hover>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="medium">{tx.code}</Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        {tx.code}
+                      </Typography>
                     </TableCell>
                     <TableCell>{formatTime(tx.createdAt)}</TableCell>
                     <TableCell align="right">
@@ -305,10 +329,10 @@ export default function ShiftDetailPage(): React.JSX.Element {
                     <TableCell>
                       <Chip
                         label={
-                          !tx.paymentMethod || tx.paymentMethod === 'cash' 
-                            ? 'Tunai' 
-                            : tx.paymentMethod === 'credit' 
-                              ? 'Kredit' 
+                          !tx.paymentMethod || tx.paymentMethod === 'cash'
+                            ? 'Tunai'
+                            : tx.paymentMethod === 'credit'
+                              ? 'Kredit'
                               : tx.paymentMethod
                         }
                         size="small"
@@ -352,7 +376,9 @@ export default function ShiftDetailPage(): React.JSX.Element {
                 expenses.map((exp) => (
                   <TableRow key={exp.id} hover>
                     <TableCell>
-                      <Typography variant="body2" fontWeight="medium">{exp.item}</Typography>
+                      <Typography variant="body2" fontWeight="medium">
+                        {exp.item}
+                      </Typography>
                     </TableCell>
                     <TableCell>{formatTime(exp.createdAt)}</TableCell>
                     <TableCell align="center">{exp.quantity}</TableCell>
@@ -374,7 +400,9 @@ export default function ShiftDetailPage(): React.JSX.Element {
       {/* Notes */}
       {shift.notes && (
         <Paper sx={{ p: 2, mt: 3 }}>
-          <Typography variant="subtitle2" color="text.secondary">Catatan</Typography>
+          <Typography variant="subtitle2" color="text.secondary">
+            Catatan
+          </Typography>
           <Typography variant="body1">{shift.notes}</Typography>
         </Paper>
       )}

@@ -52,4 +52,3 @@ export const customerCategories = pgTable('customer_category', {
   syncedAt: timestamp('synced_at', { withTimezone: false }),
   deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
-

@@ -93,16 +93,18 @@ export default function SalesReportsPage(): React.JSX.Element {
     (e: KeyboardEvent) => {
       // Don't trigger if user is typing in an input
       const target = e.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT'
+      )
         return
 
       if (filteredTransactions.length === 0) return
 
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((prev) =>
-          prev < filteredTransactions.length - 1 ? prev + 1 : prev
-        )
+        setSelectedIndex((prev) => (prev < filteredTransactions.length - 1 ? prev + 1 : prev))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setSelectedIndex((prev) => (prev > 0 ? prev - 1 : 0))
@@ -285,7 +287,9 @@ export default function SalesReportsPage(): React.JSX.Element {
             <Stack direction="row" alignItems="center" spacing={2}>
               <TrendingUpIcon color="warning" sx={{ fontSize: 40 }} />
               <Box>
-                <Typography variant="h4">{formatCurrency(Number(summary.totalDiscount))}</Typography>
+                <Typography variant="h4">
+                  {formatCurrency(Number(summary.totalDiscount))}
+                </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Total Diskon
                 </Typography>
@@ -398,11 +402,9 @@ export default function SalesReportsPage(): React.JSX.Element {
                 selected={index === selectedIndex}
                 sx={{
                   cursor: 'pointer',
-                  backgroundColor:
-                    index === selectedIndex ? 'action.selected' : 'inherit',
+                  backgroundColor: index === selectedIndex ? 'action.selected' : 'inherit',
                   '&:hover': {
-                    backgroundColor:
-                      index === selectedIndex ? 'action.selected' : 'action.hover'
+                    backgroundColor: index === selectedIndex ? 'action.selected' : 'action.hover'
                   }
                 }}
                 onClick={() => {
@@ -426,9 +428,7 @@ export default function SalesReportsPage(): React.JSX.Element {
                     variant="outlined"
                   />
                 </TableCell>
-                <TableCell align="right">
-                  {formatCurrency(Number(txn.subtotal) || 0)}
-                </TableCell>
+                <TableCell align="right">{formatCurrency(Number(txn.subtotal) || 0)}</TableCell>
                 <TableCell align="right">
                   {Number(txn.discount) > 0 && (
                     <Typography variant="body2" color="error">
@@ -437,9 +437,7 @@ export default function SalesReportsPage(): React.JSX.Element {
                   )}
                 </TableCell>
                 <TableCell align="right">
-                  <Typography fontWeight="bold">
-                    {formatCurrency(Number(txn.total))}
-                  </Typography>
+                  <Typography fontWeight="bold">{formatCurrency(Number(txn.total))}</Typography>
                 </TableCell>
                 <TableCell align="center">
                   <Tooltip title="Lihat Detail">

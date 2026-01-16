@@ -24,17 +24,17 @@ export class AuthCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        
+
         // Find user
         const userResult = await pool.query(
           'SELECT * FROM "user" WHERE (email = $1 OR name = $1) AND password = $2 AND deleted_at IS NULL',
           [identifier, password]
         )
-        
+
         if (userResult.rows.length === 0) {
           throw new Error('Invalid email or password')
         }
-        
+
         const user = userResult.rows[0]
         const userId = user.id as string
         const userName = user.name as string
@@ -48,9 +48,9 @@ export class AuthCloudService {
            WHERE ur.user_id = $1 AND ur.deleted_at IS NULL`,
           [userId]
         )
-        
-        const roleIds = rolesResult.rows.map(r => r.role_id as string)
-        const roleNames = rolesResult.rows.map(r => r.role_name as string).filter(Boolean)
+
+        const roleIds = rolesResult.rows.map((r) => r.role_id as string)
+        const roleNames = rolesResult.rows.map((r) => r.role_name as string).filter(Boolean)
 
         // Load permissions
         const permSet = new Set<string>()
@@ -59,13 +59,16 @@ export class AuthCloudService {
             'SELECT permission_id FROM role_permission WHERE role_id = $1 AND deleted_at IS NULL',
             [roleId]
           )
-          permResult.rows.forEach(r => permSet.add(r.permission_id as string))
+          permResult.rows.forEach((r) => permSet.add(r.permission_id as string))
         }
 
         // Get store info
         let storeName: string | null = null
         if (storeId) {
-          const storeResult = await pool.query('SELECT name FROM store WHERE id = $1 AND deleted_at IS NULL', [storeId])
+          const storeResult = await pool.query(
+            'SELECT name FROM store WHERE id = $1 AND deleted_at IS NULL',
+            [storeId]
+          )
           if (storeResult.rows.length > 0) {
             storeName = storeResult.rows[0].name as string
           }
@@ -133,7 +136,9 @@ export class AuthCloudService {
     // Load permissions
     const permSet = new Set<string>()
     for (const roleId of roleIds) {
-      const rpStmt = this.db.prepare('SELECT permission_id FROM role_permission WHERE role_id = ? AND deleted_at IS NULL')
+      const rpStmt = this.db.prepare(
+        'SELECT permission_id FROM role_permission WHERE role_id = ? AND deleted_at IS NULL'
+      )
       rpStmt.bind([roleId])
       while (rpStmt.step()) {
         const row = rpStmt.getAsObject()
@@ -145,7 +150,9 @@ export class AuthCloudService {
     // Get store
     let storeName: string | null = null
     if (storeId) {
-      const storeStmt = this.db.prepare('SELECT name FROM store WHERE id = ? AND deleted_at IS NULL')
+      const storeStmt = this.db.prepare(
+        'SELECT name FROM store WHERE id = ? AND deleted_at IS NULL'
+      )
       storeStmt.bind([storeId])
       if (storeStmt.step()) {
         const row = storeStmt.getAsObject()
@@ -170,7 +177,10 @@ export class AuthCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT pin FROM "user" WHERE id = $1 AND deleted_at IS NULL', [userId])
+        const result = await pool.query(
+          'SELECT pin FROM "user" WHERE id = $1 AND deleted_at IS NULL',
+          [userId]
+        )
         if (result.rows.length > 0) {
           const userPin = result.rows[0].pin as string | null
           if (!userPin) return true

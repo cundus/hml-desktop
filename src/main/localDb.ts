@@ -667,7 +667,7 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
-   try {
+  try {
     database.run(`ALTER TABLE shift_history ADD COLUMN updated_at INTEGER`)
   } catch {
     // Column already exists
@@ -831,7 +831,7 @@ export function dateToTimestamp(date: Date | null): number | null {
  */
 async function runMigrations(database: Database): Promise<void> {
   console.log('Running database migrations...')
-  
+
   // Migration: Add phone and email columns to store table
   try {
     database.run('ALTER TABLE store ADD COLUMN phone TEXT')
@@ -839,14 +839,14 @@ async function runMigrations(database: Database): Promise<void> {
   } catch {
     // Column already exists, ignore
   }
-  
+
   try {
     database.run('ALTER TABLE store ADD COLUMN email TEXT')
     console.log('✓ Added email column to store table')
   } catch {
     // Column already exists, ignore
   }
-  
+
   // Migration: Add default_sales_id to store table
   try {
     database.run('ALTER TABLE store ADD COLUMN default_sales_id TEXT')
@@ -854,7 +854,7 @@ async function runMigrations(database: Database): Promise<void> {
   } catch {
     // Column already exists, ignore
   }
-  
+
   // Migration: Add sales_id and sales_name to transactions table
   try {
     database.run('ALTER TABLE transactions ADD COLUMN sales_id TEXT')
@@ -862,13 +862,13 @@ async function runMigrations(database: Database): Promise<void> {
   } catch {
     // Column already exists, ignore
   }
-  
+
   try {
     database.run('ALTER TABLE transactions ADD COLUMN sales_name TEXT')
     console.log('✓ Added sales_name column to transactions table')
   } catch {
     // Column already exists, ignore
   }
-  
+
   console.log('✓ Database migrations completed')
 }

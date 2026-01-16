@@ -33,7 +33,9 @@ export const deliveryOrderApi = {
     ipcRenderer.invoke('db:deliveryOrder:getAll') as Promise<ApiResponse<DeliveryOrder[]>>,
 
   findById: (id: string) =>
-    ipcRenderer.invoke('db:deliveryOrder:findById', id) as Promise<ApiResponse<DeliveryOrder | null>>,
+    ipcRenderer.invoke('db:deliveryOrder:findById', id) as Promise<
+      ApiResponse<DeliveryOrder | null>
+    >,
 
   findByTransactionId: (transactionId: string) =>
     ipcRenderer.invoke('db:deliveryOrder:findByTransactionId', transactionId) as Promise<

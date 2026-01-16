@@ -78,7 +78,18 @@ export class StoreService {
 
     this.db.run(
       'INSERT INTO store (id, code, name, address, phone, email, type, default_sales_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, data.code, data.name, data.address ?? null, data.phone ?? null, data.email ?? null, data.type, data.defaultSalesId ?? null, now, now]
+      [
+        id,
+        data.code,
+        data.name,
+        data.address ?? null,
+        data.phone ?? null,
+        data.email ?? null,
+        data.type,
+        data.defaultSalesId ?? null,
+        now,
+        now
+      ]
     )
 
     saveDb(this.db)

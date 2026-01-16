@@ -148,7 +148,7 @@ export default function DeliveryOrderModal({
     try {
       // Create or use existing DO
       let deliveryOrder = existingDO
-      
+
       if (!deliveryOrder) {
         const createRes = await window.api.db.deliveryOrders.create({
           transactionId: transaction.id,
@@ -233,7 +233,7 @@ export default function DeliveryOrderModal({
   const totalWeight = items.reduce((sum, item) => {
     const qty = item.displayQuantity || item.quantity
     const unitWeight = item.weight || 0
-    return sum + (unitWeight * qty)
+    return sum + unitWeight * qty
   }, 0)
 
   return (
@@ -285,7 +285,9 @@ export default function DeliveryOrderModal({
             <Stack spacing={2}>
               <Autocomplete
                 options={customers}
-                getOptionLabel={(option) => `${option.name}${option.code ? ` (${option.code})` : ''}`}
+                getOptionLabel={(option) =>
+                  `${option.name}${option.code ? ` (${option.code})` : ''}`
+                }
                 value={selectedCustomer}
                 onChange={handleCustomerChange}
                 renderInput={(params) => (
@@ -337,9 +339,7 @@ export default function DeliveryOrderModal({
               <Typography variant="body2" color="text.secondary">
                 {existingDO ? existingDO.noSuratJalan : '(Nomor akan digenerate)'}
               </Typography>
-              <Typography variant="body2">
-                Tanggal: {formatDate(tanggal)}
-              </Typography>
+              <Typography variant="body2">Tanggal: {formatDate(tanggal)}</Typography>
             </Box>
 
             {/* Info Preview */}
@@ -376,9 +376,15 @@ export default function DeliveryOrderModal({
                 <TableRow>
                   <TableCell width={40}>No</TableCell>
                   <TableCell>Nama Barang</TableCell>
-                  <TableCell align="center" width={60}>Qty</TableCell>
-                  <TableCell align="center" width={60}>Satuan</TableCell>
-                  <TableCell align="right" width={80}>Tonase</TableCell>
+                  <TableCell align="center" width={60}>
+                    Qty
+                  </TableCell>
+                  <TableCell align="center" width={60}>
+                    Satuan
+                  </TableCell>
+                  <TableCell align="right" width={80}>
+                    Tonase
+                  </TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

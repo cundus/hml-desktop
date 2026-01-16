@@ -18,7 +18,10 @@ import Divider from '@mui/material/Divider'
 import CircularProgress from '@mui/material/CircularProgress'
 import Chip from '@mui/material/Chip'
 import ProductBrowser, { type Product } from './components/ProductBrowser'
-import ProductSelectModal, { type ProductSelectResult, type ProductForSelection } from './components/ProductSelectModal'
+import ProductSelectModal, {
+  type ProductSelectResult,
+  type ProductForSelection
+} from './components/ProductSelectModal'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentMethodDialog from './components/PaymentMethodDialog'
@@ -66,10 +69,14 @@ export default function SalesPage(): React.JSX.Element {
   const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null)
   const [defaultSalesId, setDefaultSalesId] = useState<string | undefined>(undefined)
   const [selectedSalesId, setSelectedSalesId] = useState<string>('')
-  const [salesPersons, setSalesPersons] = useState<{ id: string; name: string; isActive: boolean }[]>([])
+  const [salesPersons, setSalesPersons] = useState<
+    { id: string; name: string; isActive: boolean }[]
+  >([])
 
   const customerInputRef = useRef<HTMLInputElement | null>(null)
-  const discountInputRef = useRef<import('@renderer/components/CurrencyInput').CurrencyInputRef | null>(null)
+  const discountInputRef = useRef<
+    import('@renderer/components/CurrencyInput').CurrencyInputRef | null
+  >(null)
 
   // Load products, customers, categories, and prices from local DB
   useEffect(() => {
@@ -320,8 +327,8 @@ export default function SalesPage(): React.JSX.Element {
           return {
             productId: item.productId ?? item.id,
             quantity: baseQuantity,
-            displayQuantity: item.quantity,  // Original quantity user selected
-            uomCode: item.uomCode ?? item.unit,  // UOM user selected
+            displayQuantity: item.quantity, // Original quantity user selected
+            uomCode: item.uomCode ?? item.unit, // UOM user selected
             productName: item.name,
             productSku: item.sku,
             price: item.price.toString()
@@ -343,7 +350,9 @@ export default function SalesPage(): React.JSX.Element {
           customerId: selectedCustomerId ?? undefined,
           userId: userName ?? undefined,
           salesId: selectedSalesId || undefined,
-          salesName: selectedSalesId ? salesPersons.find(sp => sp.id === selectedSalesId)?.name : undefined,
+          salesName: selectedSalesId
+            ? salesPersons.find((sp) => sp.id === selectedSalesId)?.name
+            : undefined,
           items: transactionItems
         })
 
@@ -406,7 +415,17 @@ export default function SalesPage(): React.JSX.Element {
         setCheckoutLoading(false)
       }
     },
-    [cartItems, discount, subtotal, total, defaultStoreId, selectedCustomerId, userName]
+    [
+      cartItems,
+      discount,
+      subtotal,
+      total,
+      defaultStoreId,
+      selectedCustomerId,
+      userName,
+      selectedSalesId,
+      salesPersons
+    ]
   )
 
   useEffect(() => {
@@ -589,8 +608,19 @@ export default function SalesPage(): React.JSX.Element {
         >
           {/* Customer Column */}
           <Box sx={{ flex: 1, width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box
+              sx={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                mb: 0.5
+              }}
+            >
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}
+              >
                 Pelanggan <Kbd keys={['F3']} size="small" />
               </Typography>
               <Button
@@ -615,7 +645,11 @@ export default function SalesPage(): React.JSX.Element {
 
           {/* Sales Person Column */}
           <Box sx={{ flex: 1, width: '100%' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}
+            >
               Sales Person *
             </Typography>
             <FormControl fullWidth size="small" error={!selectedSalesId}>

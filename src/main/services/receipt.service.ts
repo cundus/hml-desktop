@@ -172,7 +172,7 @@ export class ReceiptService {
       const contactParts: string[] = []
       if (branch.phone) contactParts.push(branch.phone)
       if (branch.email) contactParts.push(branch.email)
-      
+
       return {
         storeName: this.config.storeName,
         branchName: branch.name,
@@ -282,8 +282,8 @@ export class ReceiptService {
         const paperWidthMap: Record<string, number> = {
           '58mm': 58,
           '80mm': 80,
-          'A4': 210,
-          'A5': 148
+          A4: 210,
+          A5: 148
         }
         return {
           printerName: printerConfig.printerName,
@@ -438,7 +438,19 @@ export class ReceiptService {
 
   // Generate receipt HTML with improved clarity for thermal printers
   private generateReceiptHtml(data: ReceiptData): string {
-    const { transaction, items, subtotal, discount, tax, total, totalWeight, customerName, paidAmount, change, branchInfo } = data
+    const {
+      transaction,
+      items,
+      subtotal,
+      discount,
+      tax,
+      total,
+      totalWeight,
+      customerName,
+      paidAmount,
+      change,
+      branchInfo
+    } = data
     const w = this.config.paperWidth
 
     const paymentMethodMap: Record<string, string> = {
@@ -961,7 +973,9 @@ export class ReceiptService {
   /**
    * Print Delivery Order (Surat Jalan) for dot matrix printer
    */
-  async printDeliveryOrder(data: DeliveryOrderPrintData): Promise<{ success: boolean; error?: string }> {
+  async printDeliveryOrder(
+    data: DeliveryOrderPrintData
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       // Get printer for DO purpose
       const printerSettings = await this.getPrinterForPurpose('do')
@@ -983,7 +997,12 @@ export class ReceiptService {
 
   private generateDeliveryOrderHtml(
     data: DeliveryOrderPrintData,
-    branchInfo: { storeName: string; branchName: string; branchAddress: string; branchContact: string }
+    branchInfo: {
+      storeName: string
+      branchName: string
+      branchAddress: string
+      branchContact: string
+    }
   ): string {
     const {
       noSuratJalan,

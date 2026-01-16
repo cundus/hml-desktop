@@ -1,7 +1,5 @@
 import { useContext } from 'react'
-import BranchConfigContext, {
-  type BranchConfigContextType
-} from '../contexts/BranchConfigContext'
+import BranchConfigContext, { type BranchConfigContextType } from '../contexts/BranchConfigContext'
 
 /**
  * Hook to access the current branch/device configuration

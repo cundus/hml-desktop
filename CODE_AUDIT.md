@@ -3,6 +3,7 @@
 ## 1. Ringkasan Kondisi Project
 
 ### Stack Teknologi
+
 - **Frontend**: React 19 + TypeScript + MUI + React Router + React Hook Form
 - **Backend**: Electron (Node.js) dengan IPC handlers
 - **Database Lokal**: sql.js (SQLite in-memory dengan persisted file)
@@ -10,6 +11,7 @@
 - **Arsitektur**: Controller-Service-Repository pattern dengan IPC bridge
 
 ### Struktur Yang Baik ✓
+
 - Pemisahan yang jelas antara `main/`, `preload/`, dan `renderer/`
 - Service layer yang terpisah dari controller
 - Penggunaan TypeScript dengan type definitions
@@ -17,6 +19,7 @@
 - Role-based access control (RBAC) di frontend
 
 ### Kondisi Umum
+
 Project ini **belum siap production** dan memerlukan perbaikan signifikan terutama di area **security** dan **error handling**. Dengan perbaikan yang tepat, arsitektur dasarnya cukup solid untuk dikembangkan.
 
 ---
@@ -45,18 +48,22 @@ db.run(
 )
 ```
 
-**Dampak**: 
+**Dampak**:
+
 - Jika database bocor, semua password user terekspos
 - Tidak ada protection terhadap credential stuffing
 - Melanggar standar keamanan (OWASP)
 
 **Perbaikan**:
+
 ```typescript
 import { createHash, randomBytes, timingSafeEqual } from 'crypto'
 
 function hashPassword(password: string, salt?: string): { hash: string; salt: string } {
   salt = salt || randomBytes(16).toString('hex')
-  const hash = createHash('sha256').update(password + salt).digest('hex')
+  const hash = createHash('sha256')
+    .update(password + salt)
+    .digest('hex')
   return { hash, salt }
 }
 
@@ -93,8 +100,8 @@ async verifyPin(userId: string, pin: string): Promise<boolean> {
 ```typescript
 // Token adalah user ID tanpa expiry
 return {
-  token: userId,  // User ID sebagai token!
-  userName,
+  token: userId, // User ID sebagai token!
+  userName
   // ...
 }
 ```
@@ -107,11 +114,13 @@ export function setToken(token: string): void {
 ```
 
 **Dampak**:
+
 - Token tidak pernah expire
 - Session hijacking sangat mudah
 - Tidak ada cara untuk invalidate session
 
 **Perbaikan**:
+
 ```typescript
 import { randomUUID } from 'crypto'
 
@@ -124,15 +133,15 @@ interface Session {
 
 async login(identifier: string, password: string): Promise<AuthResult> {
   // ... verify credentials ...
-  
+
   const sessionId = randomUUID()
   const expiresAt = Date.now() + (8 * 60 * 60 * 1000) // 8 hours
-  
+
   this.db.run(
     'INSERT INTO sessions (id, user_id, created_at, expires_at) VALUES (?, ?, ?, ?)',
     [sessionId, userId, Date.now(), expiresAt]
   )
-  
+
   return { token: sessionId, expiresAt, ... }
 }
 
@@ -159,11 +168,13 @@ export function setPermissions(permissions: string[]): void {
 ```
 
 **Dampak**: User bisa membuka DevTools dan menambahkan permission apapun:
+
 ```javascript
 localStorage.setItem('auth_permissions', '["master.user.manage","settings.access-control.manage"]')
 ```
 
-**Perbaikan**: 
+**Perbaikan**:
+
 1. Backend harus SELALU memverifikasi permissions sebelum operasi sensitif
 2. Permissions di frontend hanya untuk UI hiding, bukan security
 
@@ -197,6 +208,7 @@ webPreferences: {
 **Dampak**: Jika ada XSS vulnerability di renderer, attacker bisa mengakses Node.js APIs.
 
 **Perbaikan**: Enable sandbox dan use context isolation properly:
+
 ```typescript
 webPreferences: {
   preload: join(__dirname, '../preload/index.js'),
@@ -224,12 +236,14 @@ ipcMain.handle('db:transactions:create', async (_, data) => {
 })
 ```
 
-**Dampak**: 
+**Dampak**:
+
 - Malformed data bisa corrupt database
 - Negative quantities, invalid prices bisa masuk
 - Potential for business logic bypass
 
 **Perbaikan**: Gunakan Zod untuk validasi di backend juga:
+
 ```typescript
 import { z } from 'zod'
 
@@ -238,11 +252,15 @@ const createTransactionSchema = z.object({
   storeId: z.string().uuid(),
   subtotal: z.string().regex(/^\d+(\.\d{1,2})?$/),
   total: z.string().regex(/^\d+(\.\d{1,2})?$/),
-  items: z.array(z.object({
-    productId: z.string().uuid(),
-    quantity: z.number().positive().int(),
-    price: z.string().regex(/^\d+(\.\d{1,2})?$/)
-  })).min(1)
+  items: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().positive().int(),
+        price: z.string().regex(/^\d+(\.\d{1,2})?$/)
+      })
+    )
+    .min(1)
 })
 
 ipcMain.handle('db:transactions:create', async (_, data) => {
@@ -275,25 +293,27 @@ for (const item of data.items) {
 }
 ```
 
-**Dampak**: 
+**Dampak**:
+
 - Dua transaksi bersamaan bisa menyebabkan overselling
 - Stock bisa menjadi negatif
 - Tidak ada check ketersediaan stock sebelum deduct
 
 **Perbaikan**:
+
 ```typescript
 async create(data: CreateTransactionDto): Promise<Transaction> {
   // Check stock availability first
   for (const item of data.items) {
     const available = await this.productLocationService.getAvailableQuantity(
-      item.productId, 
+      item.productId,
       data.storeId
     )
     if (available < item.quantity) {
       throw new Error(`Insufficient stock for product ${item.productId}`)
     }
   }
-  
+
   // Use BEGIN TRANSACTION for atomicity in sql.js
   this.db.run('BEGIN TRANSACTION')
   try {
@@ -313,12 +333,13 @@ async create(data: CreateTransactionDto): Promise<Transaction> {
 **File**: `src/renderer/src/pages/sales/index.tsx:265`
 
 ```typescript
-const code = `TRX-${Date.now()}`  // Collision possible!
+const code = `TRX-${Date.now()}` // Collision possible!
 ```
 
 **Dampak**: Jika dua transaksi dibuat dalam millisecond yang sama, code-nya bentrok.
 
 **Perbaikan**:
+
 ```typescript
 const code = `TRX-${Date.now()}-${randomUUID().slice(0, 8)}`
 // Atau gunakan sequence di database
@@ -365,23 +386,24 @@ async findAll(): Promise<Transaction[]> {
 **Dampak**: Dengan 100K+ transaksi, ini akan OOM atau freeze UI.
 
 **Perbaikan**:
+
 ```typescript
-async findAll(options?: { limit?: number; offset?: number }): Promise<{ 
-  data: Transaction[]; 
-  total: number; 
-  hasMore: boolean 
+async findAll(options?: { limit?: number; offset?: number }): Promise<{
+  data: Transaction[];
+  total: number;
+  hasMore: boolean
 }> {
   const limit = options?.limit ?? 50
   const offset = options?.offset ?? 0
-  
+
   const countStmt = this.db.prepare('SELECT COUNT(*) as total FROM transactions WHERE deleted_at IS NULL')
   const total = countStmt.step() ? countStmt.getAsObject().total as number : 0
   countStmt.free()
-  
+
   const stmt = this.db.prepare(`
-    SELECT * FROM transactions 
-    WHERE deleted_at IS NULL 
-    ORDER BY created_at DESC 
+    SELECT * FROM transactions
+    WHERE deleted_at IS NULL
+    ORDER BY created_at DESC
     LIMIT ? OFFSET ?
   `)
   stmt.bind([limit, offset])
@@ -408,6 +430,7 @@ async create(data: CreateUserDto): Promise<User> {
 **Dampak**: Performance bottleneck, terutama saat high-frequency operations.
 
 **Perbaikan**:
+
 ```typescript
 // Batch saves dengan debounce
 let saveTimer: NodeJS.Timeout | null = null
@@ -447,6 +470,7 @@ return expectedCash.toString()
 **Dampak**: `parseFloat` bisa kehilangan precision untuk angka besar atau operasi kompleks.
 
 **Perbaikan**: Gunakan library untuk monetary calculations:
+
 ```typescript
 import Decimal from 'decimal.js'
 
@@ -464,12 +488,14 @@ return expected.toFixed(2)
 **File**: `src/main/localDb.ts`
 
 Tidak ada CREATE INDEX statements. Queries pada:
+
 - `transactions.created_at` (untuk filtering by date range)
-- `transactions.store_id` 
+- `transactions.store_id`
 - `product_location.product_id + store_id`
 - `user.email`
 
 **Perbaikan**:
+
 ```sql
 CREATE INDEX IF NOT EXISTS idx_transactions_created_at ON transactions(created_at);
 CREATE INDEX IF NOT EXISTS idx_transactions_store_id ON transactions(store_id);
@@ -482,14 +508,17 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_user_email ON user(email) WHERE deleted_at
 #### 2.14 Dead/Unused Code
 
 **File**: `src/renderer/src/pages/Pets.tsx`
+
 ```typescript
 export default function Pets(): React.JSX.Element {
   return <div>Pets</div>
 }
 ```
+
 File placeholder yang tidak digunakan.
 
 **File**: `package.json`
+
 ```json
 "silly": "^0.2.0"  // Tidak terpakai di codebase
 ```
@@ -499,6 +528,7 @@ File placeholder yang tidak digunakan.
 #### 2.15 Inconsistent Error Messages
 
 Beberapa error messages in English, beberapa in Indonesian:
+
 ```typescript
 throw new Error('Invalid email or password')  // English
 setSnackbar({ message: 'Gagal memuat data', ... })  // Indonesian
@@ -517,6 +547,7 @@ setSnackbar({ message: 'Gagal memuat data', ... })  // Indonesian
 ```
 
 Dan banyak `any` usage:
+
 ```typescript
 private mapRowToUser(row: any): User  // Unsafe
 ```
@@ -531,6 +562,7 @@ console.log(`✓ ${entity}: ${count} pulled, ${conflicts} conflicts`)
 ```
 
 **Perbaikan**: Gunakan proper logging library dengan levels:
+
 ```typescript
 import log from 'electron-log'
 log.info('Database loaded:', dbPath)
@@ -541,24 +573,28 @@ log.info('Database loaded:', dbPath)
 ## 3. Saran Refactor Bertahap
 
 ### Phase 1: Security Fixes (1-2 minggu)
+
 1. ✅ Implement password hashing dengan bcrypt/argon2
 2. ✅ Implement proper session management dengan expiry
 3. ✅ Add backend permission verification
 4. ✅ Enable Electron sandbox
 
 ### Phase 2: Data Integrity (1 minggu)
+
 1. ✅ Add input validation dengan Zod di backend
 2. ✅ Fix race conditions dengan transactions
 3. ✅ Add stock availability checks
 4. ✅ Generate unique transaction codes
 
 ### Phase 3: Performance (1 minggu)
+
 1. ✅ Implement pagination
 2. ✅ Add database indexes
 3. ✅ Batch database saves
 4. ✅ Use Decimal.js untuk monetary calculations
 
 ### Phase 4: Code Quality (ongoing)
+
 1. Enable TypeScript strict mode
 2. Remove dead code
 3. Add comprehensive logging
@@ -570,6 +606,7 @@ log.info('Database loaded:', dbPath)
 ## 4. Checklist Sebelum Production
 
 ### Security
+
 - [ ] Semua password di-hash dengan bcrypt/argon2
 - [ ] Session tokens dengan expiry
 - [ ] Backend permission verification di semua endpoints sensitif
@@ -579,18 +616,21 @@ log.info('Database loaded:', dbPath)
 - [ ] HTTPS untuk cloud sync
 
 ### Data Integrity
+
 - [ ] Stock availability check sebelum sale
 - [ ] Transaction atomicity dengan BEGIN/COMMIT/ROLLBACK
 - [ ] Unique constraints di database
 - [ ] Foreign key integrity (jika supported)
 
 ### Performance
+
 - [ ] Pagination untuk semua list endpoints
 - [ ] Database indexes pada frequently queried columns
 - [ ] Lazy loading untuk large datasets
 - [ ] Connection pooling untuk PostgreSQL
 
 ### Operations
+
 - [ ] Proper logging (bukan console.log)
 - [ ] Error tracking (Sentry atau sejenisnya)
 - [ ] Database backup strategy
@@ -598,6 +638,7 @@ log.info('Database loaded:', dbPath)
 - [ ] Load testing dengan realistic data volume
 
 ### Code Quality
+
 - [ ] TypeScript strict mode
 - [ ] No `any` types
 - [ ] Unit tests untuk business logic
@@ -620,10 +661,10 @@ log.info('Database loaded:', dbPath)
 
 ## Severity Summary
 
-| Severity | Count | Examples |
-|----------|-------|----------|
-| ❗ Critical | 5 | Plain text passwords, no session expiry, frontend permission bypass |
-| ⚠️ Medium | 7 | No input validation, race conditions, no pagination |
-| 💡 Improvement | 5 | Missing indexes, dead code, inconsistent i18n |
+| Severity       | Count | Examples                                                            |
+| -------------- | ----- | ------------------------------------------------------------------- |
+| ❗ Critical    | 5     | Plain text passwords, no session expiry, frontend permission bypass |
+| ⚠️ Medium      | 7     | No input validation, race conditions, no pagination                 |
+| 💡 Improvement | 5     | Missing indexes, dead code, inconsistent i18n                       |
 
 **Rekomendasi**: Jangan deploy ke production sebelum semua Critical issues di-fix. Medium issues bisa ditolerir untuk beta/pilot testing dengan user terbatas.

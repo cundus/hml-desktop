@@ -185,7 +185,9 @@ export default function TransactionDetailPage(): React.JSX.Element {
           cost: p.cost ?? '0'
         }))
       )
-      setCustomers(custs.map((c) => ({ id: c.id, name: c.name, code: c.code ?? '', address: c.address ?? '' })))
+      setCustomers(
+        custs.map((c) => ({ id: c.id, name: c.name, code: c.code ?? '', address: c.address ?? '' }))
+      )
 
       const prodMap = new Map<string, Product>(
         prods.map((p) => [
@@ -730,12 +732,10 @@ export default function TransactionDetailPage(): React.JSX.Element {
                       sx={{ width: 80 }}
                     />
                   ) : (
-                    item.displayQuantity ?? item.quantity
+                    (item.displayQuantity ?? item.quantity)
                   )}
                 </TableCell>
-                <TableCell align="center">
-                  {item.uomCode || 'PCS'}
-                </TableCell>
+                <TableCell align="center">{item.uomCode || 'PCS'}</TableCell>
                 <TableCell align="right">
                   {isEditing ? (
                     <CurrencyInput
@@ -820,7 +820,12 @@ export default function TransactionDetailPage(): React.JSX.Element {
               }
             : null
         }
-        customers={customers.map((c) => ({ id: c.id, name: c.name, code: c.code, address: c.address }))}
+        customers={customers.map((c) => ({
+          id: c.id,
+          name: c.name,
+          code: c.code,
+          address: c.address
+        }))}
         onClose={() => setDeliveryOrderModalOpen(false)}
       />
     </Box>

@@ -25,14 +25,18 @@ export class UserRoleCloudService {
     this.queueService = queueService
   }
 
-  private isOnline(): boolean { return getConnectivity().isOnline() }
+  private isOnline(): boolean {
+    return getConnectivity().isOnline()
+  }
 
   async findAll(): Promise<UserRole[]> {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM user_role WHERE deleted_at IS NULL ORDER BY created_at DESC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM user_role WHERE deleted_at IS NULL ORDER BY created_at DESC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[UserRoleCloud] findAll error:', error)
         return this.findAllLocal()
@@ -42,7 +46,9 @@ export class UserRoleCloudService {
   }
 
   private findAllLocal(): UserRole[] {
-    const stmt = this.localDb.prepare('SELECT * FROM user_role WHERE deleted_at IS NULL ORDER BY created_at DESC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM user_role WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    )
     const results: UserRole[] = []
     while (stmt.step()) results.push(this.mapLocalRow(stmt.getAsObject()))
     stmt.free()
@@ -53,13 +59,18 @@ export class UserRoleCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM user_role WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC', [userId])
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM user_role WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC',
+          [userId]
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[UserRoleCloud] findByUserId error:', error)
       }
     }
-    const stmt = this.localDb.prepare('SELECT * FROM user_role WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM user_role WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at ASC'
+    )
     stmt.bind([userId])
     const results: UserRole[] = []
     while (stmt.step()) results.push(this.mapLocalRow(stmt.getAsObject()))
@@ -74,12 +85,17 @@ export class UserRoleCloudService {
       try {
         const pool = getCloudDb().getPool()
         // Soft-delete existing
-        await pool.query('UPDATE user_role SET deleted_at = $1, updated_at = $2 WHERE user_id = $3 AND deleted_at IS NULL', [now, now, userId])
+        await pool.query(
+          'UPDATE user_role SET deleted_at = $1, updated_at = $2 WHERE user_id = $3 AND deleted_at IS NULL',
+          [now, now, userId]
+        )
         // Insert new
         for (const roleId of roleIds) {
           const id = randomUUID()
-          await pool.query('INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
-            [id, userId, roleId, now, now])
+          await pool.query(
+            'INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+            [id, userId, roleId, now, now]
+          )
         }
         return this.findByUserId(userId)
       } catch (error) {
@@ -88,12 +104,16 @@ export class UserRoleCloudService {
     }
 
     // Local fallback
-    this.localDb.run('UPDATE user_role SET deleted_at = ?, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL',
-      [now.getTime(), now.getTime(), userId])
+    this.localDb.run(
+      'UPDATE user_role SET deleted_at = ?, updated_at = ? WHERE user_id = ? AND deleted_at IS NULL',
+      [now.getTime(), now.getTime(), userId]
+    )
     for (const roleId of roleIds) {
       const id = randomUUID()
-      this.localDb.run('INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [id, userId, roleId, now.getTime(), now.getTime()])
+      this.localDb.run(
+        'INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        [id, userId, roleId, now.getTime(), now.getTime()]
+      )
     }
     saveDb(this.localDb)
     await this.queueService.add('UPDATE', 'user_role', { user_id: userId, role_ids: roleIds })
@@ -102,8 +122,11 @@ export class UserRoleCloudService {
 
   private mapCloudRow(row: Record<string, unknown>): UserRole {
     return {
-      id: row.id as string, userId: row.user_id as string, roleId: row.role_id as string,
-      createdAt: new Date(row.created_at as string), updatedAt: new Date(row.updated_at as string),
+      id: row.id as string,
+      userId: row.user_id as string,
+      roleId: row.role_id as string,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
       deviceId: row.device_id as string | null
@@ -112,8 +135,11 @@ export class UserRoleCloudService {
 
   private mapLocalRow(row: Record<string, unknown>): UserRole {
     return {
-      id: row.id as string, userId: row.user_id as string, roleId: row.role_id as string,
-      createdAt: new Date(row.created_at as number), updatedAt: new Date(row.updated_at as number),
+      id: row.id as string,
+      userId: row.user_id as string,
+      roleId: row.role_id as string,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
       deviceId: row.device_id as string | null

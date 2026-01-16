@@ -56,11 +56,20 @@ export function ShiftProvider({ children }: { children: ReactNode }): React.JSX.
   }, [token])
 
   useEffect(() => {
+    let cancelled = false
+
     if (isAuthenticated) {
-      refreshShift()
+      void refreshShift().finally(() => {
+        // Prevent state update if component unmounted or auth changed
+        if (cancelled) return
+      })
     } else {
       setCurrentShift(null)
       setIsLoading(false)
+    }
+
+    return () => {
+      cancelled = true
     }
   }, [isAuthenticated, refreshShift])
 

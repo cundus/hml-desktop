@@ -1,8 +1,5 @@
 import { ipcMain } from 'electron'
-import {
-  DeliveryOrderService,
-  CreateDeliveryOrderDto
-} from '../services/delivery-order.service'
+import { DeliveryOrderService, CreateDeliveryOrderDto } from '../services/delivery-order.service'
 
 export function registerDeliveryOrderController(service: DeliveryOrderService): void {
   ipcMain.handle('db:deliveryOrder:getAll', async () => {

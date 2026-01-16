@@ -23,7 +23,7 @@ export function initAutoUpdater(mainWindow: BrowserWindow): void {
 
   autoUpdater.on('update-available', async (info) => {
     console.log('Update available:', info.version)
-    
+
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Tersedia',
@@ -52,7 +52,7 @@ export function initAutoUpdater(mainWindow: BrowserWindow): void {
 
   autoUpdater.on('update-downloaded', async () => {
     console.log('Update downloaded')
-    
+
     const result = await dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Siap',

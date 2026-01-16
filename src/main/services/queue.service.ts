@@ -50,7 +50,11 @@ export class QueueService {
   /**
    * Add operation to queue
    */
-  async add(action: QueueAction, entity: string, payload: Record<string, unknown>): Promise<string> {
+  async add(
+    action: QueueAction,
+    entity: string,
+    payload: Record<string, unknown>
+  ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
     const payloadJson = JSON.stringify(payload)
@@ -104,7 +108,9 @@ export class QueueService {
    * Get pending count
    */
   getPendingCount(): number {
-    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM operation_queue WHERE status = 'pending'`)
+    const stmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM operation_queue WHERE status = 'pending'`
+    )
     let count = 0
     if (stmt.step()) {
       const row = stmt.getAsObject()
@@ -118,7 +124,9 @@ export class QueueService {
    * Get failed count
    */
   getFailedCount(): number {
-    const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM operation_queue WHERE status = 'failed'`)
+    const stmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM operation_queue WHERE status = 'failed'`
+    )
     let count = 0
     if (stmt.step()) {
       const row = stmt.getAsObject()
@@ -165,10 +173,10 @@ export class QueueService {
    * Mark item as failed (max retries exceeded)
    */
   markFailed(id: string, error: string): void {
-    this.db.run(
-      `UPDATE operation_queue SET status = 'failed', last_error = ? WHERE id = ?`,
-      [error, id]
-    )
+    this.db.run(`UPDATE operation_queue SET status = 'failed', last_error = ? WHERE id = ?`, [
+      error,
+      id
+    ])
     saveDb(this.db)
     console.log(`[Queue] Failed: ${id} - ${error}`)
   }
@@ -177,10 +185,9 @@ export class QueueService {
    * Retry a failed item
    */
   retryFailed(id: string): void {
-    this.db.run(
-      `UPDATE operation_queue SET status = 'pending', last_error = NULL WHERE id = ?`,
-      [id]
-    )
+    this.db.run(`UPDATE operation_queue SET status = 'pending', last_error = NULL WHERE id = ?`, [
+      id
+    ])
     saveDb(this.db)
   }
 

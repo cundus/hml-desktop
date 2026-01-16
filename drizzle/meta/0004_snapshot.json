@@ -740,11 +740,7 @@
         "product_uom_category_price_product_id_uom_id_price_category_id_unique": {
           "name": "product_uom_category_price_product_id_uom_id_price_category_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "product_id",
-            "uom_id",
-            "price_category_id"
-          ]
+          "columns": ["product_id", "uom_id", "price_category_id"]
         }
       },
       "policies": {},
@@ -1021,12 +1017,7 @@
         "store_product_uom_price_product_id_uom_id_price_category_id_store_id_unique": {
           "name": "store_product_uom_price_product_id_uom_id_price_category_id_store_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "product_id",
-            "uom_id",
-            "price_category_id",
-            "store_id"
-          ]
+          "columns": ["product_id", "uom_id", "price_category_id", "store_id"]
         }
       },
       "policies": {},
@@ -1158,9 +1149,7 @@
         "uom_code_unique": {
           "name": "uom_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},
@@ -2015,9 +2004,7 @@
         "transactions_code_unique": {
           "name": "transactions_code_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "code"
-          ]
+          "columns": ["code"]
         }
       },
       "policies": {},

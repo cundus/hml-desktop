@@ -50,7 +50,7 @@ export class CloudDbService {
       const maskedUrl = url.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')
       console.log('[CloudDb] Connecting to:', maskedUrl)
 
-      this.pool = new Pool({ 
+      this.pool = new Pool({
         connectionString: url,
         connectionTimeoutMillis: 10000,
         idleTimeoutMillis: 30000,

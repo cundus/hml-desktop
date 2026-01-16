@@ -404,7 +404,9 @@ export default function PrinterSettings(): React.JSX.Element {
                   fullWidth
                   label="Nama Toko"
                   value={storeConfig.storeName}
-                  onChange={(e) => setStoreConfig((prev) => ({ ...prev, storeName: e.target.value }))}
+                  onChange={(e) =>
+                    setStoreConfig((prev) => ({ ...prev, storeName: e.target.value }))
+                  }
                 />
               </Grid>
               <Grid size={{ xs: 12 }}>
@@ -517,7 +519,8 @@ export default function PrinterSettings(): React.JSX.Element {
                 label="Tipe Printer"
                 onChange={(e) => {
                   const type = e.target.value as PrinterType
-                  const defaultSize = PAPER_SIZES.find((p) => p.types.includes(type))?.value || '58mm'
+                  const defaultSize =
+                    PAPER_SIZES.find((p) => p.types.includes(type))?.value || '58mm'
                   setFormData((prev) => ({ ...prev, printerType: type, paperSize: defaultSize }))
                 }}
               >

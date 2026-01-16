@@ -37,8 +37,10 @@ export class UserCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM "user" WHERE deleted_at IS NULL ORDER BY created_at DESC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[UserCloud] findAll error:', error)
         return this.findAllLocal()
@@ -48,7 +50,9 @@ export class UserCloudService {
   }
 
   private findAllLocal(): User[] {
-    const stmt = this.localDb.prepare('SELECT * FROM user WHERE deleted_at IS NULL ORDER BY created_at DESC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM user WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    )
     const results: User[] = []
     while (stmt.step()) {
       results.push(this.mapLocalRow(stmt.getAsObject()))
@@ -88,7 +92,10 @@ export class UserCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM "user" WHERE email = $1 AND deleted_at IS NULL', [email])
+        const result = await pool.query(
+          'SELECT * FROM "user" WHERE email = $1 AND deleted_at IS NULL',
+          [email]
+        )
         if (result.rows.length > 0) return this.mapCloudRow(result.rows[0])
         return undefined
       } catch (error) {
@@ -111,9 +118,17 @@ export class UserCloudService {
     const now = new Date()
 
     const user: User = {
-      id, name: data.name, email: data.email, password: data.password,
-      pin: null, storeId: data.storeId ?? null,
-      createdAt: now, updatedAt: now, syncedAt: null, deletedAt: null, deviceId: null
+      id,
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      pin: null,
+      storeId: data.storeId ?? null,
+      createdAt: now,
+      updatedAt: now,
+      syncedAt: null,
+      deletedAt: null,
+      deviceId: null
     }
 
     if (this.isOnline()) {
@@ -132,8 +147,13 @@ export class UserCloudService {
 
     this.saveToLocal(user)
     await this.queueService.add('INSERT', 'user', {
-      id, name: data.name, email: data.email, password: data.password,
-      store_id: data.storeId ?? null, created_at: now.toISOString(), updated_at: now.toISOString()
+      id,
+      name: data.name,
+      email: data.email,
+      password: data.password,
+      store_id: data.storeId ?? null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
     })
     return user
   }
@@ -173,8 +193,12 @@ export class UserCloudService {
 
     this.updateLocal(updated)
     await this.queueService.add('UPDATE', 'user', {
-      id, name: updated.name, email: updated.email, password: updated.password,
-      store_id: updated.storeId, updated_at: now.toISOString()
+      id,
+      name: updated.name,
+      email: updated.email,
+      password: updated.password,
+      store_id: updated.storeId,
+      updated_at: now.toISOString()
     })
     return updated
   }
@@ -189,7 +213,11 @@ export class UserCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE "user" SET deleted_at = $1, updated_at = $2 WHERE id = $3', [now, now, id])
+        await pool.query('UPDATE "user" SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         return deleted
       } catch (error) {
         console.error('[UserCloud] delete error, queuing:', error)
@@ -219,12 +247,18 @@ export class UserCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE "user" SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [now, id])
+        await pool.query('UPDATE "user" SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[UserCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE user SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now.getTime(), id])
+    this.localDb.run('UPDATE user SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const restored = await this.findById(id)
     if (!restored) throw new Error('User not found after restore')
@@ -239,12 +273,20 @@ export class UserCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE "user" SET pin = $1, updated_at = $2 WHERE id = $3', [pin, now, id])
+        await pool.query('UPDATE "user" SET pin = $1, updated_at = $2 WHERE id = $3', [
+          pin,
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[UserCloud] updatePin error:', error)
       }
     }
-    this.localDb.run('UPDATE user SET pin = ?, updated_at = ? WHERE id = ?', [pin, now.getTime(), id])
+    this.localDb.run('UPDATE user SET pin = ?, updated_at = ? WHERE id = ?', [
+      pin,
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const updated = await this.findById(id)
     if (!updated) throw new Error('User not found after update')
@@ -265,21 +307,32 @@ export class UserCloudService {
   }
 
   private updateLocal(u: User): void {
-    this.localDb.run('UPDATE user SET name = ?, email = ?, password = ?, store_id = ?, updated_at = ? WHERE id = ?',
-      [u.name, u.email, u.password, u.storeId, u.updatedAt.getTime(), u.id])
+    this.localDb.run(
+      'UPDATE user SET name = ?, email = ?, password = ?, store_id = ?, updated_at = ? WHERE id = ?',
+      [u.name, u.email, u.password, u.storeId, u.updatedAt.getTime(), u.id]
+    )
     saveDb(this.localDb)
   }
 
   private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE user SET deleted_at = ?, updated_at = ? WHERE id = ?', [now.getTime(), now.getTime(), id])
+    this.localDb.run('UPDATE user SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
   }
 
   private mapCloudRow(row: Record<string, unknown>): User {
     return {
-      id: row.id as string, name: row.name as string, email: row.email as string, password: row.password as string,
-      pin: row.pin as string | null, storeId: row.store_id as string | null,
-      createdAt: new Date(row.created_at as string), updatedAt: new Date(row.updated_at as string),
+      id: row.id as string,
+      name: row.name as string,
+      email: row.email as string,
+      password: row.password as string,
+      pin: row.pin as string | null,
+      storeId: row.store_id as string | null,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
       deviceId: row.device_id as string | null
@@ -288,9 +341,14 @@ export class UserCloudService {
 
   private mapLocalRow(row: Record<string, unknown>): User {
     return {
-      id: row.id as string, name: row.name as string, email: row.email as string, password: row.password as string,
-      pin: row.pin as string | null, storeId: row.store_id as string | null,
-      createdAt: new Date(row.created_at as number), updatedAt: new Date(row.updated_at as number),
+      id: row.id as string,
+      name: row.name as string,
+      email: row.email as string,
+      password: row.password as string,
+      pin: row.pin as string | null,
+      storeId: row.store_id as string | null,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
       deviceId: row.device_id as string | null

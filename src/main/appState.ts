@@ -64,7 +64,8 @@ export async function checkCloseGuard(): Promise<CloseGuardStatus> {
 
   // Determine if close is allowed without warning
   // Allow close if: no open shift AND (queue is empty OR offline)
-  result.canClose = !result.hasOpenShift && (result.pendingQueueCount === 0 || !result.isCloudConnected)
+  result.canClose =
+    !result.hasOpenShift && (result.pendingQueueCount === 0 || !result.isCloudConnected)
 
   return result
 }

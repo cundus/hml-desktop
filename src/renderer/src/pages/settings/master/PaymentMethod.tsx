@@ -122,7 +122,9 @@ export default function PaymentMethodPage(): React.JSX.Element {
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus metode pembayaran ini?')
+    const confirmed = await globalAlert.confirm(
+      'Apakah Anda yakin ingin menghapus metode pembayaran ini?'
+    )
     if (!confirmed) return
     try {
       const response = await window.api.db.paymentMethods.delete(id)
@@ -204,7 +206,9 @@ export default function PaymentMethodPage(): React.JSX.Element {
 
       <Dialog open={dialogOpen} onClose={closeDialog} maxWidth="sm" fullWidth>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <DialogTitle>{editing ? 'Ubah Metode Pembayaran' : 'Tambah Metode Pembayaran'}</DialogTitle>
+          <DialogTitle>
+            {editing ? 'Ubah Metode Pembayaran' : 'Tambah Metode Pembayaran'}
+          </DialogTitle>
           <DialogContent>
             <TextField
               {...register('name')}

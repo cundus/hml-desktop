@@ -16,8 +16,14 @@ export interface Uom {
   deviceId: string | null
 }
 
-export interface CreateUomDto { code: string; name: string }
-export interface UpdateUomDto { code?: string; name?: string }
+export interface CreateUomDto {
+  code: string
+  name: string
+}
+export interface UpdateUomDto {
+  code?: string
+  name?: string
+}
 
 export class UomCloudService {
   private localDb: Database
@@ -37,8 +43,10 @@ export class UomCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[UomCloud] findAll error:', error)
         return this.findAllLocal()
@@ -48,7 +56,9 @@ export class UomCloudService {
   }
 
   private findAllLocal(): Uom[] {
-    const stmt = this.localDb.prepare('SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM uom WHERE deleted_at IS NULL ORDER BY code ASC'
+    )
     const results: Uom[] = []
     while (stmt.step()) results.push(this.mapLocalRow(stmt.getAsObject()))
     stmt.free()
@@ -73,7 +83,11 @@ export class UomCloudService {
   private findByIdLocal(id: string): Uom | undefined {
     const stmt = this.localDb.prepare('SELECT * FROM uom WHERE id = ?')
     stmt.bind([id])
-    if (stmt.step()) { const u = this.mapLocalRow(stmt.getAsObject()); stmt.free(); return u }
+    if (stmt.step()) {
+      const u = this.mapLocalRow(stmt.getAsObject())
+      stmt.free()
+      return u
+    }
     stmt.free()
     return undefined
   }
@@ -82,7 +96,10 @@ export class UomCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM uom WHERE code = $1 AND deleted_at IS NULL', [code])
+        const result = await pool.query(
+          'SELECT * FROM uom WHERE code = $1 AND deleted_at IS NULL',
+          [code]
+        )
         if (result.rows.length > 0) return this.mapCloudRow(result.rows[0])
       } catch (error) {
         console.error('[UomCloud] findByCode error:', error)
@@ -90,7 +107,11 @@ export class UomCloudService {
     }
     const stmt = this.localDb.prepare('SELECT * FROM uom WHERE code = ? AND deleted_at IS NULL')
     stmt.bind([code])
-    if (stmt.step()) { const u = this.mapLocalRow(stmt.getAsObject()); stmt.free(); return u }
+    if (stmt.step()) {
+      const u = this.mapLocalRow(stmt.getAsObject())
+      stmt.free()
+      return u
+    }
     stmt.free()
     return undefined
   }
@@ -100,13 +121,24 @@ export class UomCloudService {
     const now = new Date()
     const code = data.code.toUpperCase()
 
-    const uom: Uom = { id, code, name: data.name, createdAt: now, updatedAt: now, syncedAt: null, deletedAt: null, deviceId: null }
+    const uom: Uom = {
+      id,
+      code,
+      name: data.name,
+      createdAt: now,
+      updatedAt: now,
+      syncedAt: null,
+      deletedAt: null,
+      deviceId: null
+    }
 
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('INSERT INTO uom (id, code, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
-          [id, code, data.name, now, now])
+        await pool.query(
+          'INSERT INTO uom (id, code, name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+          [id, code, data.name, now, now]
+        )
         console.log('[UomCloud] Created in cloud:', id)
         return uom
       } catch (error) {
@@ -114,10 +146,18 @@ export class UomCloudService {
       }
     }
 
-    this.localDb.run('INSERT INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, code, data.name, now.getTime(), now.getTime()])
+    this.localDb.run(
+      'INSERT INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+      [id, code, data.name, now.getTime(), now.getTime()]
+    )
     saveDb(this.localDb)
-    await this.queueService.add('INSERT', this.tableName, { id, code, name: data.name, created_at: now.toISOString(), updated_at: now.toISOString() })
+    await this.queueService.add('INSERT', this.tableName, {
+      id,
+      code,
+      name: data.name,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
+    })
     return uom
   }
 
@@ -136,18 +176,31 @@ export class UomCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE uom SET code = $1, name = $2, updated_at = $3 WHERE id = $4',
-          [updated.code, updated.name, now, id])
+        await pool.query('UPDATE uom SET code = $1, name = $2, updated_at = $3 WHERE id = $4', [
+          updated.code,
+          updated.name,
+          now,
+          id
+        ])
         return updated
       } catch (error) {
         console.error('[UomCloud] update error, queuing:', error)
       }
     }
 
-    this.localDb.run('UPDATE uom SET code = ?, name = ?, updated_at = ? WHERE id = ?',
-      [updated.code, updated.name, now.getTime(), id])
+    this.localDb.run('UPDATE uom SET code = ?, name = ?, updated_at = ? WHERE id = ?', [
+      updated.code,
+      updated.name,
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
-    await this.queueService.add('UPDATE', this.tableName, { id, code: updated.code, name: updated.name, updated_at: now.toISOString() })
+    await this.queueService.add('UPDATE', this.tableName, {
+      id,
+      code: updated.code,
+      name: updated.name,
+      updated_at: now.toISOString()
+    })
     return updated
   }
 
@@ -160,14 +213,22 @@ export class UomCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE uom SET deleted_at = $1, updated_at = $2 WHERE id = $3', [now, now, id])
+        await pool.query('UPDATE uom SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         return deleted
       } catch (error) {
         console.error('[UomCloud] delete error, queuing:', error)
       }
     }
 
-    this.localDb.run('UPDATE uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [now.getTime(), now.getTime(), id])
+    this.localDb.run('UPDATE uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     await this.queueService.add('DELETE', this.tableName, { id })
     return deleted
@@ -178,12 +239,18 @@ export class UomCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE uom SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [now, id])
+        await pool.query('UPDATE uom SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[UomCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE uom SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now.getTime(), id])
+    this.localDb.run('UPDATE uom SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const restored = await this.findById(id)
     if (!restored) throw new Error('UOM not found after restore')
@@ -192,8 +259,11 @@ export class UomCloudService {
 
   private mapCloudRow(row: Record<string, unknown>): Uom {
     return {
-      id: row.id as string, code: row.code as string, name: row.name as string,
-      createdAt: new Date(row.created_at as string), updatedAt: new Date(row.updated_at as string),
+      id: row.id as string,
+      code: row.code as string,
+      name: row.name as string,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
       deviceId: row.device_id as string | null
@@ -202,8 +272,11 @@ export class UomCloudService {
 
   private mapLocalRow(row: Record<string, unknown>): Uom {
     return {
-      id: row.id as string, code: row.code as string, name: row.name as string,
-      createdAt: new Date(row.created_at as number), updatedAt: new Date(row.updated_at as number),
+      id: row.id as string,
+      code: row.code as string,
+      name: row.name as string,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
       deviceId: row.device_id as string | null

@@ -94,7 +94,7 @@ export async function bootstrap(): Promise<void> {
   // Initialize cloud-first infrastructure
   const queueService = new QueueService(db)
   const queueProcessor = new QueueProcessorService(queueService)
-  
+
   // Start queue processor (background worker)
   queueProcessor.start()
   console.log('[Bootstrap] Queue processor started')
@@ -153,7 +153,12 @@ export async function bootstrap(): Promise<void> {
   const printerConfigService = new PrinterConfigService()
 
   // Initialize receipt service with printer config and store service
-  const receiptService = new ReceiptService(appConfigService, productService, printerConfigService, storeService)
+  const receiptService = new ReceiptService(
+    appConfigService,
+    productService,
+    printerConfigService,
+    storeService
+  )
 
   // Initialize delivery order service
   const { DeliveryOrderService } = await import('./services/delivery-order.service')
@@ -186,7 +191,6 @@ export async function bootstrap(): Promise<void> {
   // Store service references for app state (used by close guard)
   const { setAppServices } = await import('./appState')
   setAppServices(shiftService, queueService)
-
 
   // Initialize controllers
   const categoryController = new CategoryController(categoryService)
@@ -248,11 +252,11 @@ export async function bootstrap(): Promise<void> {
   // Register queue controller
   const queueController = new QueueController(queueService, queueProcessor)
   queueController.registerHandlers()
-  
+
   // Register cloud controller (handles sync:* IPC)
   const cloudController = new CloudController(queueProcessor)
   cloudController.registerHandlers()
-  
+
   registerInventoryHandlers()
 
   console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')

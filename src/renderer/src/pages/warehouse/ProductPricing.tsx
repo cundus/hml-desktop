@@ -472,7 +472,9 @@ export default function ProductPricingPage(): React.JSX.Element {
   }
 
   // Setter for current UOM's category prices
-  const setHqCategoryPrices = (updater: (prev: Record<string, string>) => Record<string, string>): void => {
+  const setHqCategoryPrices = (
+    updater: (prev: Record<string, string>) => Record<string, string>
+  ): void => {
     if (!selectedUomId) return
     setAllUomPrices((prev) => ({
       ...prev,

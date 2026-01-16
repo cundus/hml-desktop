@@ -42,8 +42,10 @@ export class StoreCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[StoreCloud] findAll error:', error)
         return this.findAllLocal()
@@ -53,7 +55,9 @@ export class StoreCloudService {
   }
 
   private findAllLocal(): Store[] {
-    const stmt = this.localDb.prepare('SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM store WHERE deleted_at IS NULL ORDER BY name ASC'
+    )
     const results: Store[] = []
     while (stmt.step()) {
       results.push(this.mapLocalRow(stmt.getAsObject()))
@@ -93,7 +97,10 @@ export class StoreCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM store WHERE code = $1 AND deleted_at IS NULL', [code])
+        const result = await pool.query(
+          'SELECT * FROM store WHERE code = $1 AND deleted_at IS NULL',
+          [code]
+        )
         if (result.rows.length > 0) return this.mapCloudRow(result.rows[0])
         return undefined
       } catch (error) {
@@ -135,7 +142,18 @@ export class StoreCloudService {
         const pool = getCloudDb().getPool()
         await pool.query(
           'INSERT INTO store (id, code, name, address, phone, email, type, default_sales_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
-          [id, data.code, data.name, data.address ?? null, data.phone ?? null, data.email ?? null, data.type, data.defaultSalesId ?? null, now, now]
+          [
+            id,
+            data.code,
+            data.name,
+            data.address ?? null,
+            data.phone ?? null,
+            data.email ?? null,
+            data.type,
+            data.defaultSalesId ?? null,
+            now,
+            now
+          ]
         )
         console.log('[StoreCloud] Created in cloud:', id)
         return store
@@ -146,9 +164,16 @@ export class StoreCloudService {
 
     this.saveToLocal(store)
     await this.queueService.add('INSERT', this.tableName, {
-      id, code: data.code, name: data.name, address: data.address ?? null, phone: data.phone ?? null,
-      email: data.email ?? null, type: data.type, default_sales_id: data.defaultSalesId ?? null,
-      created_at: now.toISOString(), updated_at: now.toISOString()
+      id,
+      code: data.code,
+      name: data.name,
+      address: data.address ?? null,
+      phone: data.phone ?? null,
+      email: data.email ?? null,
+      type: data.type,
+      default_sales_id: data.defaultSalesId ?? null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString()
     })
     console.log('[StoreCloud] Queued:', id)
     return store
@@ -176,7 +201,17 @@ export class StoreCloudService {
         const pool = getCloudDb().getPool()
         await pool.query(
           'UPDATE store SET code = $1, name = $2, address = $3, phone = $4, email = $5, type = $6, default_sales_id = $7, updated_at = $8 WHERE id = $9',
-          [updated.code, updated.name, updated.address, updated.phone, updated.email, updated.type, updated.defaultSalesId, now, id]
+          [
+            updated.code,
+            updated.name,
+            updated.address,
+            updated.phone,
+            updated.email,
+            updated.type,
+            updated.defaultSalesId,
+            now,
+            id
+          ]
         )
         console.log('[StoreCloud] Updated in cloud:', id)
         return updated
@@ -187,8 +222,15 @@ export class StoreCloudService {
 
     this.updateLocal(updated)
     await this.queueService.add('UPDATE', this.tableName, {
-      id, code: updated.code, name: updated.name, address: updated.address, phone: updated.phone,
-      email: updated.email, type: updated.type, default_sales_id: updated.defaultSalesId, updated_at: now.toISOString()
+      id,
+      code: updated.code,
+      name: updated.name,
+      address: updated.address,
+      phone: updated.phone,
+      email: updated.email,
+      type: updated.type,
+      default_sales_id: updated.defaultSalesId,
+      updated_at: now.toISOString()
     })
     return updated
   }
@@ -203,7 +245,11 @@ export class StoreCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE store SET deleted_at = $1, updated_at = $2 WHERE id = $3', [now, now, id])
+        await pool.query('UPDATE store SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+          now,
+          now,
+          id
+        ])
         console.log('[StoreCloud] Deleted in cloud:', id)
         return deleted
       } catch (error) {
@@ -221,12 +267,18 @@ export class StoreCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE store SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [now, id])
+        await pool.query('UPDATE store SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
+          now,
+          id
+        ])
       } catch (error) {
         console.error('[StoreCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE store SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now.getTime(), id])
+    this.localDb.run('UPDATE store SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
     const restored = await this.findById(id)
     if (!restored) throw new Error('Store not found after restore')
@@ -237,7 +289,18 @@ export class StoreCloudService {
   private saveToLocal(s: Store): void {
     this.localDb.run(
       'INSERT OR REPLACE INTO store (id, code, name, address, phone, email, type, default_sales_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [s.id, s.code, s.name, s.address, s.phone, s.email, s.type, s.defaultSalesId, s.createdAt.getTime(), s.updatedAt.getTime()]
+      [
+        s.id,
+        s.code,
+        s.name,
+        s.address,
+        s.phone,
+        s.email,
+        s.type,
+        s.defaultSalesId,
+        s.createdAt.getTime(),
+        s.updatedAt.getTime()
+      ]
     )
     saveDb(this.localDb)
   }
@@ -245,13 +308,27 @@ export class StoreCloudService {
   private updateLocal(s: Store): void {
     this.localDb.run(
       'UPDATE store SET code = ?, name = ?, address = ?, phone = ?, email = ?, type = ?, default_sales_id = ?, updated_at = ? WHERE id = ?',
-      [s.code, s.name, s.address, s.phone, s.email, s.type, s.defaultSalesId, s.updatedAt.getTime(), s.id]
+      [
+        s.code,
+        s.name,
+        s.address,
+        s.phone,
+        s.email,
+        s.type,
+        s.defaultSalesId,
+        s.updatedAt.getTime(),
+        s.id
+      ]
     )
     saveDb(this.localDb)
   }
 
   private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE store SET deleted_at = ?, updated_at = ? WHERE id = ?', [now.getTime(), now.getTime(), id])
+    this.localDb.run('UPDATE store SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+      now.getTime(),
+      now.getTime(),
+      id
+    ])
     saveDb(this.localDb)
   }
 

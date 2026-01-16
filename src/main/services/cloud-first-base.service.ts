@@ -6,7 +6,7 @@ import { QueueService, QueueAction } from './queue.service'
 
 /**
  * CloudFirstBaseService - Base class for online-first services
- * 
+ *
  * Pattern:
  * - READ: Always try cloud first, fallback to queue replay
  * - WRITE: Cloud if online, queue if offline

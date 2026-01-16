@@ -48,11 +48,11 @@ export class CloudController {
     try {
       const cloudDb = getCloudDb()
       await cloudDb.connect(cloudDatabaseUrl)
-      
+
       // Start connectivity monitoring and queue processor
       getConnectivity().startMonitoring()
       this.queueProcessor.start()
-      
+
       return {
         success: true,
         data: true,
@@ -74,7 +74,7 @@ export class CloudController {
       const cloudDb = getCloudDb()
       await cloudDb.disconnect()
       this.queueProcessor.stop()
-      
+
       return {
         success: true,
         data: true,
@@ -95,7 +95,7 @@ export class CloudController {
     try {
       await this.queueProcessor.processQueue()
       const stats = this.queueProcessor.getStats()
-      
+
       const result: SyncResult = {
         success: true,
         pulled: 0,
@@ -104,7 +104,7 @@ export class CloudController {
         errors: [],
         timestamp: new Date()
       }
-      
+
       return {
         success: true,
         data: result,
@@ -132,7 +132,7 @@ export class CloudController {
       errors: [],
       timestamp: new Date()
     }
-    
+
     return {
       success: true,
       data: result,
@@ -146,7 +146,7 @@ export class CloudController {
   private async initialSync(_event: IpcMainInvokeEvent): Promise<ApiResponse<SyncResult>> {
     try {
       await this.queueProcessor.processQueue()
-      
+
       const result: SyncResult = {
         success: true,
         pulled: 0,
@@ -155,7 +155,7 @@ export class CloudController {
         errors: [],
         timestamp: new Date()
       }
-      
+
       return {
         success: true,
         data: result,
@@ -176,14 +176,14 @@ export class CloudController {
     try {
       const cloudDb = getCloudDb()
       const stats = this.queueProcessor.getStats()
-      
+
       const status: SyncStatus = {
         isCloudConnected: cloudDb.isConnected(),
         lastSyncTime: null, // Could track this if needed
         unsyncedRecordsCount: stats.pending + stats.failed,
         deviceId: 'local' // Could get from app config
       }
-      
+
       return {
         success: true,
         data: status

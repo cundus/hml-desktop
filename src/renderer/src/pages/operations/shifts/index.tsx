@@ -208,14 +208,17 @@ export default function ShiftHistoryPage(): React.JSX.Element {
                 </TableRow>
               ) : (
                 shifts.map((shift) => (
-                  <TableRow key={shift.id} hover sx={{ cursor: 'pointer' }} onClick={() => handleViewDetail(shift)}>
+                  <TableRow
+                    key={shift.id}
+                    hover
+                    sx={{ cursor: 'pointer' }}
+                    onClick={() => handleViewDetail(shift)}
+                  >
                     <TableCell>
                       <Typography fontWeight="medium">{shift.userName || shift.userId}</Typography>
                     </TableCell>
                     <TableCell>{formatDate(shift.openedAt)}</TableCell>
-                    <TableCell>
-                      {shift.closedAt ? formatDate(shift.closedAt) : '-'}
-                    </TableCell>
+                    <TableCell>{shift.closedAt ? formatDate(shift.closedAt) : '-'}</TableCell>
                     <TableCell>
                       <Chip
                         label={shift.status === 'OPEN' ? 'Aktif' : 'Ditutup'}
@@ -223,7 +226,9 @@ export default function ShiftHistoryPage(): React.JSX.Element {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell align="right">{formatCurrency(parseFloat(shift.initialCash))}</TableCell>
+                    <TableCell align="right">
+                      {formatCurrency(parseFloat(shift.initialCash))}
+                    </TableCell>
                     <TableCell align="right">
                       {shift.closingCash ? formatCurrency(parseFloat(shift.closingCash)) : '-'}
                     </TableCell>

@@ -25,14 +25,18 @@ export class RolePermissionCloudService {
     this.queueService = queueService
   }
 
-  private isOnline(): boolean { return getConnectivity().isOnline() }
+  private isOnline(): boolean {
+    return getConnectivity().isOnline()
+  }
 
   async findAll(): Promise<RolePermission[]> {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM role_permission WHERE deleted_at IS NULL ORDER BY created_at DESC')
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM role_permission WHERE deleted_at IS NULL ORDER BY created_at DESC'
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[RolePermissionCloud] findAll error:', error)
         return this.findAllLocal()
@@ -42,7 +46,9 @@ export class RolePermissionCloudService {
   }
 
   private findAllLocal(): RolePermission[] {
-    const stmt = this.localDb.prepare('SELECT * FROM role_permission WHERE deleted_at IS NULL ORDER BY created_at DESC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM role_permission WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    )
     const results: RolePermission[] = []
     while (stmt.step()) results.push(this.mapLocalRow(stmt.getAsObject()))
     stmt.free()
@@ -53,13 +59,18 @@ export class RolePermissionCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const result = await pool.query('SELECT * FROM role_permission WHERE role_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC', [roleId])
-        return result.rows.map(row => this.mapCloudRow(row))
+        const result = await pool.query(
+          'SELECT * FROM role_permission WHERE role_id = $1 AND deleted_at IS NULL ORDER BY created_at ASC',
+          [roleId]
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[RolePermissionCloud] findByRoleId error:', error)
       }
     }
-    const stmt = this.localDb.prepare('SELECT * FROM role_permission WHERE role_id = ? AND deleted_at IS NULL ORDER BY created_at ASC')
+    const stmt = this.localDb.prepare(
+      'SELECT * FROM role_permission WHERE role_id = ? AND deleted_at IS NULL ORDER BY created_at ASC'
+    )
     stmt.bind([roleId])
     const results: RolePermission[] = []
     while (stmt.step()) results.push(this.mapLocalRow(stmt.getAsObject()))
@@ -73,11 +84,16 @@ export class RolePermissionCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE role_permission SET deleted_at = $1, updated_at = $2 WHERE role_id = $3 AND deleted_at IS NULL', [now, now, roleId])
+        await pool.query(
+          'UPDATE role_permission SET deleted_at = $1, updated_at = $2 WHERE role_id = $3 AND deleted_at IS NULL',
+          [now, now, roleId]
+        )
         for (const permissionId of permissionIds) {
           const id = randomUUID()
-          await pool.query('INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
-            [id, roleId, permissionId, now, now])
+          await pool.query(
+            'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+            [id, roleId, permissionId, now, now]
+          )
         }
         return this.findByRoleId(roleId)
       } catch (error) {
@@ -85,22 +101,32 @@ export class RolePermissionCloudService {
       }
     }
 
-    this.localDb.run('UPDATE role_permission SET deleted_at = ?, updated_at = ? WHERE role_id = ? AND deleted_at IS NULL',
-      [now.getTime(), now.getTime(), roleId])
+    this.localDb.run(
+      'UPDATE role_permission SET deleted_at = ?, updated_at = ? WHERE role_id = ? AND deleted_at IS NULL',
+      [now.getTime(), now.getTime(), roleId]
+    )
     for (const permissionId of permissionIds) {
       const id = randomUUID()
-      this.localDb.run('INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [id, roleId, permissionId, now.getTime(), now.getTime()])
+      this.localDb.run(
+        'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        [id, roleId, permissionId, now.getTime(), now.getTime()]
+      )
     }
     saveDb(this.localDb)
-    await this.queueService.add('UPDATE', 'role_permission', { role_id: roleId, permission_ids: permissionIds })
+    await this.queueService.add('UPDATE', 'role_permission', {
+      role_id: roleId,
+      permission_ids: permissionIds
+    })
     return this.findByRoleId(roleId)
   }
 
   private mapCloudRow(row: Record<string, unknown>): RolePermission {
     return {
-      id: row.id as string, roleId: row.role_id as string, permissionId: row.permission_id as string,
-      createdAt: new Date(row.created_at as string), updatedAt: new Date(row.updated_at as string),
+      id: row.id as string,
+      roleId: row.role_id as string,
+      permissionId: row.permission_id as string,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
       deviceId: row.device_id as string | null
@@ -109,8 +135,11 @@ export class RolePermissionCloudService {
 
   private mapLocalRow(row: Record<string, unknown>): RolePermission {
     return {
-      id: row.id as string, roleId: row.role_id as string, permissionId: row.permission_id as string,
-      createdAt: new Date(row.created_at as number), updatedAt: new Date(row.updated_at as number),
+      id: row.id as string,
+      roleId: row.role_id as string,
+      permissionId: row.permission_id as string,
+      createdAt: new Date(row.created_at as number),
+      updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
       deviceId: row.device_id as string | null

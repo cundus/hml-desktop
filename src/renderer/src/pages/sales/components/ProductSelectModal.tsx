@@ -211,7 +211,12 @@ export default function ProductSelectModal({
       const availablePrices = pricesRes.data ?? []
 
       // Always add MANUAL category at the end
-      const manualCategory: PriceCategory = { id: 'MANUAL', name: 'Manual', price: 0, source: 'default' }
+      const manualCategory: PriceCategory = {
+        id: 'MANUAL',
+        name: 'Manual',
+        price: 0,
+        source: 'default'
+      }
 
       if (availablePrices.length > 0) {
         const categories: PriceCategory[] = availablePrices.map((ap) => ({
@@ -265,7 +270,7 @@ export default function ProductSelectModal({
 
     // Use manualPrice if MANUAL category is selected
     const unitPrice = selectedPrice.id === 'MANUAL' ? manualPrice : selectedPrice.price
-    
+
     // Validate manual price
     if (selectedPrice.id === 'MANUAL' && unitPrice <= 0) {
       manualPriceInputRef.current?.focus()
@@ -275,9 +280,8 @@ export default function ProductSelectModal({
     const totalPrice = unitPrice * quantity
 
     // Create a copy of selectedPrice with the actual price for MANUAL
-    const finalPrice = selectedPrice.id === 'MANUAL' 
-      ? { ...selectedPrice, price: unitPrice }
-      : selectedPrice
+    const finalPrice =
+      selectedPrice.id === 'MANUAL' ? { ...selectedPrice, price: unitPrice } : selectedPrice
 
     onConfirm({
       product,

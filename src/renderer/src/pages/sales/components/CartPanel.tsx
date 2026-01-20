@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type React from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -10,9 +11,14 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import Stack from '@mui/material/Stack'
 import Divider from '@mui/material/Divider'
+import Chip from '@mui/material/Chip'
+import TextField from '@mui/material/TextField'
+import Tooltip from '@mui/material/Tooltip'
 import DeleteIcon from '@mui/icons-material/Delete'
 import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
+import StarIcon from '@mui/icons-material/Star'
+import RedeemIcon from '@mui/icons-material/Redeem'
 import { formatCurrency } from '../../../utils/currency'
 import type { Product } from './ProductBrowser'
 import Kbd from '@renderer/components/Kbd'
@@ -41,6 +47,12 @@ export type CartPanelProps = {
   onCheckout: () => void
   disabled?: boolean
   discountInputRef?: React.RefObject<CurrencyInputRef | null>
+  // Point redemption props
+  customerPoints?: number
+  pointsToRedeem?: number
+  pointRedemptionValue?: number // How much 1 point is worth in Rp
+  minPointsToRedeem?: number
+  onPointsRedeemChange?: (points: number) => void
 }
 
 export default function CartPanel({
@@ -53,10 +65,38 @@ export default function CartPanel({
   onChangeDiscount,
   onCheckout,
   disabled,
-  discountInputRef
+  discountInputRef,
+  customerPoints = 0,
+  pointsToRedeem = 0,
+  pointRedemptionValue = 10,
+  minPointsToRedeem = 100,
+  onPointsRedeemChange
 }: CartPanelProps): React.JSX.Element {
+  const [showPointsInput, setShowPointsInput] = useState(false)
+  const [pointsInputValue, setPointsInputValue] = useState('')
+
   // Calculate discount percentage from nominal
   const discountPercentage = subtotal > 0 ? ((discount / subtotal) * 100).toFixed(1) : '0'
+
+  // Calculate point discount
+  const pointDiscount = pointsToRedeem * pointRedemptionValue
+  const canRedeemPoints = customerPoints >= minPointsToRedeem && onPointsRedeemChange
+
+  const handleApplyPoints = (): void => {
+    const points = parseInt(pointsInputValue, 10) || 0
+    const maxPoints = Math.min(
+      customerPoints,
+      Math.floor((subtotal - discount) / pointRedemptionValue)
+    )
+    const validPoints = Math.min(Math.max(0, points), maxPoints)
+    onPointsRedeemChange?.(validPoints)
+    setShowPointsInput(false)
+    setPointsInputValue('')
+  }
+
+  const handleRemovePoints = (): void => {
+    onPointsRedeemChange?.(0)
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -165,10 +205,73 @@ export default function CartPanel({
           />
         </Stack>
 
+        {/* Point Redemption Section */}
+        {customerPoints > 0 && onPointsRedeemChange && (
+          <Box sx={{ mt: 1.5, p: 1.5, bgcolor: 'action.hover', borderRadius: 1 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center">
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <StarIcon fontSize="small" color="warning" />
+                <Typography variant="body2">
+                  Poin: <strong>{customerPoints.toLocaleString()}</strong>
+                </Typography>
+              </Stack>
+              {pointsToRedeem > 0 ? (
+                <Chip
+                  size="small"
+                  color="success"
+                  label={`-${formatCurrency(pointDiscount)}`}
+                  onDelete={handleRemovePoints}
+                />
+              ) : canRedeemPoints ? (
+                <Tooltip title={`Min. ${minPointsToRedeem} poin`}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    startIcon={<RedeemIcon />}
+                    onClick={() => setShowPointsInput(true)}
+                  >
+                    Tukar
+                  </Button>
+                </Tooltip>
+              ) : (
+                <Typography variant="caption" color="text.secondary">
+                  Min. {minPointsToRedeem} poin
+                </Typography>
+              )}
+            </Stack>
+
+            {showPointsInput && (
+              <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                <TextField
+                  size="small"
+                  type="number"
+                  placeholder={`Max ${customerPoints}`}
+                  value={pointsInputValue}
+                  onChange={(e) => setPointsInputValue(e.target.value)}
+                  sx={{ flex: 1 }}
+                  inputProps={{ min: minPointsToRedeem, max: customerPoints }}
+                />
+                <Button size="small" variant="contained" onClick={handleApplyPoints}>
+                  Terapkan
+                </Button>
+                <Button size="small" onClick={() => setShowPointsInput(false)}>
+                  Batal
+                </Button>
+              </Stack>
+            )}
+
+            {pointsToRedeem > 0 && (
+              <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block' }}>
+                {pointsToRedeem.toLocaleString()} poin = {formatCurrency(pointDiscount)} diskon
+              </Typography>
+            )}
+          </Box>
+        )}
+
         <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
           <Typography variant="subtitle1">Total</Typography>
           <Typography variant="subtitle1" fontWeight="700">
-            {formatCurrency(total)}
+            {formatCurrency(total - pointDiscount)}
           </Typography>
         </Stack>
 

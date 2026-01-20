@@ -55,7 +55,8 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'master.uom.manage', name: 'Manage units of measure' },
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
   { id: 'settings.app-config.manage', name: 'Manage app configuration' },
-  { id: 'settings.printer.manage', name: 'Manage printer settings' }
+  { id: 'settings.printer.manage', name: 'Manage printer settings' },
+  { id: 'settings.points.manage', name: 'Manage member points settings' }
 ]
 
 /**
@@ -315,4 +316,69 @@ export async function backfillProductUomsAndStorePrices(db: Database): Promise<v
   priceStmt.free()
 
   saveDb(db)
+}
+
+/**
+ * Seed point settings tables and default configuration
+ */
+export async function seedPointSettings(db: Database): Promise<void> {
+  const now = Date.now()
+
+  // Create point_setting table if not exists
+  db.run(`
+    CREATE TABLE IF NOT EXISTS point_setting (
+      id TEXT PRIMARY KEY,
+      point_per_rupiah TEXT NOT NULL DEFAULT '0.01',
+      min_transaction TEXT NOT NULL DEFAULT '0',
+      redemption_value TEXT NOT NULL DEFAULT '10',
+      min_redemption INTEGER NOT NULL DEFAULT 100,
+      max_redemption_percent INTEGER NOT NULL DEFAULT 50,
+      expiry_months INTEGER NOT NULL DEFAULT 12,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER
+    )
+  `)
+
+  // Create point_history table if not exists
+  db.run(`
+    CREATE TABLE IF NOT EXISTS point_history (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL,
+      transaction_id TEXT,
+      type TEXT NOT NULL,
+      points INTEGER NOT NULL,
+      balance_after INTEGER NOT NULL,
+      notes TEXT,
+      expires_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  // Add total_points column to customer if not exists
+  try {
+    db.run('ALTER TABLE customer ADD COLUMN total_points INTEGER NOT NULL DEFAULT 0')
+  } catch {
+    // Column might already exist, ignore error
+  }
+
+  // Insert default point settings if not exists
+  db.run(`
+    INSERT OR IGNORE INTO point_setting (
+      id, point_per_rupiah, min_transaction, redemption_value,
+      min_redemption, max_redemption_percent, expiry_months,
+      is_active, created_at, updated_at
+    ) VALUES (
+      'default', '0.01', '0', '10', 100, 50, 12, 1, ${now}, ${now}
+    )
+  `)
+
+  saveDb(db)
+  console.log('✓ Point settings tables seeded')
 }

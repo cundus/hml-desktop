@@ -36,6 +36,7 @@ import UomPage from './pages/settings/master/Uom'
 import PriceCategoryPage from './pages/settings/master/PriceCategory'
 import PaymentMethodPage from './pages/settings/master/PaymentMethod'
 import SalesPersonPage from './pages/settings/master/SalesPerson'
+import PointSettingsPage from './pages/settings/PointSettings'
 import WarehousePricingListPage from './pages/warehouse/PricingList'
 import ProductPricingPage from './pages/warehouse/ProductPricing'
 import WarehousePurchasingPage from './pages/warehouse/Purchasing'
@@ -126,6 +127,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['settings.printer.manage']} />,
             children: [{ path: 'settings/printer', element: <PrinterSettings /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['settings.points.manage']} />,
+            children: [{ path: 'settings/points', element: <PointSettingsPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['warehouse.manage']} />,

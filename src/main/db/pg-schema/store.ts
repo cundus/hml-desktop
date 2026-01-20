@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, timestamp, boolean } from 'drizzle-orm/pg-core'
 
 // STORE & CUSTOMER: Store, Customer, CustomerCategory, SalesPerson
 
@@ -36,6 +36,7 @@ export const customers = pgTable('customer', {
   phone: text('phone'),
   address: text('address'),
   categoryId: text('category_id'),
+  totalPoints: integer('total_points').notNull().default(0),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

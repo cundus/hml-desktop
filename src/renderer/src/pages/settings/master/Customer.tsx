@@ -15,7 +15,9 @@ import CircularProgress from '@mui/material/CircularProgress'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import StarIcon from '@mui/icons-material/Star'
 import MenuItem from '@mui/material/MenuItem'
+import Chip from '@mui/material/Chip'
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
@@ -37,6 +39,7 @@ export type Customer = {
   address: string | null
   categoryId: string | null
   categoryName?: string
+  totalPoints?: number
 }
 
 type CustomerCategory = {
@@ -90,7 +93,8 @@ export default function CustomerPage(): React.JSX.Element {
             phone: c.phone,
             address: c.address,
             categoryId: c.categoryId,
-            categoryName: c.categoryId ? (categoryMap.get(c.categoryId) ?? '') : ''
+            categoryName: c.categoryId ? (categoryMap.get(c.categoryId) ?? '') : '',
+            totalPoints: (c as { totalPoints?: number }).totalPoints ?? 0
           }))
 
           setItems(customers)
@@ -236,6 +240,25 @@ export default function CustomerPage(): React.JSX.Element {
                 { field: 'name', headerName: 'Nama', flex: 1, minWidth: 200 },
                 { field: 'phone', headerName: 'Telepon', width: 150 },
                 { field: 'categoryName', headerName: 'Kategori', width: 150 },
+                {
+                  field: 'totalPoints',
+                  headerName: 'Poin',
+                  width: 120,
+                  renderCell: (params: GridRenderCellParams<Customer>) =>
+                    params.row.totalPoints && params.row.totalPoints > 0 ? (
+                      <Chip
+                        size="small"
+                        icon={<StarIcon fontSize="small" />}
+                        label={params.row.totalPoints.toLocaleString()}
+                        color="warning"
+                        variant="outlined"
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">
+                        -
+                      </Typography>
+                    )
+                },
                 { field: 'address', headerName: 'Alamat', flex: 1, minWidth: 200 },
                 {
                   field: 'actions',

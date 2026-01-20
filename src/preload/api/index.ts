@@ -79,6 +79,7 @@ import { deliveryOrderApi } from './delivery-order'
 import { paymentMethodApi } from './payment-method'
 import { salesPersonApi } from './sales-person'
 import { queueApi } from './queue'
+import { pointsApi } from './points'
 
 // Receipt printing API
 const receiptApi = {
@@ -182,5 +183,8 @@ export const db = {
   salesPersons: salesPersonApi,
 
   // Queue (cloud-first sync queue)
-  queue: queueApi
+  queue: queueApi,
+
+  // Points (member loyalty program)
+  points: pointsApi
 }

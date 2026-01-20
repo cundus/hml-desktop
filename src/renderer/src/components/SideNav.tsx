@@ -252,6 +252,12 @@ const menus: MenuItem[] = [
         label: 'Pengaturan Printer',
         path: '/settings/printer',
         permissions: ['settings.printer.manage']
+      },
+      {
+        key: 'points',
+        label: 'Member Points',
+        path: '/settings/points',
+        permissions: ['settings.points.manage']
       }
     ]
   },

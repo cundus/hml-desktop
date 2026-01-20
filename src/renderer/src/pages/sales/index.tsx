@@ -73,6 +73,15 @@ export default function SalesPage(): React.JSX.Element {
     { id: string; name: string; isActive: boolean }[]
   >([])
 
+  // Point redemption state
+  const [customerPoints, setCustomerPoints] = useState(0)
+  const [pointsToRedeem, setPointsToRedeem] = useState(0)
+  const [pointSettings, setPointSettings] = useState<{
+    redemptionValue: number
+    minRedemption: number
+    isActive: boolean
+  } | null>(null)
+
   const customerInputRef = useRef<HTMLInputElement | null>(null)
   const discountInputRef = useRef<
     import('@renderer/components/CurrencyInput').CurrencyInputRef | null
@@ -171,15 +180,62 @@ export default function SalesPage(): React.JSX.Element {
     }
   }, [defaultSalesId, selectedSalesId])
 
+  // Load point settings on mount
+  useEffect(() => {
+    const loadPointSettings = async (): Promise<void> => {
+      try {
+        const res = await window.api.db.points.getSettings()
+        if (res.success && res.data) {
+          setPointSettings({
+            redemptionValue: Number(res.data.redemptionValue),
+            minRedemption: res.data.minRedemption,
+            isActive: res.data.isActive
+          })
+        }
+      } catch (err) {
+        console.error('Failed to load point settings:', err)
+      }
+    }
+    void loadPointSettings()
+  }, [])
+
+  // Fetch customer points when customer changes
+  useEffect(() => {
+    const fetchCustomerPoints = async (): Promise<void> => {
+      if (!selectedCustomerId) {
+        setCustomerPoints(0)
+        setPointsToRedeem(0)
+        return
+      }
+      try {
+        const res = await window.api.db.points.getCustomerPoints(selectedCustomerId)
+        if (res.success) {
+          setCustomerPoints(res.data ?? 0)
+          setPointsToRedeem(0) // Reset redemption on customer change
+        }
+      } catch (err) {
+        console.error('Failed to fetch customer points:', err)
+        setCustomerPoints(0)
+      }
+    }
+    void fetchCustomerPoints()
+  }, [selectedCustomerId])
+
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cartItems]
   )
 
   // Discount is now a nominal value (Rupiah), not percentage
+  // Point discount = pointsToRedeem * redemptionValue
+  const pointDiscount = useMemo(
+    () => pointsToRedeem * (pointSettings?.redemptionValue ?? 10),
+    [pointsToRedeem, pointSettings?.redemptionValue]
+  )
+
   const total = useMemo(() => {
-    return Math.max(0, subtotal - discount)
-  }, [subtotal, discount])
+    return Math.max(0, subtotal - discount - pointDiscount)
+  }, [subtotal, discount, pointDiscount])
 
   // Open product selection modal when clicking a product
   const handleProductClick = (product: Product): void => {
@@ -336,11 +392,13 @@ export default function SalesPage(): React.JSX.Element {
         })
 
         // Create transaction via IPC with payment method and sales
+        // Total discount = manual discount + point discount
+        const totalDiscountAmount = discount + pointDiscount
         const result = await window.api.db.transactions.create({
           code,
           storeId: defaultStoreId,
           subtotal: subtotal.toString(),
-          discount: discount.toString(),
+          discount: totalDiscountAmount.toString(),
           tax: '0',
           total: total.toString(),
           totalWeight: totalWeight.toString(),
@@ -396,9 +454,28 @@ export default function SalesPage(): React.JSX.Element {
             })
           }
 
+          // Handle point redemption if customer is earning/redeeming points
+          if (selectedCustomerId && pointsToRedeem > 0) {
+            try {
+              await window.api.db.points.redeemPoints({
+                customerId: selectedCustomerId,
+                transactionId: result.data.id,
+                points: pointsToRedeem
+              })
+              console.log(
+                `[Checkout] Redeemed ${pointsToRedeem} points for customer ${selectedCustomerId}`
+              )
+            } catch (pointErr) {
+              console.error('Point redemption failed:', pointErr)
+              // Don't fail the transaction if point redemption fails
+            }
+          }
+
           // Clear cart and reset form (after printing attempt)
           setCartItems([])
           setDiscount(0)
+          setPointsToRedeem(0)
+          setCustomerPoints(0)
           setSelectedCustomerId(null)
           setPaymentMethodDialogOpen(false)
         } else {
@@ -730,6 +807,11 @@ export default function SalesPage(): React.JSX.Element {
             onChangeDiscount={handleChangeDiscount}
             onCheckout={handleCheckout}
             discountInputRef={discountInputRef}
+            customerPoints={customerPoints}
+            pointsToRedeem={pointsToRedeem}
+            pointRedemptionValue={pointSettings?.redemptionValue ?? 10}
+            minPointsToRedeem={pointSettings?.minRedemption ?? 100}
+            onPointsRedeemChange={pointSettings?.isActive ? setPointsToRedeem : undefined}
           />
         </Box>
 

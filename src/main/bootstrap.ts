@@ -34,7 +34,8 @@ import {
   seedPriceCategories,
   backfillProductUomsAndStorePrices,
   seedPermissions,
-  resetAndReseedPermissions
+  resetAndReseedPermissions,
+  seedPointSettings
 } from './seed'
 import {
   PurchaseOrderService,
@@ -77,6 +78,8 @@ import { QueueController } from './controllers/queue.controller'
 import { CloudController } from './controllers/cloud.controller'
 import { SyncService } from './services/sync.service'
 import { initPeriodicSync } from './services/periodic-sync.service'
+import { PointCloudService } from './services/point.service'
+import { PointController } from './controllers/point.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -92,6 +95,7 @@ export async function bootstrap(): Promise<void> {
   await seedUoms(db)
   await seedPriceCategories(db)
   await backfillProductUomsAndStorePrices(db)
+  await seedPointSettings(db)
 
   // Initialize cloud-first infrastructure
   const queueService = new QueueService(db)
@@ -126,12 +130,16 @@ export async function bootstrap(): Promise<void> {
   const pricingService = new PricingService(db)
   const priceCategoryService = new PriceCategoryCloudService(db, queueService)
 
+  // Initialize point service (cloud-first) - must be before transactionService
+  const pointService = new PointCloudService(db, queueService)
+
   // Initialize sales/POS service (with inventory integration for INV-001)
   const transactionService = new TransactionService(
     db,
     stockTransactionService,
     productLocationService,
-    queueService
+    queueService,
+    pointService
   )
 
   // Initialize purchasing service
@@ -257,6 +265,10 @@ export async function bootstrap(): Promise<void> {
   registerPrinterConfigController(printerConfigService)
   registerDeliveryOrderController(deliveryOrderService)
   salesPersonController.registerHandlers()
+
+  // Register point controller
+  const pointController = new PointController(pointService)
+  pointController.registerHandlers()
 
   // Register queue controller
   const queueController = new QueueController(queueService, queueProcessor)

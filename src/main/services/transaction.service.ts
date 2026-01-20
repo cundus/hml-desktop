@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { StockTransactionCloudService } from './stock-transaction-cloud.service'
 import { ProductLocationCloudService } from './product-location-cloud.service'
 import { QueueService } from './queue.service'
+import { PointCloudService } from './point.service'
 
 export interface Transaction {
   id: string
@@ -92,7 +93,8 @@ export class TransactionService {
     private db: Database,
     private stockTransactionService?: StockTransactionCloudService,
     private productLocationService?: ProductLocationCloudService,
-    private queueService?: QueueService
+    private queueService?: QueueService,
+    private pointService?: PointCloudService
   ) {}
 
   /**
@@ -357,6 +359,26 @@ export class TransactionService {
     if (!created) {
       throw new Error('Transaction not found after creation')
     }
+
+    // Earn points for customer if applicable
+    if (data.customerId && this.pointService) {
+      try {
+        const pointResult = await this.pointService.addPoints({
+          customerId: data.customerId,
+          transactionId: id,
+          transactionTotal: Number(data.total)
+        })
+        if (pointResult) {
+          console.log(
+            `[Transaction] Customer ${data.customerId} earned ${pointResult.points} points`
+          )
+        }
+      } catch (error) {
+        console.error('[Transaction] Failed to add points:', error)
+        // Don't fail the transaction if points fail
+      }
+    }
+
     return created
   }
 

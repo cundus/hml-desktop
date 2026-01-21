@@ -150,7 +150,7 @@ export default function ProductPricingPage(): React.JSX.Element {
 
         // Load product UOMs
         const productUomsRes = await window.api.db.pricing.getProductUomsByProduct(productId)
-        const uomRows = (productUomsRes.data ?? []).map((r) => ({
+        let uomRows = (productUomsRes.data ?? []).map((r) => ({
           id: r.id,
           uomId: r.uomId,
           uomCode: r.uomCode,
@@ -158,6 +158,50 @@ export default function ProductPricingPage(): React.JSX.Element {
           conversionFactor: r.conversionFactor,
           isBaseUnit: r.isBaseUnit
         }))
+
+        // HP-04 FIX: Auto-create base UOM if product has no UOMs configured
+        // This ensures save button is always enabled for products
+        if (uomRows.length === 0) {
+          const uomMasters = (uomsRes.data ?? []).map((u) => ({
+            id: u.id,
+            code: u.code,
+            name: u.name
+          }))
+          // Find matching UOM from product's unit (e.g., "PCS" -> find PCS in uom masters)
+          const productUnit = p.unit ?? 'PCS'
+          const matchingUom = uomMasters.find(
+            (u) => u.code.toLowerCase() === productUnit.toLowerCase()
+          )
+
+          if (matchingUom) {
+            try {
+              const createRes = await window.api.db.pricing.createProductUom({
+                productId,
+                uomId: matchingUom.id,
+                conversionFactor: 1,
+                isBaseUnit: true
+              })
+              if (createRes.success && createRes.data) {
+                uomRows = [
+                  {
+                    id: createRes.data.id,
+                    uomId: matchingUom.id,
+                    uomCode: matchingUom.code,
+                    uomName: matchingUom.name,
+                    conversionFactor: 1,
+                    isBaseUnit: true
+                  }
+                ]
+                console.log(
+                  `[ProductPricing] Auto-created base UOM ${matchingUom.code} for product ${productId}`
+                )
+              }
+            } catch (err) {
+              console.error('Failed to auto-create base UOM:', err)
+            }
+          }
+        }
+
         setProductUoms(uomRows)
 
         // Select base UOM by default

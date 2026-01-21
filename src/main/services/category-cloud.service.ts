@@ -110,6 +110,19 @@ export class CategoryCloudService {
   }
 
   /**
+   * Find category by name (case-insensitive)
+   * Used by product import to look up or auto-create categories
+   */
+  async findByName(name: string): Promise<Category | undefined> {
+    const trimmedName = name.trim().toLowerCase()
+    if (!trimmedName) return undefined
+
+    // Get all categories and find by name (case-insensitive)
+    const categories = await this.findAll()
+    return categories.find((c) => c.name.toLowerCase() === trimmedName)
+  }
+
+  /**
    * Create a new category
    */
   async create(data: CreateCategoryDto): Promise<Category> {

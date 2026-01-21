@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { ProductCloudService } from '../services/product-cloud.service'
+import { CategoryCloudService } from '../services/category-cloud.service'
 import { ExcelService, ExcelColumn } from '../services/excel.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
@@ -12,7 +13,7 @@ const PRODUCT_EXCEL_COLUMNS: ExcelColumn[] = [
   { header: 'Deskripsi', key: 'description', width: 40 },
   { header: 'Satuan', key: 'unit', width: 10 },
   { header: 'Harga Pokok', key: 'cost', width: 15 },
-  { header: 'Kategori ID', key: 'categoryId', width: 20 },
+  { header: 'Kategori', key: 'categoryName', width: 20 },
   { header: 'Aktif', key: 'isActive', width: 10 }
 ]
 
@@ -23,14 +24,17 @@ const PRODUCT_COLUMN_MAPPING: Record<string, string> = {
   Deskripsi: 'description',
   Satuan: 'unit',
   'Harga Pokok': 'cost',
-  'Kategori ID': 'categoryId',
+  Kategori: 'categoryName',
   Aktif: 'isActive'
 }
 
 export class ProductController {
   private excelService: ExcelService
 
-  constructor(private productService: ProductCloudService) {
+  constructor(
+    private productService: ProductCloudService,
+    private categoryService: CategoryCloudService
+  ) {
     this.excelService = new ExcelService()
   }
 
@@ -340,9 +344,11 @@ export class ProductController {
               description: String(row.description || ''),
               unit,
               cost: Number(cost) || 0,
-              categoryId: String(row.categoryId || '') || undefined,
+              // MP-01 FIX: Store categoryName temporarily, will resolve to categoryId later
+              categoryId: undefined,
+              categoryName: String(row.categoryName || '').trim(),
               isActive
-            }
+            } as CreateProductDto & { categoryName?: string }
           }
         }
       )
@@ -354,9 +360,13 @@ export class ProductController {
         }
       }
 
+      // MP-01 FIX: Cache for category name -> ID mapping to avoid repeated lookups
+      const categoryCache = new Map<string, string>()
+
       // Import products one by one
       let successCount = 0
       let skipCount = 0
+      let categoriesCreated = 0
       const errors: string[] = []
 
       for (const productData of result.data) {
@@ -368,6 +378,34 @@ export class ProductController {
             continue // Skip existing products
           }
 
+          // MP-01 FIX: Resolve category name to ID (auto-create if needed)
+          const categoryName = (productData as { categoryName?: string }).categoryName
+          if (categoryName) {
+            const normalizedName = categoryName.toLowerCase()
+
+            // Check cache first
+            if (categoryCache.has(normalizedName)) {
+              productData.categoryId = categoryCache.get(normalizedName)
+            } else {
+              // Look up category by name
+              let category = await this.categoryService.findByName(categoryName)
+
+              // Auto-create category if not found
+              if (!category) {
+                category = await this.categoryService.create({ name: categoryName })
+                categoriesCreated++
+                console.log(`[ProductImport] Auto-created category: ${categoryName}`)
+              }
+
+              // Cache the mapping
+              categoryCache.set(normalizedName, category.id)
+              productData.categoryId = category.id
+            }
+          }
+
+          // Remove temporary categoryName field before creating product
+          delete (productData as { categoryName?: string }).categoryName
+
           await this.productService.create(productData)
           successCount++
         } catch (err) {
@@ -375,7 +413,7 @@ export class ProductController {
         }
       }
 
-      const message = `Import selesai: ${successCount} berhasil, ${skipCount} dilewati (sudah ada)${errors.length > 0 ? `, ${errors.length} gagal` : ''}`
+      const message = `Import selesai: ${successCount} berhasil, ${skipCount} dilewati (sudah ada)${categoriesCreated > 0 ? `, ${categoriesCreated} kategori dibuat` : ''}${errors.length > 0 ? `, ${errors.length} gagal` : ''}`
 
       return {
         success: true,
@@ -383,6 +421,7 @@ export class ProductController {
           totalRows: result.totalRows,
           successCount,
           skipCount,
+          categoriesCreated,
           errorCount: errors.length,
           errors: errors.length > 0 ? errors : undefined
         },

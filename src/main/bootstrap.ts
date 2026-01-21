@@ -216,7 +216,7 @@ export async function bootstrap(): Promise<void> {
   const customerCategoryController = new CustomerCategoryController(customerCategoryService)
   const customerController = new CustomerController(customerService)
   const userController = new UserController(userService)
-  const productController = new ProductController(productService)
+  const productController = new ProductController(productService, categoryService)
   const productPriceController = new ProductPriceController(productPriceService)
   const productLocationController = new ProductLocationController(productLocationService)
   const batchController = new BatchController(batchService)

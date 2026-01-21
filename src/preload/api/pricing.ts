@@ -105,5 +105,11 @@ export const pricingApi = {
   }) => ipcRenderer.invoke('db:pricing:createProductUom', args) as Promise<ApiResponse<ProductUom>>,
 
   deleteProductUom: (id: string) =>
-    ipcRenderer.invoke('db:pricing:deleteProductUom', id) as Promise<ApiResponse<void>>
+    ipcRenderer.invoke('db:pricing:deleteProductUom', id) as Promise<ApiResponse<void>>,
+
+  // Bulk: get all products' base UOM RETAIL prices (for POS product browser)
+  getAllBaseRetailPrices: () =>
+    ipcRenderer.invoke('db:pricing:getAllBaseRetailPrices') as Promise<
+      ApiResponse<{ productId: string; price: string }[]>
+    >
 }

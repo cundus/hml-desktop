@@ -101,10 +101,11 @@ export default function SalesPage(): React.JSX.Element {
         const categoriesRes = await window.api.db.categories.getAll()
         const categoriesMap = new Map((categoriesRes.data ?? []).map((c) => [c.id, c.name]))
 
-        // Load product prices
-        const pricesRes = await window.api.db.productPrices.getAll()
-        const pricesMap = new Map(
-          (pricesRes.data ?? []).map((p) => [p.productId, parseFloat(p.price)])
+        // Load RETAIL prices from new pricing system (base UOM only)
+        // This replaces the legacy productPrices table which may be empty
+        const retailPricesRes = await window.api.db.pricing.getAllBaseRetailPrices()
+        const retailPricesMap = new Map(
+          (retailPricesRes.data ?? []).map((p) => [p.productId, parseFloat(p.price)])
         )
 
         // Map DB products to Product type for ProductBrowser
@@ -118,7 +119,9 @@ export default function SalesPage(): React.JSX.Element {
             unit: p.unit ?? 'PCS',
             cost: p.cost ?? '0',
             weight: p.weight ?? '0',
-            price: pricesMap.get(p.id) ?? parseFloat(p.cost) ?? 0
+            // Use RETAIL price from new pricing system, fallback to 0 if not set
+            // DO NOT fallback to cost - that would show wrong price to customer
+            price: retailPricesMap.get(p.id) ?? 0
           }))
 
         setProducts(mappedProducts)

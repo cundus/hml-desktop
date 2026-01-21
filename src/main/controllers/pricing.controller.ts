@@ -186,5 +186,18 @@ export class PricingController {
         }
       }
     })
+
+    // Bulk: get all products' base UOM RETAIL prices
+    ipcMain.handle('db:pricing:getAllBaseRetailPrices', async () => {
+      try {
+        const result = await this.pricingService.getAllBaseRetailPrices()
+        return { success: true, data: result }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

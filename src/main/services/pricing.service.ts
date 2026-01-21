@@ -452,4 +452,37 @@ export class PricingService {
       id
     ])
   }
+
+  /**
+   * Get all products' base UOM RETAIL prices in one query.
+   * Returns Map<productId, price> for efficient lookup.
+   * Used by POS to display correct selling prices instead of cost.
+   */
+  async getAllBaseRetailPrices(): Promise<{ productId: string; price: string }[]> {
+    // Join product_uom (base unit only) with product_uom_category_price (RETAIL only)
+    const stmt = this.db.prepare(
+      `SELECT pu.product_id, pucp.price
+         FROM product_uom pu
+         JOIN product_uom_category_price pucp 
+           ON pucp.product_id = pu.product_id 
+          AND pucp.uom_id = pu.uom_id
+        WHERE pu.is_base_unit = 1 
+          AND pu.deleted_at IS NULL
+          AND pucp.price_category_id = 'RETAIL'
+          AND pucp.deleted_at IS NULL`
+    )
+
+    const results: { productId: string; price: string }[] = []
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      results.push({
+        productId: row.product_id as string,
+        price: row.price as string
+      })
+    }
+
+    stmt.free()
+    return results
+  }
 }

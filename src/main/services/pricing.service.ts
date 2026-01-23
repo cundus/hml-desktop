@@ -30,6 +30,8 @@ export interface ProductUom {
   uomName: string
   conversionFactor: number
   isBaseUnit: boolean
+  cost: string | null // Cost for this UOM (null = auto-calculate from base)
+  costOverride: boolean // If true, use cost; if false, calculate from base
 }
 
 export interface ProductUomCategoryPrice {
@@ -208,7 +210,7 @@ export class PricingService {
   async getProductUomsByProduct(productId: string): Promise<ProductUom[]> {
     const stmt = this.db.prepare(
       `SELECT pu.id, pu.product_id, pu.uom_id, pu.conversion_factor, pu.is_base_unit,
-              u.code AS uom_code, u.name AS uom_name
+              pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
          FROM product_uom pu
          JOIN uom u ON u.id = pu.uom_id
         WHERE pu.product_id = ? AND pu.deleted_at IS NULL`
@@ -226,7 +228,9 @@ export class PricingService {
         uomCode: row.uom_code as string,
         uomName: row.uom_name as string,
         conversionFactor: Number(row.conversion_factor ?? 0),
-        isBaseUnit: (row.is_base_unit as number) === 1
+        isBaseUnit: (row.is_base_unit as number) === 1,
+        cost: row.cost as string | null,
+        costOverride: (row.cost_override as number) === 1
       })
     }
 
@@ -400,8 +404,8 @@ export class PricingService {
     uomStmt.free()
 
     this.db.run(
-      'INSERT INTO product_uom (id, product_id, uom_id, conversion_factor, is_base_unit, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [id, productId, uomId, conversionFactor, isBaseUnit ? 1 : 0, now, now]
+      'INSERT INTO product_uom (id, product_id, uom_id, conversion_factor, is_base_unit, cost, cost_override, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, productId, uomId, conversionFactor, isBaseUnit ? 1 : 0, null, 0, now, now]
     )
 
     return {
@@ -411,7 +415,9 @@ export class PricingService {
       uomCode,
       uomName,
       conversionFactor,
-      isBaseUnit
+      isBaseUnit,
+      cost: null,
+      costOverride: false
     }
   }
 
@@ -484,5 +490,129 @@ export class PricingService {
 
     stmt.free()
     return results
+  }
+
+  /**
+   * Get effective cost for a UOM.
+   * If costOverride = true, use the stored cost.
+   * If costOverride = false, calculate from base unit cost × conversion factor.
+   */
+  async getEffectiveCost(
+    productId: string,
+    uomId: string
+  ): Promise<{ cost: number; isOverride: boolean }> {
+    // Get all UOMs for this product
+    const uoms = await this.getProductUomsByProduct(productId)
+    const targetUom = uoms.find((u) => u.uomId === uomId)
+
+    if (!targetUom) {
+      throw new Error('UOM not found for this product')
+    }
+
+    // If this UOM has override cost, use it directly
+    if (targetUom.costOverride && targetUom.cost !== null) {
+      return { cost: parseFloat(targetUom.cost), isOverride: true }
+    }
+
+    // Find base unit to calculate from
+    const baseUom = uoms.find((u) => u.isBaseUnit)
+    if (!baseUom) {
+      // No base unit, try to get cost from product table
+      const productStmt = this.db.prepare('SELECT cost FROM product WHERE id = ?')
+      productStmt.bind([productId])
+      let baseCost = 0
+      if (productStmt.step()) {
+        const row = productStmt.getAsObject()
+        baseCost = parseFloat(row.cost as string) || 0
+      }
+      productStmt.free()
+
+      // Calculate: base cost × conversion factor
+      return { cost: baseCost * targetUom.conversionFactor, isOverride: false }
+    }
+
+    // Get base unit cost (from override or calculate)
+    let baseCostPerUnit: number
+    if (baseUom.costOverride && baseUom.cost !== null) {
+      baseCostPerUnit = parseFloat(baseUom.cost)
+    } else {
+      // Get cost from product table
+      const productStmt = this.db.prepare('SELECT cost FROM product WHERE id = ?')
+      productStmt.bind([productId])
+      baseCostPerUnit = 0
+      if (productStmt.step()) {
+        const row = productStmt.getAsObject()
+        baseCostPerUnit = parseFloat(row.cost as string) || 0
+      }
+      productStmt.free()
+    }
+
+    // Calculate cost for target UOM: baseCost × targetConversion / baseConversion
+    const effectiveCost = (baseCostPerUnit * targetUom.conversionFactor) / baseUom.conversionFactor
+    return { cost: effectiveCost, isOverride: false }
+  }
+
+  /**
+   * Update cost for a specific UOM.
+   * If this is set as the "source" UOM, recalculate all other UOM costs.
+   */
+  async updateProductUomCost(
+    productId: string,
+    uomId: string,
+    cost: number,
+    costOverride: boolean,
+    recalculateOthers: boolean = false
+  ): Promise<void> {
+    const now = Date.now()
+
+    // Update the target UOM
+    this.db.run(
+      'UPDATE product_uom SET cost = ?, cost_override = ?, updated_at = ? WHERE product_id = ? AND uom_id = ? AND deleted_at IS NULL',
+      [cost, costOverride ? 1 : 0, now, productId, uomId]
+    )
+
+    // If recalculateOthers is true, recalculate all other UOMs from this one
+    if (recalculateOthers) {
+      await this.recalculateAllCostsFromSource(productId, uomId, cost)
+    }
+  }
+
+  /**
+   * Recalculate all UOM costs from a source UOM.
+   * This is called when user inputs cost from purchase unit (e.g. SAK)
+   * and wants to auto-calculate all other UOM costs.
+   */
+  async recalculateAllCostsFromSource(
+    productId: string,
+    sourceUomId: string,
+    sourceCost: number
+  ): Promise<void> {
+    const now = Date.now()
+    const uoms = await this.getProductUomsByProduct(productId)
+
+    const sourceUom = uoms.find((u) => u.uomId === sourceUomId)
+    if (!sourceUom) return
+
+    // Calculate base cost per unit (smallest unit)
+    const baseCostPerUnit = sourceCost / sourceUom.conversionFactor
+
+    // Update all UOMs that are NOT override
+    for (const uom of uoms) {
+      if (uom.uomId === sourceUomId) continue // Skip source UOM
+      if (uom.costOverride) continue // Skip override UOMs
+
+      const newCost = baseCostPerUnit * uom.conversionFactor
+      this.db.run(
+        'UPDATE product_uom SET cost = ?, updated_at = ? WHERE product_id = ? AND uom_id = ? AND deleted_at IS NULL',
+        [newCost, now, productId, uom.uomId]
+      )
+    }
+
+    // Also update base cost in product table for compatibility
+    this.db.run('UPDATE product SET cost = ?, updated_at = ? WHERE id = ?', [
+      baseCostPerUnit,
+      now,
+      productId
+    ])
   }
 }

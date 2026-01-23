@@ -86,13 +86,27 @@ export default function ProductSelectModal({
     const loadData = async (): Promise<void> => {
       try {
         // Load stock for this product at the store
+        // Use getStockOverview for consistency with inventory page
         if (storeId) {
           try {
-            const stockRes = await window.api.db.productLocations.getByProductAndStore(
-              product.id,
-              storeId
-            )
-            setBaseStock(stockRes.data?.quantity ?? 0)
+            // Try to get stock from inventory overview (same as inventory page)
+            const overviewRes = await window.api.db.inventory.getStockOverview(storeId)
+            if (overviewRes.success && overviewRes.data) {
+              const productStock = overviewRes.data.find((item) => item.productId === product.id)
+              if (productStock) {
+                // Use availableQuantity for accurate stock (quantity - reserved)
+                setBaseStock(productStock.availableQuantity ?? productStock.quantity ?? 0)
+              } else {
+                // Product not in overview, try productLocations as fallback
+                const stockRes = await window.api.db.productLocations.getByProductAndStore(
+                  product.id,
+                  storeId
+                )
+                setBaseStock(stockRes.data?.quantity ?? 0)
+              }
+            } else {
+              setBaseStock(0)
+            }
           } catch {
             setBaseStock(0)
           }
@@ -135,7 +149,16 @@ export default function ProductSelectModal({
             return a.conversionFactor - b.conversionFactor
           })
 
-          uomOptionsList = sorted.map((pu) => ({
+          // Deduplicate by uomCode to prevent showing same unit multiple times
+          const seen = new Set<string>()
+          const deduplicated = sorted.filter((pu) => {
+            const key = pu.uomCode.toLowerCase()
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+
+          uomOptionsList = deduplicated.map((pu) => ({
             code: pu.uomCode,
             name: pu.uomName,
             conversionFactor: pu.conversionFactor,

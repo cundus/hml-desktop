@@ -199,5 +199,52 @@ export class PricingController {
         }
       }
     })
+
+    // Get effective cost for a UOM (with auto-calculate logic)
+    ipcMain.handle(
+      'db:pricing:getEffectiveCost',
+      async (_, args: { productId: string; uomId: string }) => {
+        try {
+          const result = await this.pricingService.getEffectiveCost(args.productId, args.uomId)
+          return { success: true, data: result }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
+
+    // Update cost for a UOM (with optional recalculate)
+    ipcMain.handle(
+      'db:pricing:updateProductUomCost',
+      async (
+        _,
+        args: {
+          productId: string
+          uomId: string
+          cost: number
+          costOverride: boolean
+          recalculateOthers?: boolean
+        }
+      ) => {
+        try {
+          await this.pricingService.updateProductUomCost(
+            args.productId,
+            args.uomId,
+            args.cost,
+            args.costOverride,
+            args.recalculateOthers ?? false
+          )
+          return { success: true }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
   }
 }

@@ -50,6 +50,8 @@ type ProductUomRow = {
   uomName: string
   conversionFactor: number
   isBaseUnit: boolean
+  cost: string | null // Cost for this UOM (null = auto-calculate)
+  costOverride: boolean // If true, use manual cost; if false, auto-calculate
 }
 
 type UomMaster = {
@@ -82,7 +84,11 @@ export default function ProductPricingPage(): React.JSX.Element {
     severity: 'success' | 'error'
   }>({ open: false, message: '', severity: 'success' })
 
-  // Base cost (shared across all UOMs)
+  // Purchase unit for cost input (user inputs cost from purchase unit, system calculates others)
+  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(null)
+  const [purchaseCost, setPurchaseCost] = useState('0') // Cost for the purchase unit
+
+  // Base cost (calculated from purchase unit, for backward compatibility)
   const [baseCost, setBaseCost] = useState('0')
 
   // Margin per UOM: { uomId: { pct: string, fixed: string } }
@@ -150,14 +156,24 @@ export default function ProductPricingPage(): React.JSX.Element {
 
         // Load product UOMs
         const productUomsRes = await window.api.db.pricing.getProductUomsByProduct(productId)
-        let uomRows = (productUomsRes.data ?? []).map((r) => ({
-          id: r.id,
-          uomId: r.uomId,
-          uomCode: r.uomCode,
-          uomName: r.uomName,
-          conversionFactor: r.conversionFactor,
-          isBaseUnit: r.isBaseUnit
-        }))
+        // Deduplicate by uomId (in case of duplicate entries in DB)
+        const seenUoms = new Set<string>()
+        let uomRows = (productUomsRes.data ?? [])
+          .map((r) => ({
+            id: r.id,
+            uomId: r.uomId,
+            uomCode: r.uomCode,
+            uomName: r.uomName,
+            conversionFactor: r.conversionFactor,
+            isBaseUnit: r.isBaseUnit,
+            cost: r.cost,
+            costOverride: r.costOverride
+          }))
+          .filter((uom) => {
+            if (seenUoms.has(uom.uomId)) return false
+            seenUoms.add(uom.uomId)
+            return true
+          })
 
         // HP-04 FIX: Auto-create base UOM if product has no UOMs configured
         // This ensures save button is always enabled for products
@@ -189,7 +205,9 @@ export default function ProductPricingPage(): React.JSX.Element {
                     uomCode: matchingUom.code,
                     uomName: matchingUom.name,
                     conversionFactor: 1,
-                    isBaseUnit: true
+                    isBaseUnit: true,
+                    cost: null,
+                    costOverride: false
                   }
                 ]
                 console.log(
@@ -354,7 +372,9 @@ export default function ProductPricingPage(): React.JSX.Element {
           uomCode: uomMaster.code,
           uomName: uomMaster.name,
           conversionFactor: convFactor,
-          isBaseUnit: productUoms.length === 0
+          isBaseUnit: productUoms.length === 0,
+          cost: null,
+          costOverride: false
         }
         setProductUoms((prev) => [...prev, newRow])
         setNewUomCode('')
@@ -395,14 +415,28 @@ export default function ProductPricingPage(): React.JSX.Element {
 
     try {
       const tasks: Array<Promise<unknown>> = []
-      const cost = Number(baseCost) || 0
+      const baseUnitCost = Number(baseCost) || 0
+      const baseUom = productUoms.find((u) => u.isBaseUnit)
+      const baseConversion = baseUom?.conversionFactor || 1
 
       // Save prices for ALL UOMs that have been edited
       for (const uomId of Object.keys(allUomPrices)) {
         const uomPrices = allUomPrices[uomId]
         const margin = uomMargins[uomId]
         const marginFixed = Number(margin?.fixed ?? '0') || 0
-        const retailPrice = cost + marginFixed
+
+        // Calculate effective cost for this UOM
+        const uom = productUoms.find((u) => u.uomId === uomId)
+        let effectiveCost = baseUnitCost
+        if (uom) {
+          if (uom.costOverride && uom.cost) {
+            effectiveCost = parseFloat(uom.cost)
+          } else {
+            effectiveCost = (baseUnitCost / baseConversion) * uom.conversionFactor
+          }
+        }
+
+        const retailPrice = effectiveCost + marginFixed
 
         // Save RETAIL price (computed from margin)
         tasks.push(
@@ -493,7 +527,23 @@ export default function ProductPricingPage(): React.JSX.Element {
   const currentMargin = selectedUomId ? uomMargins[selectedUomId] : null
   const marginPct = currentMargin?.pct ?? '0'
   const marginFixed = currentMargin?.fixed ?? '0'
-  const retailPrice = (Number(baseCost) || 0) + (Number(marginFixed) || 0)
+
+  // Calculate effective cost for selected UOM
+  // If UOM has cost override, use it; otherwise calculate from base cost × conversion factor
+  const getEffectiveCostForUom = (uom: ProductUomRow | null): number => {
+    if (!uom) return Number(baseCost) || 0
+    if (uom.costOverride && uom.cost) {
+      return parseFloat(uom.cost)
+    }
+    // Find base unit and calculate
+    const baseUom = productUoms.find((u) => u.isBaseUnit)
+    const baseUnitCost = Number(baseCost) || 0
+    if (!baseUom) return baseUnitCost * uom.conversionFactor
+    return (baseUnitCost / baseUom.conversionFactor) * uom.conversionFactor
+  }
+
+  const effectiveCost = getEffectiveCostForUom(activeUom)
+  const retailPrice = effectiveCost + (Number(marginFixed) || 0)
 
   // Get current UOM's category prices
   const hqCategoryPrices = selectedUomId ? (allUomPrices[selectedUomId] ?? {}) : {}
@@ -634,33 +684,120 @@ export default function ProductPricingPage(): React.JSX.Element {
           2. Harga Dasar & Margin
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Atur biaya dasar dan margin (Rp atau %) untuk menghitung harga RETAIL otomatis.
+          Pilih satuan pembelian dan masukkan harga modal. Sistem akan menghitung harga modal satuan
+          lain otomatis.
         </Typography>
 
         <Stack direction="row" spacing={3} alignItems="flex-start">
-          <CurrencyInput
-            label="Base Cost"
-            value={Number(baseCost) || 0}
-            onChange={(value) => {
-              const cost = value
-              setBaseCost(cost.toString())
-              // Recalculate fixed margin from percentage
-              const pct = Number(marginPct) || 0
-              setMarginFixed(computeMarginFixed(cost, pct).toString())
+          {/* Purchase Unit Selector */}
+          <TextField
+            select
+            label="Satuan Pembelian"
+            value={purchaseUomId || ''}
+            onChange={(e) => {
+              setPurchaseUomId(e.target.value)
+              // Find the selected UOM's cost if it has one
+              const uom = productUoms.find((u) => u.uomId === e.target.value)
+              if (uom?.cost) {
+                setPurchaseCost(uom.cost)
+              }
             }}
-            sx={{ width: 200 }}
+            sx={{ width: 150 }}
+            size="small"
+          >
+            {productUoms.map((uom) => (
+              <MenuItem key={uom.uomId} value={uom.uomId}>
+                {uom.uomCode} ({uom.conversionFactor}x)
+              </MenuItem>
+            ))}
+          </TextField>
+
+          <CurrencyInput
+            label="Harga Modal"
+            value={Number(purchaseCost) || 0}
+            onChange={(value) => {
+              setPurchaseCost(value.toString())
+              // Auto-calculate base cost from purchase unit
+              const purchaseUom = productUoms.find((u) => u.uomId === purchaseUomId)
+              if (purchaseUom) {
+                const baseCostPerUnit = value / purchaseUom.conversionFactor
+                setBaseCost(baseCostPerUnit.toString())
+              }
+            }}
+            sx={{ width: 180 }}
           />
+
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={async () => {
+              if (!productId || !purchaseUomId) return
+              const purchaseUom = productUoms.find((u) => u.uomId === purchaseUomId)
+              if (!purchaseUom) return
+
+              const cost = Number(purchaseCost) || 0
+              try {
+                // Update cost for selected UOM and recalculate others
+                await window.api.db.pricing.updateProductUomCost({
+                  productId,
+                  uomId: purchaseUom.uomId,
+                  cost,
+                  costOverride: true,
+                  recalculateOthers: true
+                })
+
+                // Reload product UOMs to get updated costs
+                const res = await window.api.db.pricing.getProductUomsByProduct(productId)
+                // Deduplicate by uomId (in case of duplicate entries)
+                const seen = new Set<string>()
+                const updated = (res.data ?? [])
+                  .map((r) => ({
+                    id: r.id,
+                    uomId: r.uomId,
+                    uomCode: r.uomCode,
+                    uomName: r.uomName,
+                    conversionFactor: r.conversionFactor,
+                    isBaseUnit: r.isBaseUnit,
+                    cost: r.cost,
+                    costOverride: r.costOverride
+                  }))
+                  .filter((uom) => {
+                    if (seen.has(uom.uomId)) return false
+                    seen.add(uom.uomId)
+                    return true
+                  })
+                setProductUoms(updated)
+
+                setSnackbar({
+                  open: true,
+                  message: 'Harga modal berhasil dihitung ulang',
+                  severity: 'success'
+                })
+              } catch {
+                setSnackbar({
+                  open: true,
+                  message: 'Gagal menghitung ulang harga modal',
+                  severity: 'error'
+                })
+              }
+            }}
+            sx={{ height: 40, mt: 0.5 }}
+          >
+            Hitung Ulang
+          </Button>
+
+          <Divider orientation="vertical" flexItem />
+
           <CurrencyInput
             label="Margin (Rp)"
             value={Number(marginFixed) || 0}
             onChange={(value) => {
               setMarginFixed(value.toString())
-              // Calculate percentage from fixed
-              const cost = Number(baseCost) || 0
-              const pct = computeMarginPct(cost, value)
+              // Calculate percentage from fixed using effective cost
+              const pct = computeMarginPct(effectiveCost, value)
               setMarginPct(pct.toString())
             }}
-            sx={{ width: 160 }}
+            sx={{ width: 140 }}
           />
           <TextField
             label="Margin %"
@@ -669,14 +806,14 @@ export default function ProductPricingPage(): React.JSX.Element {
             onChange={(e) => {
               const pct = Number(e.target.value) || 0
               setMarginPct(e.target.value)
-              // Calculate fixed from percentage
-              const cost = Number(baseCost) || 0
-              setMarginFixed(computeMarginFixed(cost, pct).toString())
+              // Calculate fixed from percentage using effective cost
+              setMarginFixed(computeMarginFixed(effectiveCost, pct).toString())
             }}
-            sx={{ width: 100 }}
+            sx={{ width: 90 }}
             inputProps={{ step: 0.01 }}
+            size="small"
           />
-          <Box sx={{ pt: 1, minWidth: 150 }}>
+          <Box sx={{ pt: 0, minWidth: 130 }}>
             <Typography variant="body2" color="text.secondary">
               Harga RETAIL
             </Typography>

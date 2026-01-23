@@ -43,6 +43,13 @@
       "when": 1768299313347,
       "tag": "0005_broken_guardsmen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1769012587818,
+      "tag": "0006_sticky_rattler",
+      "breakpoints": true
     }
   ]
 }

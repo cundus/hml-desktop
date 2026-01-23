@@ -632,7 +632,12 @@ export class ReceiptService {
       const printerSettings = await this.getPrinterForPurpose('report')
       console.log('Using printer for settlement report:', printerSettings.printerName || 'default')
 
-      const html = this.generateSettlementReportHtml(data)
+      // Get branch info from shift's storeId
+      const branchInfo = data.shift?.storeId
+        ? await this.getBranchHeaderInfo(data.shift.storeId)
+        : null
+
+      const html = this.generateSettlementReportHtml(data, branchInfo)
       return await this.printHtml(html, printerSettings)
     } catch (error) {
       console.error('Settlement report printing failed:', error)
@@ -643,7 +648,15 @@ export class ReceiptService {
     }
   }
 
-  private generateSettlementReportHtml(data: any): string {
+  private generateSettlementReportHtml(
+    data: any,
+    branchInfo: {
+      storeName: string
+      branchName: string
+      branchAddress: string
+      branchContact: string
+    } | null
+  ): string {
     const {
       shift,
       transactionCount,
@@ -719,6 +732,7 @@ export class ReceiptService {
     .double-line { border-top: 1px solid #000; margin: 2mm 0; }
     .title { font-size: ${fontSize + 2}pt; font-weight: 600; margin-bottom: 2mm; }
     .store-name { font-size: ${fontSize + 1}pt; font-weight: bold; }
+    .branch-name { font-size: ${fontSize}pt; font-weight: 600; }
     .info-row { display: flex; justify-content: space-between; margin: 0.5mm 0; }
     .section-title { font-weight: bold; margin-top: 2mm; text-decoration: underline; }
     .footer { margin-top: 3mm; text-align: center; font-size: ${fontSize - 2}pt; }
@@ -726,9 +740,10 @@ export class ReceiptService {
 </head>
 <body>
   <div class="header center">
-    <div class="store-name">${this.config.storeName}</div>
-    <div>${this.config.storeAddress}</div>
-    <div>${this.config.storePhone}</div>
+    <div class="store-name">${branchInfo?.storeName || this.config.storeName}</div>
+    ${branchInfo?.branchName ? `<div class="branch-name">${branchInfo.branchName}</div>` : ''}
+    <div>${branchInfo?.branchAddress || this.config.storeAddress}</div>
+    <div>${branchInfo?.branchContact || this.config.storePhone}</div>
   </div>
 
   <div class="double-line"></div>

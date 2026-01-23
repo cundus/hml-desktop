@@ -142,6 +142,8 @@ async function createTables(database: Database): Promise<void> {
       uom_id TEXT NOT NULL,
       conversion_factor REAL NOT NULL,
       is_base_unit INTEGER NOT NULL DEFAULT 0,
+      cost TEXT,
+      cost_override INTEGER NOT NULL DEFAULT 0,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       synced_at INTEGER,
@@ -149,6 +151,18 @@ async function createTables(database: Database): Promise<void> {
       device_id TEXT
     )
   `)
+
+  // Migration: Add cost columns for existing databases
+  try {
+    database.run(`ALTER TABLE product_uom ADD COLUMN cost TEXT`)
+  } catch {
+    // Column already exists
+  }
+  try {
+    database.run(`ALTER TABLE product_uom ADD COLUMN cost_override INTEGER NOT NULL DEFAULT 0`)
+  } catch {
+    // Column already exists
+  }
 
   // Default prices per (product, UOM, price category)
   database.run(`

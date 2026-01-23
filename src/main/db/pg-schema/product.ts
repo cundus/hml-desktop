@@ -105,6 +105,8 @@ export const productUoms = pgTable('product_uom', {
   uomId: text('uom_id').notNull(),
   conversionFactor: numeric('conversion_factor').notNull(),
   isBaseUnit: boolean('is_base_unit').notNull().default(false),
+  cost: numeric('cost'), // Cost for this UOM (null = auto-calculate from base)
+  costOverride: boolean('cost_override').notNull().default(false), // If true, use cost; if false, calculate
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

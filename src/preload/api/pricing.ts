@@ -30,6 +30,8 @@ export interface ProductUom {
   uomName: string
   conversionFactor: number
   isBaseUnit: boolean
+  cost: string | null
+  costOverride: boolean
 }
 
 export interface ProductUomCategoryPrice {
@@ -47,6 +49,11 @@ export interface StoreProductUomPrice {
   priceCategoryId: string
   storeId: string
   price: string
+}
+
+export interface EffectiveCost {
+  cost: number
+  isOverride: boolean
 }
 
 export const pricingApi = {
@@ -111,5 +118,17 @@ export const pricingApi = {
   getAllBaseRetailPrices: () =>
     ipcRenderer.invoke('db:pricing:getAllBaseRetailPrices') as Promise<
       ApiResponse<{ productId: string; price: string }[]>
-    >
+    >,
+
+  // Cost per UOM methods
+  getEffectiveCost: (args: { productId: string; uomId: string }) =>
+    ipcRenderer.invoke('db:pricing:getEffectiveCost', args) as Promise<ApiResponse<EffectiveCost>>,
+
+  updateProductUomCost: (args: {
+    productId: string
+    uomId: string
+    cost: number
+    costOverride: boolean
+    recalculateOthers?: boolean
+  }) => ipcRenderer.invoke('db:pricing:updateProductUomCost', args) as Promise<ApiResponse<void>>
 }

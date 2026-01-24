@@ -150,9 +150,10 @@ export default function WarehousePricingListPage(): React.JSX.Element {
         <Table size="small">
           <TableHead>
             <TableRow>
-              <TableCell>Produk</TableCell>
+              <TableCell>SKU</TableCell>
+              <TableCell>Nama Produk</TableCell>
               <TableCell>UOM</TableCell>
-              <TableCell align="right">Base Cost</TableCell>
+              <TableCell align="right">Harga Modal</TableCell>
               <TableCell align="right">Margin</TableCell>
               <TableCell align="right">Harga Jual</TableCell>
               <TableCell width={40} />
@@ -161,7 +162,7 @@ export default function WarehousePricingListPage(): React.JSX.Element {
           <TableBody>
             {filteredItems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   {search ? 'Tidak ada produk yang cocok' : 'Tidak ada data produk'}
                 </TableCell>
               </TableRow>
@@ -174,14 +175,12 @@ export default function WarehousePricingListPage(): React.JSX.Element {
                   onClick={() => handleRowClick(item.productId)}
                 >
                   <TableCell>
-                    <Stack spacing={0.3}>
-                      <Typography variant="body2" fontWeight={600}>
-                        {item.productCode}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {item.productName}
-                      </Typography>
-                    </Stack>
+                    <Typography variant="body2" fontWeight={600}>
+                      {item.productCode}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">{item.productName}</Typography>
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={0.5} alignItems="center">

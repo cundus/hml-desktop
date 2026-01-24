@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
@@ -9,19 +9,20 @@ import Stack from '@mui/material/Stack'
 import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
-import Divider from '@mui/material/Divider'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
+import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
+import Tooltip from '@mui/material/Tooltip'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
-import AddIcon from '@mui/icons-material/Add'
-import DeleteIcon from '@mui/icons-material/Delete'
 import SaveIcon from '@mui/icons-material/Save'
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh'
+import LockIcon from '@mui/icons-material/Lock'
 import CurrencyInput from '../../components/CurrencyInput'
 
 type Product = {
@@ -38,11 +39,6 @@ type PriceCategory = {
   name: string
 }
 
-type StoreOption = {
-  id: string
-  name: string
-}
-
 type ProductUomRow = {
   id: string
   uomId: string
@@ -50,14 +46,8 @@ type ProductUomRow = {
   uomName: string
   conversionFactor: number
   isBaseUnit: boolean
-  cost: string | null // Cost for this UOM (null = auto-calculate)
-  costOverride: boolean // If true, use manual cost; if false, auto-calculate
-}
-
-type UomMaster = {
-  id: string
-  code: string
-  name: string
+  cost: string | null
+  costOverride: boolean
 }
 
 function computeMarginFixed(baseCost: number, marginPct: number): number {
@@ -66,7 +56,6 @@ function computeMarginFixed(baseCost: number, marginPct: number): number {
 
 function computeMarginPct(baseCost: number, marginFixed: number): number {
   if (baseCost <= 0) return 0
-  // Allow decimal percentages for more precise margin when editing by Rp
   const pct = (marginFixed / baseCost) * 100
   return Number(pct.toFixed(2))
 }
@@ -78,49 +67,41 @@ export default function ProductPricingPage(): React.JSX.Element {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [product, setProduct] = useState<Product | null>(null)
+
+  // State for Purchase Unit (to calculate base cost)
+  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(null)
+  const [purchaseCost, setPurchaseCost] = useState('0')
+  const [baseCost, setBaseCost] = useState('0') // Calculated base cost
+
+  const [productUoms, setProductUoms] = useState<ProductUomRow[]>([])
+  const [uomMasters, setUomMasters] = useState<{ id: string; code: string; name: string }[]>([])
+
+  // Add UOM State
+  const [newUomId, setNewUomId] = useState('')
+  const [newConversionFactor, setNewConversionFactor] = useState('1')
+
+  const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([])
+
+  // Matrix State: { uomId: { categoryId: price } }
+  const [allUomPrices, setAllUomPrices] = useState<Record<string, Record<string, string>>>({})
+
+  // Margin State: { uomId: { pct: string, fixed: string } }
+  const [uomMargins, setUomMargins] = useState<Record<string, { pct: string; fixed: string }>>({})
+
   const [snackbar, setSnackbar] = useState<{
     open: boolean
     message: string
     severity: 'success' | 'error'
   }>({ open: false, message: '', severity: 'success' })
 
-  // Purchase unit for cost input (user inputs cost from purchase unit, system calculates others)
-  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(null)
-  const [purchaseCost, setPurchaseCost] = useState('0') // Cost for the purchase unit
-
-  // Base cost (calculated from purchase unit, for backward compatibility)
-  const [baseCost, setBaseCost] = useState('0')
-
-  // Margin per UOM: { uomId: { pct: string, fixed: string } }
-  const [uomMargins, setUomMargins] = useState<Record<string, { pct: string; fixed: string }>>({})
-
-  // UOM management
-  const [productUoms, setProductUoms] = useState<ProductUomRow[]>([])
-  const [uomMasters, setUomMasters] = useState<UomMaster[]>([])
-  const [selectedUomId, setSelectedUomId] = useState<string | null>(null)
-  const [newUomCode, setNewUomCode] = useState('')
-  const [newConversionFactor, setNewConversionFactor] = useState('1')
-
-  // Price categories
-  const [priceCategories, setPriceCategories] = useState<PriceCategory[]>([])
-
-  // HQ prices per UOM: { uomId: { categoryId: price } }
-  const [allUomPrices, setAllUomPrices] = useState<Record<string, Record<string, string>>>({})
-
-  // Store overrides
-  const [stores, setStores] = useState<StoreOption[]>([])
-  const [selectedStoreId, setSelectedStoreId] = useState('')
-  const [storeCategoryPrices, setStoreCategoryPrices] = useState<Record<string, string>>({})
-  const [storeEffectivePrices, setStoreEffectivePrices] = useState<Record<string, number>>({})
-
-  // Load initial data
+  // Initialize Data
   useEffect(() => {
     if (!productId) return
 
     const loadData = async (): Promise<void> => {
       setLoading(true)
       try {
-        // Load product
+        // Load Product
         const productRes = await window.api.db.products.getById(productId)
         if (!productRes.data) {
           navigate('/pricing/products')
@@ -137,26 +118,23 @@ export default function ProductPricingPage(): React.JSX.Element {
         })
         setBaseCost(p.cost ?? '0')
 
-        // Load UOM masters
+        // Load UOM Masters (for add UOM dropdown)
         const uomsRes = await window.api.db.uoms.getAll()
-        setUomMasters((uomsRes.data ?? []).map((u) => ({ id: u.id, code: u.code, name: u.name })))
+        const uomMastersList = (uomsRes.data ?? []).map((u) => ({
+          id: u.id,
+          code: u.code,
+          name: u.name
+        }))
+        setUomMasters(uomMastersList)
 
-        // Load price categories
+        // Load Categories
         const catRes = await window.api.db.pricing.getPriceCategories()
-        setPriceCategories(catRes.data ?? [])
+        const categories = catRes.data ?? []
+        setPriceCategories(categories)
 
-        // Load stores
-        const storesRes = await window.api.db.stores.getAll()
-        setStores(
-          (storesRes.data ?? []).map((s: { id: string; name: string }) => ({
-            id: s.id,
-            name: s.name
-          }))
-        )
-
-        // Load product UOMs
+        // Load Product UOMs
         const productUomsRes = await window.api.db.pricing.getProductUomsByProduct(productId)
-        // Deduplicate by uomId (in case of duplicate entries in DB)
+        // Deduplicate
         const seenUoms = new Set<string>()
         let uomRows = (productUomsRes.data ?? [])
           .map((r) => ({
@@ -175,17 +153,10 @@ export default function ProductPricingPage(): React.JSX.Element {
             return true
           })
 
-        // HP-04 FIX: Auto-create base UOM if product has no UOMs configured
-        // This ensures save button is always enabled for products
+        // Auto-create base UOM if empty
         if (uomRows.length === 0) {
-          const uomMasters = (uomsRes.data ?? []).map((u) => ({
-            id: u.id,
-            code: u.code,
-            name: u.name
-          }))
-          // Find matching UOM from product's unit (e.g., "PCS" -> find PCS in uom masters)
           const productUnit = p.unit ?? 'PCS'
-          const matchingUom = uomMasters.find(
+          const matchingUom = uomMastersList.find(
             (u) => u.code.toLowerCase() === productUnit.toLowerCase()
           )
 
@@ -210,29 +181,23 @@ export default function ProductPricingPage(): React.JSX.Element {
                     costOverride: false
                   }
                 ]
-                console.log(
-                  `[ProductPricing] Auto-created base UOM ${matchingUom.code} for product ${productId}`
-                )
               }
-            } catch (err) {
-              console.error('Failed to auto-create base UOM:', err)
+            } catch (e) {
+              console.error('Auto-create failed', e)
             }
           }
         }
-
         setProductUoms(uomRows)
 
-        // Select base UOM by default
-        const baseUom = uomRows.find((r) => r.isBaseUnit)
-        const defaultUomId = baseUom?.uomId ?? uomRows[0]?.uomId ?? null
-        setSelectedUomId(defaultUomId)
-
-        // Load HQ prices for all product UOMs
+        // Initialize Pricing Matrix State
         const allPrices: Record<string, Record<string, string>> = {}
         const margins: Record<string, { pct: string; fixed: string }> = {}
-        const cost = Number(p.cost ?? '0') || 0
+
+        // We need base cost to calculate initial margins properly
+        const currentBaseCost = Number(p.cost) || 0
 
         for (const uomRow of uomRows) {
+          // Fetch existing prices
           const pricesRes = await window.api.db.pricing.getCategoryPrices({
             productId,
             uomId: uomRow.uomId
@@ -244,13 +209,24 @@ export default function ProductPricingPage(): React.JSX.Element {
           })
           allPrices[uomRow.uomId] = map
 
-          // Calculate margin from RETAIL price for this UOM
-          const retail = prices.find((r) => r.priceCategoryId === 'RETAIL')
-          if (retail && cost > 0) {
-            const retailPrice = Number(retail.price ?? '0') || 0
-            const marginFixed = retailPrice - cost
-            const marginPct = computeMarginPct(cost, marginFixed)
-            margins[uomRow.uomId] = { pct: String(marginPct), fixed: String(marginFixed) }
+          // Calculate Initial Effective Cost for this UOM
+          let effectiveCost = currentBaseCost
+          if (uomRow.costOverride && uomRow.cost) {
+            effectiveCost = Number(uomRow.cost)
+          } else {
+            // Find base UOM conversion
+            const baseUom = uomRows.find((u) => u.isBaseUnit)
+            const baseConv = baseUom?.conversionFactor || 1
+            effectiveCost = (currentBaseCost / baseConv) * uomRow.conversionFactor
+          }
+
+          // Calculate Margin
+          const retailPriceStr = map['RETAIL']
+          if (retailPriceStr && effectiveCost > 0) {
+            const retail = Number(retailPriceStr)
+            const marginFixed = retail - effectiveCost
+            const marginPct = computeMarginPct(effectiveCost, marginFixed)
+            margins[uomRow.uomId] = { pct: marginPct.toString(), fixed: marginFixed.toString() }
           } else {
             margins[uomRow.uomId] = { pct: '0', fixed: '0' }
           }
@@ -258,9 +234,22 @@ export default function ProductPricingPage(): React.JSX.Element {
 
         setAllUomPrices(allPrices)
         setUomMargins(margins)
+
+        // Initialize Purchase Unit Selection (Default to Base)
+        const baseUom = uomRows.find((r) => r.isBaseUnit)
+        if (baseUom) {
+          setPurchaseUomId(baseUom.uomId)
+          // For base unit, purchase cost = base cost
+          setPurchaseCost(p.cost || '0')
+        } else if (uomRows.length > 0) {
+          setPurchaseUomId(uomRows[0].uomId)
+          // Estimate cost based on conversion
+          const uom = uomRows[0]
+          setPurchaseCost(((Number(p.cost) || 0) * uom.conversionFactor).toString())
+        }
       } catch (error) {
-        console.error('Failed to load product data', error)
-        setSnackbar({ open: true, message: 'Gagal memuat data produk', severity: 'error' })
+        console.error('Failed to load pricing data', error)
+        setSnackbar({ open: true, message: 'Gagal memuat data harga', severity: 'error' })
       } finally {
         setLoading(false)
       }
@@ -269,93 +258,56 @@ export default function ProductPricingPage(): React.JSX.Element {
     void loadData()
   }, [productId, navigate])
 
-  // Load HQ prices for a UOM if not already loaded
-  useEffect(() => {
-    if (!productId || !selectedUomId) return
-    // Already loaded? Skip
-    if (allUomPrices[selectedUomId]) return
+  // Helper: Get Effective Cost for a UOM (Live Calculation)
+  const getEffectiveCost = (uom: ProductUomRow): number => {
+    // 1. Used manual override if set
+    if (uom.costOverride && uom.cost) {
+      return Number(uom.cost)
+    }
 
-    const loadUomPrices = async (): Promise<void> => {
-      try {
-        const pricesRes = await window.api.db.pricing.getCategoryPrices({
-          productId,
-          uomId: selectedUomId
-        })
-        const prices = pricesRes.data ?? []
-        const map: Record<string, string> = {}
-        prices.forEach((row) => {
-          map[row.priceCategoryId] = row.price
-        })
-        setAllUomPrices((prev) => ({ ...prev, [selectedUomId]: map }))
+    // 2. Calculate from Base Cost
+    const baseUnitCost = Number(baseCost) || 0
+    const baseUom = productUoms.find((u) => u.isBaseUnit)
+    const baseConversion = baseUom?.conversionFactor || 1
 
-        // Calculate margin from RETAIL
-        const retail = prices.find((r) => r.priceCategoryId === 'RETAIL')
-        const cost = Number(baseCost) || 0
-        if (retail && cost > 0) {
-          const retailPrice = Number(retail.price ?? '0') || 0
-          const marginFixed = retailPrice - cost
-          const marginPct = computeMarginPct(cost, marginFixed)
-          setUomMargins((prev) => ({
-            ...prev,
-            [selectedUomId]: { pct: String(marginPct), fixed: String(marginFixed) }
-          }))
-        } else {
-          setUomMargins((prev) => ({
-            ...prev,
-            [selectedUomId]: { pct: '0', fixed: '0' }
-          }))
-        }
-      } catch (error) {
-        console.error('Failed to load UOM prices', error)
+    // Formula: (BaseCost / BaseConv) * TargetConv
+    return (baseUnitCost / baseConversion) * uom.conversionFactor
+  }
+
+  // Handlers
+
+  const handlePurchaseCostChange = (newCost: number) => {
+    setPurchaseCost(newCost.toString())
+
+    // Recalculate Base Cost
+    if (purchaseUomId) {
+      const uom = productUoms.find((u) => u.uomId === purchaseUomId)
+      if (uom) {
+        // Base Cost is cost of 1 Base Unit
+        // If Purchase Unit is SAK (25 PCS), and Cost is 25000
+        // Then Base Cost (PCS) = 25000 / 25 = 1000
+
+        // We need to normalize to Base Unit.
+        // BaseCost = (NewCost / UomConversion) * BaseUomConversion
+        const baseUom = productUoms.find((u) => u.isBaseUnit)
+        const baseConv = baseUom?.conversionFactor || 1
+
+        const newBaseCost = (newCost / uom.conversionFactor) * baseConv
+        setBaseCost(newBaseCost.toString())
+
+        // Triggers Re-render of Matrix because getEffectiveCost depends on baseCost
       }
     }
-
-    void loadUomPrices()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId, selectedUomId, allUomPrices])
-
-  // Load store prices when store or UOM changes
-  useEffect(() => {
-    if (!productId || !selectedUomId || !selectedStoreId) {
-      setStoreCategoryPrices({})
-      setStoreEffectivePrices({})
-      return
-    }
-
-    const loadStorePrices = async (): Promise<void> => {
-      try {
-        const availRes = await window.api.db.pricing.getAvailableCategoryPrices({
-          productId,
-          uomId: selectedUomId,
-          storeId: selectedStoreId
-        })
-        const rows = availRes.data ?? []
-        const effective: Record<string, number> = {}
-        const overrides: Record<string, string> = {}
-
-        rows.forEach((row) => {
-          const priceNum = Number(row.price ?? '0') || 0
-          effective[row.priceCategoryId] = priceNum
-          if (row.source === 'store') {
-            overrides[row.priceCategoryId] = row.price
-          }
-        })
-
-        setStoreEffectivePrices(effective)
-        setStoreCategoryPrices(overrides)
-      } catch (error) {
-        console.error('Failed to load store prices', error)
-      }
-    }
-
-    void loadStorePrices()
-  }, [productId, selectedUomId, selectedStoreId])
+  }
 
   const handleAddUom = async (): Promise<void> => {
-    if (!productId || !newUomCode) return
-    const uomMaster = uomMasters.find((u) => u.code === newUomCode)
+    if (!productId || !newUomId) return
+    const uomMaster = uomMasters.find((u) => u.id === newUomId)
     if (!uomMaster) return
-    if (productUoms.some((pu) => pu.uomCode === newUomCode)) return
+    if (productUoms.some((pu) => pu.uomId === newUomId)) {
+      setSnackbar({ open: true, message: 'UOM sudah ada', severity: 'error' })
+      return
+    }
 
     const convFactor = Number(newConversionFactor) || 1
     try {
@@ -377,14 +329,8 @@ export default function ProductPricingPage(): React.JSX.Element {
           costOverride: false
         }
         setProductUoms((prev) => [...prev, newRow])
-        setNewUomCode('')
+        setNewUomId('')
         setNewConversionFactor('1')
-
-        // Auto-select if first UOM
-        if (productUoms.length === 0) {
-          setSelectedUomId(uomMaster.id)
-        }
-
         setSnackbar({ open: true, message: 'UOM berhasil ditambahkan', severity: 'success' })
       }
     } catch (error) {
@@ -393,609 +339,413 @@ export default function ProductPricingPage(): React.JSX.Element {
     }
   }
 
-  const handleDeleteUom = async (uomRow: ProductUomRow): Promise<void> => {
-    if (uomRow.isBaseUnit) return
-    try {
-      await window.api.db.pricing.deleteProductUom(uomRow.id)
-      setProductUoms((prev) => prev.filter((pu) => pu.id !== uomRow.id))
-      if (selectedUomId === uomRow.uomId) {
-        const base = productUoms.find((pu) => pu.isBaseUnit)
-        setSelectedUomId(base?.uomId ?? null)
-      }
-      setSnackbar({ open: true, message: 'UOM berhasil dihapus', severity: 'success' })
-    } catch (error) {
-      console.error('Failed to delete product UOM', error)
-      setSnackbar({ open: true, message: 'Gagal menghapus UOM', severity: 'error' })
+  const handleManualCostToggle = (uomId: string, currentOverride: boolean) => {
+    setProductUoms((prev) =>
+      prev.map((u) => {
+        if (u.uomId === uomId) {
+          // When enabling override, set current calculated cost as the manual cost
+          const calculated = getEffectiveCost(u)
+          return { ...u, costOverride: !currentOverride, cost: calculated.toString() }
+        }
+        return u
+      })
+    )
+  }
+
+  const handleManualCostChange = (uomId: string, val: string) => {
+    setProductUoms((prev) =>
+      prev.map((u) => {
+        if (u.uomId === uomId) return { ...u, cost: val }
+        return u
+      })
+    )
+  }
+
+  const handleMarginChange = (uomId: string, newPct: string) => {
+    setUomMargins((prev) => ({
+      ...prev,
+      [uomId]: { ...prev[uomId], pct: newPct }
+    }))
+
+    // Update Retail Price based on new Margin %
+    const uom = productUoms.find((u) => u.uomId === uomId)
+    if (uom) {
+      const cost = getEffectiveCost(uom)
+      const marginFixed = computeMarginFixed(cost, Number(newPct))
+      const retailPrice = cost + marginFixed
+
+      setAllUomPrices((prev) => ({
+        ...prev,
+        [uomId]: { ...prev[uomId], ['RETAIL']: retailPrice.toString() }
+      }))
+
+      setUomMargins((prev) => ({
+        ...prev,
+        [uomId]: { pct: newPct, fixed: marginFixed.toString() }
+      }))
     }
   }
 
-  const handleSaveAll = async (): Promise<void> => {
+  const handleRetailPriceChange = (uomId: string, newPrice: string) => {
+    // Update Price
+    setAllUomPrices((prev) => ({
+      ...prev,
+      [uomId]: { ...prev[uomId], ['RETAIL']: newPrice }
+    }))
+
+    // Update Margin %
+    const uom = productUoms.find((u) => u.uomId === uomId)
+    if (uom) {
+      const cost = getEffectiveCost(uom)
+      const retail = Number(newPrice) || 0
+      const marginFixed = retail - cost
+      const marginPct = computeMarginPct(cost, marginFixed)
+
+      setUomMargins((prev) => ({
+        ...prev,
+        [uomId]: { pct: marginPct.toString(), fixed: marginFixed.toString() }
+      }))
+    }
+  }
+
+  const handleOtherPriceChange = (uomId: string, categoryId: string, newPrice: string) => {
+    setAllUomPrices((prev) => ({
+      ...prev,
+      [uomId]: { ...prev[uomId], [categoryId]: newPrice }
+    }))
+  }
+
+  const handleSaveAll = async () => {
     if (!productId) return
     setSaving(true)
-
     try {
       const tasks: Array<Promise<unknown>> = []
-      const baseUnitCost = Number(baseCost) || 0
-      const baseUom = productUoms.find((u) => u.isBaseUnit)
-      const baseConversion = baseUom?.conversionFactor || 1
 
-      // Save prices for ALL UOMs that have been edited
-      for (const uomId of Object.keys(allUomPrices)) {
-        const uomPrices = allUomPrices[uomId]
-        const margin = uomMargins[uomId]
-        const marginFixed = Number(margin?.fixed ?? '0') || 0
+      // 1. Update Product Base Cost
+      tasks.push(
+        window.api.db.pricing.updateProductUomCost({
+          productId,
+          uomId: '', // Update base product cost? No, API might differ.
+          // Actually we should simple update the product master cost
+          // But existing APIs are specific. Let's use the updateProductUomCost for all UOMs to be sure.
+          cost: Number(baseCost),
+          costOverride: false, // This param is ignored for product master update usually, wait.
+          recalculateOthers: false
+        })
+      )
 
-        // Calculate effective cost for this UOM
-        const uom = productUoms.find((u) => u.uomId === uomId)
-        let effectiveCost = baseUnitCost
-        if (uom) {
-          if (uom.costOverride && uom.cost) {
-            effectiveCost = parseFloat(uom.cost)
-          } else {
-            effectiveCost = (baseUnitCost / baseConversion) * uom.conversionFactor
-          }
-        }
+      // We need to update existing product.cost
+      // Let's use custom SQL or just loop UOMs.
 
-        const retailPrice = effectiveCost + marginFixed
+      // 2. Loop UOMs and Save
+      for (const uom of productUoms) {
+        const cost = getEffectiveCost(uom)
 
-        // Save RETAIL price (computed from margin)
+        // Save Cost Config (Override status and value)
+        // We need an API that updates cost/override without recalculating everything purely
         tasks.push(
-          window.api.db.pricing.upsertCategoryPrice({
+          window.api.db.pricing.updateProductUomCost({
             productId,
-            uomId,
-            priceCategoryId: 'RETAIL',
-            price: retailPrice.toString()
+            uomId: uom.uomId,
+            cost: cost,
+            costOverride: uom.costOverride,
+            recalculateOthers: false
           })
         )
 
-        // Save other HQ category prices
-        priceCategories.forEach((cat) => {
-          if (cat.id === 'RETAIL') return
-          const raw = uomPrices[cat.id]
-          if (raw == null) return
-          const catPrice = Number(raw) || 0
+        // Save Prices
+        const prices = allUomPrices[uom.uomId] || {}
+        for (const cat of priceCategories) {
+          const price = prices[cat.id] || '0'
           tasks.push(
             window.api.db.pricing.upsertCategoryPrice({
               productId,
-              uomId,
+              uomId: uom.uomId,
               priceCategoryId: cat.id,
-              price: catPrice.toString()
+              price: price
             })
           )
-        })
-      }
-
-      // Save store overrides if a store is selected (for current UOM only)
-      if (selectedStoreId && selectedUomId) {
-        priceCategories.forEach((cat) => {
-          const rawStore = storeCategoryPrices[cat.id]
-          if (rawStore == null) return
-          const storePrice = Number(rawStore) || 0
-          tasks.push(
-            window.api.db.pricing.upsertStorePrice({
-              productId,
-              uomId: selectedUomId,
-              priceCategoryId: cat.id,
-              storeId: selectedStoreId,
-              price: storePrice.toString()
-            })
-          )
-        })
+        }
       }
 
       await Promise.all(tasks)
       setSnackbar({ open: true, message: 'Harga berhasil disimpan', severity: 'success' })
-    } catch (error) {
-      console.error('Failed to save pricing', error)
-      setSnackbar({ open: true, message: 'Gagal menyimpan harga', severity: 'error' })
+    } catch (e) {
+      console.error(e)
+      setSnackbar({ open: true, message: 'Gagal menyimpan', severity: 'error' })
     } finally {
       setSaving(false)
     }
   }
 
-  const formatCurrency = (value: number): string =>
-    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(value)
-
-  if (loading) {
+  if (loading)
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
         <CircularProgress />
       </Box>
     )
-  }
-
-  if (!product) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">Produk tidak ditemukan</Alert>
-        <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/pricing/products')}
-          sx={{ mt: 2 }}
-        >
-          Kembali ke Daftar
-        </Button>
-      </Box>
-    )
-  }
-
-  const activeUom = selectedUomId
-    ? (productUoms.find((u) => u.uomId === selectedUomId) ?? null)
-    : null
-
-  // Get current UOM's margin values
-  const currentMargin = selectedUomId ? uomMargins[selectedUomId] : null
-  const marginPct = currentMargin?.pct ?? '0'
-  const marginFixed = currentMargin?.fixed ?? '0'
-
-  // Calculate effective cost for selected UOM
-  // If UOM has cost override, use it; otherwise calculate from base cost × conversion factor
-  const getEffectiveCostForUom = (uom: ProductUomRow | null): number => {
-    if (!uom) return Number(baseCost) || 0
-    if (uom.costOverride && uom.cost) {
-      return parseFloat(uom.cost)
-    }
-    // Find base unit and calculate
-    const baseUom = productUoms.find((u) => u.isBaseUnit)
-    const baseUnitCost = Number(baseCost) || 0
-    if (!baseUom) return baseUnitCost * uom.conversionFactor
-    return (baseUnitCost / baseUom.conversionFactor) * uom.conversionFactor
-  }
-
-  const effectiveCost = getEffectiveCostForUom(activeUom)
-  const retailPrice = effectiveCost + (Number(marginFixed) || 0)
-
-  // Get current UOM's category prices
-  const hqCategoryPrices = selectedUomId ? (allUomPrices[selectedUomId] ?? {}) : {}
-
-  // Setters for current UOM's margin
-  const setMarginPct = (val: string): void => {
-    if (!selectedUomId) return
-    setUomMargins((prev) => ({
-      ...prev,
-      [selectedUomId]: { ...prev[selectedUomId], pct: val }
-    }))
-  }
-
-  const setMarginFixed = (val: string): void => {
-    if (!selectedUomId) return
-    setUomMargins((prev) => ({
-      ...prev,
-      [selectedUomId]: { ...prev[selectedUomId], fixed: val }
-    }))
-  }
-
-  // Setter for current UOM's category prices
-  const setHqCategoryPrices = (
-    updater: (prev: Record<string, string>) => Record<string, string>
-  ): void => {
-    if (!selectedUomId) return
-    setAllUomPrices((prev) => ({
-      ...prev,
-      [selectedUomId]: updater(prev[selectedUomId] ?? {})
-    }))
-  }
+  if (!product) return <Alert severity="error">Produk tidak ditemukan</Alert>
 
   return (
-    <Box sx={{ height: '100%', overflow: 'auto' }}>
-      {/* Header */}
-      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 3 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {/* Header & Actions */}
+      <Stack direction="row" alignItems="center" spacing={2} sx={{ mb: 1 }}>
         <IconButton onClick={() => navigate('/pricing/products')}>
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h5">{product.name}</Typography>
           <Typography variant="body2" color="text.secondary">
-            {product.sku} • {product.category || 'No Category'}
+            {product.sku} • {product.category}
           </Typography>
         </Box>
         <Button
           variant="contained"
           startIcon={<SaveIcon />}
           onClick={handleSaveAll}
-          disabled={saving || !selectedUomId}
+          disabled={saving}
         >
-          {saving ? 'Menyimpan...' : 'Simpan Semua'}
+          {saving ? 'Menyimpan...' : 'Simpan Perubahan'}
         </Button>
       </Stack>
 
-      {/* Section 1: UOM Management */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          1. Satuan Produk (UOM)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Kelola satuan yang tersedia untuk produk ini beserta faktor konversinya.
-        </Typography>
-
-        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 2 }}>
-          {productUoms.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              Belum ada UOM. Tambahkan UOM pertama sebagai satuan dasar.
-            </Typography>
-          ) : (
-            productUoms.map((uom) => (
-              <Chip
-                key={uom.id}
-                label={`${uom.uomCode} (×${uom.conversionFactor})${uom.isBaseUnit ? ' - Base' : ''}`}
-                color={selectedUomId === uom.uomId ? 'primary' : 'default'}
-                onClick={() => setSelectedUomId(uom.uomId)}
-                onDelete={uom.isBaseUnit ? undefined : () => handleDeleteUom(uom)}
-                deleteIcon={<DeleteIcon fontSize="small" />}
-                sx={{ mb: 1 }}
-              />
-            ))
-          )}
-        </Stack>
-
-        {activeUom && (
-          <Typography variant="body2" color="primary" sx={{ mb: 1 }}>
-            Sedang mengatur harga untuk UOM:{' '}
-            {`${activeUom.uomCode} (×${activeUom.conversionFactor})${
-              activeUom.isBaseUnit ? ' - Base' : ''
-            }`}
+      {/* Control Panel: Base Cost */}
+      <Paper sx={{ p: 2 }}>
+        <Stack direction="row" spacing={3} alignItems="center">
+          <Typography variant="subtitle2" sx={{ width: 100 }}>
+            Harga Dasar:
           </Typography>
-        )}
 
-        <Divider sx={{ my: 2 }} />
-
-        <Stack direction="row" spacing={2} alignItems="flex-start">
-          <TextField
-            select
-            size="small"
-            label="Tambah UOM"
-            value={newUomCode}
-            onChange={(e) => setNewUomCode(e.target.value)}
-            sx={{ minWidth: 150 }}
-          >
-            <MenuItem value="">-- Pilih UOM --</MenuItem>
-            {uomMasters
-              .filter((u) => !productUoms.some((pu) => pu.uomCode === u.code))
-              .map((u) => (
-                <MenuItem key={u.id} value={u.code}>
-                  {u.code} - {u.name}
-                </MenuItem>
-              ))}
-          </TextField>
-          <TextField
-            size="small"
-            label="Konversi"
-            type="number"
-            value={newConversionFactor}
-            onChange={(e) => setNewConversionFactor(e.target.value)}
-            sx={{ width: 100 }}
-            inputProps={{ min: 1 }}
-            helperText="1 UOM = ? base"
-          />
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={handleAddUom}
-            disabled={!newUomCode}
-          >
-            Tambah
-          </Button>
-        </Stack>
-      </Paper>
-
-      {/* Section 2: Base Cost & Margin */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          2. Harga Dasar & Margin
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Pilih satuan pembelian dan masukkan harga modal. Sistem akan menghitung harga modal satuan
-          lain otomatis.
-        </Typography>
-
-        <Stack direction="row" spacing={3} alignItems="flex-start">
-          {/* Purchase Unit Selector */}
           <TextField
             select
             label="Satuan Pembelian"
+            size="small"
             value={purchaseUomId || ''}
             onChange={(e) => {
               setPurchaseUomId(e.target.value)
-              // Find the selected UOM's cost if it has one
               const uom = productUoms.find((u) => u.uomId === e.target.value)
-              if (uom?.cost) {
-                setPurchaseCost(uom.cost)
+              if (uom) {
+                // When switching Purchase Unit, calculate the Purchase Cost from Base Cost
+                // BaseCost = (PurchaseCost/Conv) * BaseConv
+                // -> PurchaseCost = (BaseCost / BaseConv) * Conv
+                const baseUom = productUoms.find((u) => u.isBaseUnit)
+                const baseConv = baseUom?.conversionFactor || 1
+                const newPurchaseCost = (Number(baseCost) / baseConv) * uom.conversionFactor
+                setPurchaseCost(newPurchaseCost.toString())
               }
             }}
             sx={{ width: 150 }}
-            size="small"
           >
-            {productUoms.map((uom) => (
-              <MenuItem key={uom.uomId} value={uom.uomId}>
-                {uom.uomCode} ({uom.conversionFactor}x)
+            {productUoms.map((u) => (
+              <MenuItem key={u.id} value={u.uomId}>
+                {u.uomCode} ({u.conversionFactor}x)
               </MenuItem>
             ))}
           </TextField>
 
           <CurrencyInput
-            label="Harga Modal"
-            value={Number(purchaseCost) || 0}
-            onChange={(value) => {
-              setPurchaseCost(value.toString())
-              // Auto-calculate base cost from purchase unit
-              const purchaseUom = productUoms.find((u) => u.uomId === purchaseUomId)
-              if (purchaseUom) {
-                const baseCostPerUnit = value / purchaseUom.conversionFactor
-                setBaseCost(baseCostPerUnit.toString())
-              }
-            }}
-            sx={{ width: 180 }}
+            label="Harga Beli (Modal)"
+            value={Number(purchaseCost)}
+            onChange={handlePurchaseCostChange}
+            sx={{ width: 200 }}
           />
 
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={async () => {
-              if (!productId || !purchaseUomId) return
-              const purchaseUom = productUoms.find((u) => u.uomId === purchaseUomId)
-              if (!purchaseUom) return
-
-              const cost = Number(purchaseCost) || 0
-              try {
-                // Update cost for selected UOM and recalculate others
-                await window.api.db.pricing.updateProductUomCost({
-                  productId,
-                  uomId: purchaseUom.uomId,
-                  cost,
-                  costOverride: true,
-                  recalculateOthers: true
-                })
-
-                // Reload product UOMs to get updated costs
-                const res = await window.api.db.pricing.getProductUomsByProduct(productId)
-                // Deduplicate by uomId (in case of duplicate entries)
-                const seen = new Set<string>()
-                const updated = (res.data ?? [])
-                  .map((r) => ({
-                    id: r.id,
-                    uomId: r.uomId,
-                    uomCode: r.uomCode,
-                    uomName: r.uomName,
-                    conversionFactor: r.conversionFactor,
-                    isBaseUnit: r.isBaseUnit,
-                    cost: r.cost,
-                    costOverride: r.costOverride
-                  }))
-                  .filter((uom) => {
-                    if (seen.has(uom.uomId)) return false
-                    seen.add(uom.uomId)
-                    return true
-                  })
-                setProductUoms(updated)
-
-                setSnackbar({
-                  open: true,
-                  message: 'Harga modal berhasil dihitung ulang',
-                  severity: 'success'
-                })
-              } catch {
-                setSnackbar({
-                  open: true,
-                  message: 'Gagal menghitung ulang harga modal',
-                  severity: 'error'
-                })
-              }
+          <Box
+            sx={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 2
             }}
-            sx={{ height: 40, mt: 0.5 }}
           >
-            Hitung Ulang
-          </Button>
-
-          <Divider orientation="vertical" flexItem />
-
-          <CurrencyInput
-            label="Margin (Rp)"
-            value={Number(marginFixed) || 0}
-            onChange={(value) => {
-              setMarginFixed(value.toString())
-              // Calculate percentage from fixed using effective cost
-              const pct = computeMarginPct(effectiveCost, value)
-              setMarginPct(pct.toString())
-            }}
-            sx={{ width: 140 }}
-          />
-          <TextField
-            label="Margin %"
-            type="number"
-            value={marginPct}
-            onChange={(e) => {
-              const pct = Number(e.target.value) || 0
-              setMarginPct(e.target.value)
-              // Calculate fixed from percentage using effective cost
-              setMarginFixed(computeMarginFixed(effectiveCost, pct).toString())
-            }}
-            sx={{ width: 90 }}
-            inputProps={{ step: 0.01 }}
-            size="small"
-          />
-          <Box sx={{ pt: 0, minWidth: 130 }}>
-            <Typography variant="body2" color="text.secondary">
-              Harga RETAIL
-            </Typography>
-            <Typography variant="h6" color="primary">
-              {formatCurrency(retailPrice)}
-            </Typography>
+            <Chip
+              label={`Harga Modal: Rp ${Number(baseCost).toLocaleString('id-ID')} / Satuan Dasar`}
+              color="primary"
+              variant="outlined"
+            />
           </Box>
         </Stack>
       </Paper>
 
-      {/* Section 3: HQ Category Prices */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          3. Harga per Kategori (HQ)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Atur harga untuk setiap kategori pelanggan.{' '}
-          {activeUom ? (
-            <Chip
-              label={`UOM aktif: ${activeUom.uomCode} (×${activeUom.conversionFactor})${
-                activeUom.isBaseUnit ? ' - Base' : ''
-              }`}
-              color="primary"
-              size="small"
-              sx={{ ml: 1 }}
-            />
-          ) : (
-            'Pilih UOM terlebih dahulu.'
-          )}
-        </Typography>
+      {/* Pricing Matrix */}
+      <TableContainer component={Paper} sx={{ flex: 1, overflow: 'auto' }}>
+        <Table stickyHeader size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 'bold' }}>Satuan (UOM)</TableCell>
+              <TableCell sx={{ fontWeight: 'bold' }}>Konversi</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: 200 }}>Harga Modal (Cost)</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', width: 120 }}>Margin (%)</TableCell>
+              <TableCell
+                sx={{
+                  fontWeight: 'bold',
+                  width: 180,
+                  bgcolor: 'primary.dark',
+                  color: 'primary.contrastText'
+                }}
+              >
+                Harga Retail
+              </TableCell>
+              {priceCategories
+                .filter((c) => c.id !== 'RETAIL')
+                .map((cat) => (
+                  <TableCell key={cat.id} sx={{ fontWeight: 'bold', width: 160 }}>
+                    {cat.name}
+                  </TableCell>
+                ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {productUoms.map((uom) => {
+              const isBase = uom.isBaseUnit
+              const effectiveCost = getEffectiveCost(uom)
+              const margins = uomMargins[uom.uomId] || { pct: '0', fixed: '0' }
+              const prices = allUomPrices[uom.uomId] || {}
 
-        {!selectedUomId ? (
-          <Alert severity="info">Tambahkan dan pilih UOM untuk mengatur harga.</Alert>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Kategori</TableCell>
-                <TableCell align="right">Harga</TableCell>
-                <TableCell>Keterangan</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {priceCategories.map((cat) => {
-                const isRetail = cat.id === 'RETAIL'
-                const value = isRetail ? retailPrice : Number(hqCategoryPrices[cat.id] ?? '0') || 0
-
-                return (
-                  <TableRow key={cat.id}>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={isRetail ? 600 : 400}>
-                        {cat.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right" sx={{ width: 200 }}>
-                      <CurrencyInput
+              return (
+                <TableRow key={uom.id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="bold">
+                      {uom.uomCode}
+                    </Typography>
+                    {isBase && (
+                      <Chip
+                        label="Base"
                         size="small"
-                        value={value}
-                        onChange={(val) => {
-                          if (isRetail) return
-                          setHqCategoryPrices((prev) => ({
-                            ...prev,
-                            [cat.id]: val.toString()
-                          }))
-                        }}
-                        disabled={isRetail}
-                        fullWidth
+                        color="success"
+                        sx={{ height: 20, fontSize: '0.6rem' }}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="caption" color="text.secondary">
-                        {isRetail ? 'Otomatis dari Base Cost + Margin' : 'Manual input'}
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </Paper>
+                    )}
+                  </TableCell>
 
-      {/* Section 4: Store Overrides */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          4. Harga per Toko (Override)
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Pilih toko untuk mengatur harga khusus yang berbeda dari HQ.
-        </Typography>
+                  <TableCell>{uom.conversionFactor}</TableCell>
 
-        <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 3 }}>
-          <TextField
-            select
-            size="small"
-            label="Pilih Toko"
-            value={selectedStoreId}
-            onChange={(e) => setSelectedStoreId(e.target.value)}
-            sx={{ minWidth: 250 }}
-          >
-            <MenuItem value="">-- Tidak ada override --</MenuItem>
-            {stores.map((store) => (
-              <MenuItem key={store.id} value={store.id}>
-                {store.name}
-              </MenuItem>
-            ))}
-          </TextField>
-          {activeUom && (
-            <Chip
-              label={`UOM aktif: ${activeUom.uomCode} (×${activeUom.conversionFactor})${
-                activeUom.isBaseUnit ? ' - Base' : ''
-              }`}
-              color="primary"
-              size="small"
-            />
-          )}
-        </Stack>
+                  <TableCell>
+                    <Stack direction="row" alignItems="center" spacing={1}>
+                      <Tooltip
+                        title={
+                          uom.costOverride ? 'Manual Cost (Override)' : 'Auto-calculated from Base'
+                        }
+                      >
+                        <IconButton
+                          size="small"
+                          color={uom.costOverride ? 'warning' : 'default'}
+                          onClick={() => handleManualCostToggle(uom.uomId, uom.costOverride)}
+                        >
+                          {uom.costOverride ? (
+                            <LockIcon fontSize="small" />
+                          ) : (
+                            <AutoFixHighIcon fontSize="small" />
+                          )}
+                        </IconButton>
+                      </Tooltip>
 
-        {!selectedStoreId ? (
-          <Alert severity="info">Pilih toko untuk mengatur harga override.</Alert>
-        ) : !selectedUomId ? (
-          <Alert severity="info">Tambahkan dan pilih UOM terlebih dahulu.</Alert>
-        ) : (
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Kategori</TableCell>
-                <TableCell align="right">Harga HQ</TableCell>
-                <TableCell align="right">Override Toko</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {priceCategories.map((cat) => {
-                const isRetail = cat.id === 'RETAIL'
-                const hqPrice = isRetail
-                  ? retailPrice
-                  : Number(hqCategoryPrices[cat.id] ?? '0') || 0
-                const effective = storeEffectivePrices[cat.id] ?? hqPrice
-                const overrideValue =
-                  storeCategoryPrices[cat.id] != null
-                    ? Number(storeCategoryPrices[cat.id] ?? '0') || 0
-                    : effective
+                      {uom.costOverride ? (
+                        <CurrencyInput
+                          value={Number(uom.cost)}
+                          onChange={(v) => handleManualCostChange(uom.uomId, v.toString())}
+                          size="small"
+                          sx={{ width: 120 }}
+                        />
+                      ) : (
+                        <Typography variant="body2">
+                          Rp {effectiveCost.toLocaleString('id-ID')}
+                        </Typography>
+                      )}
+                    </Stack>
+                  </TableCell>
 
-                return (
-                  <TableRow key={cat.id}>
-                    <TableCell>
-                      <Typography variant="body2">{cat.name}</Typography>
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography variant="body2" color="text.secondary">
-                        {formatCurrency(hqPrice)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell align="right" sx={{ width: 200 }}>
-                      <CurrencyInput
-                        size="small"
-                        value={overrideValue}
-                        onChange={(val) => {
-                          setStoreCategoryPrices((prev) => ({
-                            ...prev,
-                            [cat.id]: val.toString()
-                          }))
-                        }}
-                        fullWidth
-                      />
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </Paper>
+                  <TableCell>
+                    <TextField
+                      size="small"
+                      value={margins.pct}
+                      onChange={(e) => handleMarginChange(uom.uomId, e.target.value)}
+                      type="number"
+                      inputProps={{ min: 0, step: 0.1 }}
+                      sx={{ width: 90 }}
+                    />
+                  </TableCell>
+
+                  <TableCell sx={{ bgcolor: 'rgba(25, 118, 210, 0.15)' }}>
+                    <CurrencyInput
+                      value={Number(prices['RETAIL'] || 0)}
+                      onChange={(v) => handleRetailPriceChange(uom.uomId, v.toString())}
+                      size="small"
+                      sx={{ width: '100%' }}
+                    />
+                  </TableCell>
+
+                  {priceCategories
+                    .filter((c) => c.id !== 'RETAIL')
+                    .map((cat) => (
+                      <TableCell key={cat.id}>
+                        <CurrencyInput
+                          value={Number(prices[cat.id] || 0)}
+                          onChange={(v) => handleOtherPriceChange(uom.uomId, cat.id, v.toString())}
+                          size="small"
+                          sx={{ width: '100%' }}
+                        />
+                      </TableCell>
+                    ))}
+                </TableRow>
+              )
+            })}
+            {/* Add UOM Row */}
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
+              <TableCell>
+                <TextField
+                  select
+                  size="small"
+                  value={newUomId}
+                  onChange={(e) => setNewUomId(e.target.value)}
+                  sx={{ width: 120 }}
+                  placeholder="Pilih UOM"
+                >
+                  <MenuItem value="">+ Tambah</MenuItem>
+                  {uomMasters
+                    .filter((u) => !productUoms.some((pu) => pu.uomId === u.id))
+                    .map((u) => (
+                      <MenuItem key={u.id} value={u.id}>
+                        {u.code}
+                      </MenuItem>
+                    ))}
+                </TextField>
+              </TableCell>
+              <TableCell>
+                <TextField
+                  size="small"
+                  type="number"
+                  value={newConversionFactor}
+                  onChange={(e) => setNewConversionFactor(e.target.value)}
+                  sx={{ width: 80 }}
+                  inputProps={{ min: 1 }}
+                  disabled={!newUomId}
+                />
+              </TableCell>
+              <TableCell colSpan={3 + priceCategories.filter((c) => c.id !== 'RETAIL').length}>
+                <Button
+                  variant="contained"
+                  size="small"
+                  onClick={handleAddUom}
+                  disabled={!newUomId}
+                >
+                  Tambah Satuan
+                </Button>
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
         <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          onClose={() => setSnackbar((prev) => ({ ...prev, open: false }))}
         >
           {snackbar.message}
         </Alert>

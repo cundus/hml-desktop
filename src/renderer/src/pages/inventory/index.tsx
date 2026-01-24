@@ -196,6 +196,20 @@ export default function InventoryPage(): React.ReactElement {
         </Alert>
       )}
 
+      {/* Highlights active store */}
+      {(branchStoreId || selectedStoreId) && (
+        <Box sx={{ mb: 3, pt: 1 }}>
+          <Typography variant="body2" color="text.secondary" gutterBottom>
+            Menampilkan stok untuk toko:
+          </Typography>
+          <Typography variant="h4" fontWeight="bold" color="primary">
+            {branchStoreId
+              ? 'Cabang Ini'
+              : stores.find((s) => s.id === selectedStoreId)?.name || 'Unknown'}
+          </Typography>
+        </Box>
+      )}
+
       {lowStockCount > 0 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Anda memiliki {lowStockCount} item dengan stok rendah. Pertimbangkan untuk segera mengisi

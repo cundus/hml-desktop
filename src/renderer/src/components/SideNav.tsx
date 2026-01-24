@@ -197,6 +197,12 @@ const menus: MenuItem[] = [
             permissions: ['master.product.manage']
           },
           {
+            key: 'product-management',
+            label: 'Manajemen Produk',
+            path: '/products',
+            permissions: ['master.product.manage', 'pricing.products', 'inventory.view']
+          },
+          {
             key: 'master-category',
             label: 'Kategori Produk',
             path: '/master-category',

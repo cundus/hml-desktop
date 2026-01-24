@@ -12,6 +12,9 @@ import {
   getUserName,
   setUserName as saveUserName,
   clearUserName,
+  getUserId,
+  setUserId as saveUserId,
+  clearUserId,
   getUserRole,
   setUserRole as saveUserRole,
   clearUserRole,
@@ -27,6 +30,7 @@ import { AuthContext, type AuthContextValue, type Credentials } from './authCont
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [token, setToken] = useState<string | null>(null)
   const [userName, setUserName] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<string | null>(null)
   const [storeId, setStoreId] = useState<string | null>(null)
   const [storeName, setStoreName] = useState<string | null>(null)
@@ -39,6 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     if (existing) setToken(existing)
     const existingUserName = getUserName()
     if (existingUserName) setUserName(existingUserName)
+    const existingUserId = getUserId()
+    if (existingUserId) setUserId(existingUserId)
     const existingUserRole = getUserRole()
     if (existingUserRole) setUserRole(existingUserRole)
     const existingStoreId = getStoreId()
@@ -61,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
       const t = res.data.token
       const uName = res.data.userName ?? ''
+      const uId = res.data.userId || res.data.id || null
       const uRole = res.data.userRole ?? ''
       const sId = res.data.storeId ?? null
       const sName = res.data.storeName ?? null
@@ -69,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
 
       saveToken(t)
       saveUserName(uName)
+      if (uId) saveUserId(uId)
       saveUserRole(uRole)
       if (sId) saveStoreId(sId)
       if (sName) saveStoreName(sName)
@@ -76,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       savePermissions(p)
       setToken(t)
       setUserName(uName)
+      setUserId(uId)
       setUserRole(uRole)
       setStoreId(sId)
       setStoreName(sName)
@@ -120,6 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     // Proceed with logout
     clearToken()
     clearUserName()
+    clearUserId()
     clearUserRole()
     clearStoreId()
     clearStoreName()
@@ -127,6 +137,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     clearPermissions()
     setToken(null)
     setUserName(null)
+    setUserId(null)
     setUserRole(null)
     setStoreId(null)
     setGroups([])
@@ -148,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
       storeName,
       token,
       userName,
+      userId,
       userRole,
       storeId,
       groups,
@@ -161,6 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }): React
     [
       token,
       userName,
+      userId,
       userRole,
       storeId,
       storeName,

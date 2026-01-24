@@ -116,19 +116,7 @@ export class PriceCategoryCloudService {
       updatedAt: now
     }
 
-    if (this.isOnline()) {
-      try {
-        const pool = getCloudDb().getPool()
-        await pool.query(
-          'INSERT INTO price_category (id, name, description, is_default, sort_order, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [id, data.name, pc.description, pc.isDefault, pc.sortOrder, now, now]
-        )
-        return pc
-      } catch (error) {
-        console.error('[PriceCategoryCloud] create error, queuing:', error)
-      }
-    }
-
+    // Always save to local first
     this.localDb.run(
       'INSERT INTO price_category (id, name, description, is_default, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
@@ -142,15 +130,41 @@ export class PriceCategoryCloudService {
       ]
     )
     saveDb(this.localDb)
-    await this.queueService.add('INSERT', 'price_category', {
-      id,
-      name: data.name,
-      description: pc.description,
-      is_default: pc.isDefault,
-      sort_order: pc.sortOrder,
-      created_at: now.toISOString(),
-      updated_at: now.toISOString()
-    })
+
+    // Also save to cloud if online
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        await pool.query(
+          'INSERT INTO price_category (id, name, description, is_default, sort_order, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [id, data.name, pc.description, pc.isDefault, pc.sortOrder, now, now]
+        )
+      } catch (error) {
+        console.error('[PriceCategoryCloud] create cloud error, queuing:', error)
+        // Queue for later sync if cloud insert failed
+        await this.queueService.add('INSERT', 'price_category', {
+          id,
+          name: data.name,
+          description: pc.description,
+          is_default: pc.isDefault,
+          sort_order: pc.sortOrder,
+          created_at: now.toISOString(),
+          updated_at: now.toISOString()
+        })
+      }
+    } else {
+      // Queue for later sync if offline
+      await this.queueService.add('INSERT', 'price_category', {
+        id,
+        name: data.name,
+        description: pc.description,
+        is_default: pc.isDefault,
+        sort_order: pc.sortOrder,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString()
+      })
+    }
+
     return pc
   }
 

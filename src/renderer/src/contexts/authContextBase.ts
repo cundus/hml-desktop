@@ -4,6 +4,7 @@ export type Credentials = { identifier: string; password: string }
 
 export type AuthContextValue = {
   token: string | null
+  userId: string | null
   userName: string | null
   userRole: string | null
   storeId: string | null

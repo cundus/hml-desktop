@@ -47,6 +47,7 @@ import ShiftHistoryPage from './pages/operations/shifts'
 import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
 import { CashFlowPage, ProfitLossPage } from './pages/finance'
 import SetupPage from './pages/Setup'
+import ProductManagementPage from './pages/products'
 
 const router = createHashRouter([
   { path: '/setup', element: <SetupPage /> },
@@ -146,6 +147,18 @@ const router = createHashRouter([
               { path: 'pricing/products', element: <WarehousePricingListPage /> },
               { path: 'pricing/products/:productId', element: <ProductPricingPage /> }
             ]
+          },
+          {
+            element: (
+              <RoleGuard
+                requiredPermissions={[
+                  'master.product.manage',
+                  'pricing.products',
+                  'inventory.view'
+                ]}
+              />
+            ),
+            children: [{ path: 'products', element: <ProductManagementPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['inventory.manage']} />,

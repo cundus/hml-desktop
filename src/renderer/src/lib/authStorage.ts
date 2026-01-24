@@ -1,4 +1,31 @@
 const TOKEN_KEY = 'auth_token'
+const USER_ID_KEY = 'auth_user_id'
+
+// ... existing code ...
+
+export function getUserId(): string | null {
+  try {
+    return localStorage.getItem(USER_ID_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setUserId(id: string): void {
+  try {
+    localStorage.setItem(USER_ID_KEY, id)
+  } catch {
+    return
+  }
+}
+
+export function clearUserId(): void {
+  try {
+    localStorage.removeItem(USER_ID_KEY)
+  } catch {
+    return
+  }
+}
 const GROUPS_KEY = 'auth_groups'
 const PERMISSIONS_KEY = 'auth_permissions'
 const USER_NAME_KEY = 'auth_user_name'

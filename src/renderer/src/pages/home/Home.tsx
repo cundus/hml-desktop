@@ -115,6 +115,12 @@ const quickNavItems: QuickNavItem[] = [
     label: 'Pengguna',
     description: 'Kelola pengguna & peran',
     path: '/master-user'
+  },
+  {
+    key: 'product-management',
+    label: 'Manajemen Produk',
+    description: 'Kelola produk, harga & stok',
+    path: '/products'
   }
 ]
 
@@ -246,9 +252,15 @@ function Home(): React.JSX.Element {
             Lihat performa hari ini dan hal yang perlu perhatian Anda.
           </Typography>
         </Box>
+
+        {/* Quick Navigation - Top Bar */}
+        <Box sx={{ mb: 3 }}>
+          <QuickNavigation items={quickNavItems} onNavigate={handleNavigate} />
+        </Box>
+
         <KpiSummary items={kpis} />
 
-        <Grid container spacing={2} sx={{ height: 'calc(100% - 120px)' }}>
+        <Grid container spacing={2} sx={{ height: 'calc(100% - 220px)' }}>
           <Grid
             size={{ xs: 12, md: 8 }}
             sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0 }}
@@ -266,7 +278,6 @@ function Home(): React.JSX.Element {
               pendingReturns={pendingReturns}
               unpaidInvoices={unpaidInvoices}
             />
-            <QuickNavigation items={quickNavItems} onNavigate={handleNavigate} />
           </Grid>
         </Grid>
       </Box>

@@ -4,8 +4,15 @@ import InventoryIcon from '@mui/icons-material/Inventory'
 import AssessmentIcon from '@mui/icons-material/Assessment'
 import LocalShippingIcon from '@mui/icons-material/LocalShipping'
 import PeopleIcon from '@mui/icons-material/People'
+import CategoryIcon from '@mui/icons-material/Category'
 
-export type QuickNavItemKey = 'pos' | 'inventory' | 'reports' | 'suppliers' | 'users'
+export type QuickNavItemKey =
+  | 'pos'
+  | 'inventory'
+  | 'reports'
+  | 'suppliers'
+  | 'users'
+  | 'product-management'
 
 export type QuickNavItem = {
   key: QuickNavItemKey
@@ -29,6 +36,8 @@ function getIcon(key: QuickNavItemKey): React.JSX.Element {
       return <AssessmentIcon />
     case 'suppliers':
       return <LocalShippingIcon />
+    case 'product-management':
+      return <CategoryIcon />
     case 'users':
     default:
       return <PeopleIcon />
@@ -55,7 +64,7 @@ export default function QuickNavigation({
       </Typography>
       <Grid container spacing={1}>
         {items.map((item) => (
-          <Grid key={item.key} size={{ xs: 12, md: 6 }}>
+          <Grid key={item.key} size={{ xs: 6, sm: 4, md: 2 }}>
             <Button
               variant="outlined"
               fullWidth

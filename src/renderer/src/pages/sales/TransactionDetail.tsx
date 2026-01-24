@@ -92,6 +92,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const [transaction, setTransaction] = useState<Transaction | null>(null)
   const [isEditing, setIsEditing] = useState(false)
 
@@ -250,6 +251,31 @@ export default function TransactionDetailPage(): React.JSX.Element {
 
   const handleCancelEdit = (): void => {
     setIsEditing(false)
+  }
+
+  const handleDelete = async (): Promise<void> => {
+    if (!transaction) return
+
+    const confirmed = window.confirm(
+      `Apakah Anda yakin ingin menghapus transaksi ${transaction.code}?\n\nStock produk akan dikembalikan.`
+    )
+    if (!confirmed) return
+
+    try {
+      setDeleting(true)
+      const res = await window.api.db.transactions.delete(transaction.id)
+      if (res.success) {
+        globalAlert.success('Transaksi berhasil dihapus')
+        navigate('/sales/reports')
+      } else {
+        globalAlert.error(res.error ?? 'Gagal menghapus transaksi')
+      }
+    } catch (error) {
+      console.error('Failed to delete transaction', error)
+      globalAlert.error('Gagal menghapus transaksi')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleSave = async (): Promise<void> => {
@@ -477,6 +503,15 @@ export default function TransactionDetailPage(): React.JSX.Element {
             </Button>
             <Button variant="contained" startIcon={<EditIcon />} onClick={handleStartEdit}>
               Edit <Kbd keys={['E']} size="small" />
+            </Button>
+            <Button
+              variant="outlined"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? 'Menghapus...' : 'Hapus'}
             </Button>
           </Stack>
         )}

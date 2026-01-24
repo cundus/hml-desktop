@@ -383,9 +383,34 @@ export class TransactionService {
   }
 
   /**
-   * Soft delete transaction
+   * Soft delete transaction (reverses inventory)
    */
   async softDelete(id: string): Promise<Transaction> {
+    // First fetch the transaction to get items and storeId
+    const existing = await this.findById(id)
+    if (!existing) {
+      throw new Error('Transaction not found')
+    }
+
+    // Reverse stock for all items
+    if (this.stockTransactionService && this.productLocationService && existing.items) {
+      for (const item of existing.items) {
+        await this.stockTransactionService.create({
+          productId: item.productId,
+          storeId: existing.storeId,
+          type: 'ADJUSTMENT',
+          quantity: item.quantity,
+          reference: `DELETED:${existing.code}`,
+          performedBy: existing.userId ?? undefined
+        })
+        await this.productLocationService.adjustQuantity(
+          item.productId,
+          existing.storeId,
+          item.quantity // add back to stock
+        )
+      }
+    }
+
     const now = Date.now()
 
     this.db.run('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?', [

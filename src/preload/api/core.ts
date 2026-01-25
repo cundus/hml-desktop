@@ -179,10 +179,7 @@ export const productApi = {
   ) => ipcRenderer.invoke('db:products:update', id, data) as Promise<ApiResponse<Product>>,
 
   delete: (id: string) =>
-    ipcRenderer.invoke('db:products:softDelete', id) as Promise<ApiResponse<Product>>,
-
-  restore: (id: string) =>
-    ipcRenderer.invoke('db:products:restore', id) as Promise<ApiResponse<Product>>,
+    ipcRenderer.invoke('db:products:delete', id) as Promise<ApiResponse<Product>>,
 
   toggleActive: (id: string) =>
     ipcRenderer.invoke('db:products:toggleActive', id) as Promise<ApiResponse<Product>>,
@@ -191,13 +188,11 @@ export const productApi = {
   exportExcel: () =>
     ipcRenderer.invoke('db:products:exportExcel') as Promise<ApiResponse<{ filePath: string }>>,
 
-  importExcel: () =>
-    ipcRenderer.invoke('db:products:importExcel') as Promise<
+  importBatch: (data: any[], storeId: string, performedBy: string) =>
+    ipcRenderer.invoke('db:products:importBatch', data, storeId, performedBy) as Promise<
       ApiResponse<{
-        totalRows: number
         successCount: number
-        skipCount: number
-        errorCount: number
+        failureCount: number
         errors?: string[]
       }>
     >,

@@ -21,7 +21,7 @@ import {
   UserRoleController,
   PricingController
 } from './controllers'
-import { registerInventoryHandlers } from './controllers/inventory.controller'
+import { InventoryController } from './controllers/inventory.controller'
 import { registerAppConfigHandlers } from './controllers/app-config.controller'
 import { registerShiftHandlers } from './controllers/shift.controller'
 import { ReceiptController } from './controllers/receipt.controller'
@@ -34,15 +34,9 @@ import {
   seedPriceCategories,
   backfillProductUomsAndStorePrices,
   seedPermissions,
-  resetAndReseedPermissions,
   seedPointSettings
 } from './seed'
-import {
-  PurchaseOrderService,
-  ReceiptService,
-  TransactionService,
-  PricingService
-} from './services'
+import { PurchaseOrderService, ReceiptService, TransactionService } from './services'
 import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
 import { PriceCategoryController } from './controllers/price-category.controller'
@@ -71,7 +65,9 @@ import { ExpenseCloudService } from './services/expense-cloud.service'
 import { ProductPriceCloudService } from './services/product-price-cloud.service'
 import { ProductLocationCloudService } from './services/product-location-cloud.service'
 import { StockTransactionCloudService } from './services/stock-transaction-cloud.service'
+import { PricingCloudService } from './services/pricing-cloud.service'
 import { PriceCategoryCloudService } from './services/price-category-cloud.service'
+import { StockAdjustmentCloudService } from './services/stock-adjustment-cloud.service'
 import { SalesPersonController } from './controllers/sales-person.controller'
 import { ProductCloudService } from './services/product-cloud.service'
 import { QueueController } from './controllers/queue.controller'
@@ -89,7 +85,7 @@ export async function bootstrap(): Promise<void> {
   const db = await getDb()
 
   // Seed static reference data
-  await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
+  // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
   await seedPermissions(db)
   await seedAdmin(db)
   await seedUoms(db)
@@ -127,8 +123,9 @@ export async function bootstrap(): Promise<void> {
   const productLocationService = new ProductLocationCloudService(db, queueService)
   const batchService = new BatchCloudService(db, queueService)
   const stockTransactionService = new StockTransactionCloudService(db, queueService)
-  const pricingService = new PricingService(db)
+  const pricingService = new PricingCloudService(db, queueService)
   const priceCategoryService = new PriceCategoryCloudService(db, queueService)
+  const stockAdjustmentService = new StockAdjustmentCloudService(db, queueService)
 
   // Initialize point service (cloud-first) - must be before transactionService
   const pointService = new PointCloudService(db, queueService)
@@ -216,7 +213,14 @@ export async function bootstrap(): Promise<void> {
   const customerCategoryController = new CustomerCategoryController(customerCategoryService)
   const customerController = new CustomerController(customerService)
   const userController = new UserController(userService)
-  const productController = new ProductController(productService, categoryService)
+  const productController = new ProductController(
+    productService,
+    categoryService,
+    pricingService,
+    priceCategoryService,
+    stockTransactionService,
+    productLocationService
+  )
   const productPriceController = new ProductPriceController(productPriceService)
   const productLocationController = new ProductLocationController(productLocationService)
   const batchController = new BatchController(batchService)
@@ -278,7 +282,15 @@ export async function bootstrap(): Promise<void> {
   const cloudController = new CloudController(queueProcessor)
   cloudController.registerHandlers()
 
-  registerInventoryHandlers()
+  const inventoryController = new InventoryController(
+    productLocationService,
+    stockTransactionService,
+    stockAdjustmentService,
+    productService,
+    storeService,
+    purchaseOrderService
+  )
+  inventoryController.registerHandlers()
 
   console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')
 }

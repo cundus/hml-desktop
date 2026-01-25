@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { PricingService } from '../services/pricing.service'
+import { PricingCloudService } from '../services/pricing-cloud.service'
 
 export class PricingController {
-  constructor(private pricingService: PricingService) {}
+  constructor(private pricingService: PricingCloudService) {}
 
   registerHandlers(): void {
     // Resolve single price

@@ -29,6 +29,7 @@ import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import ProductImportDialog from '../../products/components/ProductImportDialog'
 
 const productSchema = z.object({
   sku: z.string().min(1, 'SKU wajib diisi'),
@@ -84,6 +85,7 @@ export default function ProductPage(): React.JSX.Element {
   const [categories, setCategories] = useState<Category[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [uoms, setUoms] = useState<Uom[]>([])
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Excel import/export state
   const [excelMenuAnchor, setExcelMenuAnchor] = useState<null | HTMLElement>(null)
@@ -367,47 +369,7 @@ export default function ProductPage(): React.JSX.Element {
 
   const handleImport = async (): Promise<void> => {
     handleExcelMenuClose()
-    setExcelLoading(true)
-    try {
-      const response = await window.api.db.products.importExcel()
-      if (response.success) {
-        setSnackbar({
-          open: true,
-          message: response.message || 'Import berhasil',
-          severity: 'success'
-        })
-        // Reload products
-        const productsRes = await window.api.db.products.getAll()
-        if (productsRes.success) {
-          const categoryMap = new Map(categories.map((c) => [c.id, c.name]))
-          const products = (productsRes.data ?? []).map((p) => ({
-            id: p.id,
-            sku: p.sku,
-            name: p.name,
-            unit: p.unit,
-            cost: p.cost,
-            categoryId: p.categoryId,
-            isActive: p.isActive,
-            categoryName: p.categoryId ? (categoryMap.get(p.categoryId) ?? '') : ''
-          }))
-          setItems(products)
-        }
-      } else {
-        setSnackbar({
-          open: true,
-          message: response.error || 'Import gagal',
-          severity: 'error'
-        })
-      }
-    } catch {
-      setSnackbar({
-        open: true,
-        message: 'Import gagal',
-        severity: 'error'
-      })
-    } finally {
-      setExcelLoading(false)
-    }
+    setImportDialogOpen(true)
   }
 
   const handleDownloadTemplate = async (): Promise<void> => {
@@ -690,6 +652,13 @@ export default function ProductPage(): React.JSX.Element {
           {snackbar.message}
         </Alert>
       </Snackbar>
+      <ProductImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onSuccess={() => {
+          window.location.reload()
+        }}
+      />
     </>
   )
 }

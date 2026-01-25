@@ -8,6 +8,8 @@ import Stack from '@mui/material/Stack'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
 import CloseIcon from '@mui/icons-material/Close'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { globalAlert } from '../../../lib/globalAlert'
 import ProductInfoTab from './tabs/ProductInfoTab'
 import ProductPricingTab from './tabs/ProductPricingTab'
 import ProductStockTab from './tabs/ProductStockTab'
@@ -72,6 +74,30 @@ export default function ProductDetail({
     onProductUpdated()
   }
 
+  const handleDelete = async (): Promise<void> => {
+    const confirmed = await globalAlert.confirm(
+      'Apakah Anda yakin ingin menghapus produk ini secara permanen?'
+    )
+    if (!confirmed) return
+
+    try {
+      setLoading(true)
+      const res = await window.api.db.products.delete(productId)
+      if (res.success) {
+        globalAlert.success('Produk berhasil dihapus')
+        onProductUpdated() // Refresh list
+        onClose() // Close detail
+      } else {
+        globalAlert.error(res.error ?? 'Gagal menghapus produk')
+        setLoading(false)
+      }
+    } catch (error) {
+      console.error('Failed to delete product', error)
+      globalAlert.error('Gagal menghapus produk')
+      setLoading(false)
+    }
+  }
+
   // Ensure activeTab is valid
   const currentTab = availableTabs.find((t) => t.key === activeTab)
     ? activeTab
@@ -108,9 +134,14 @@ export default function ProductDetail({
             SKU: {product.sku}
           </Typography>
         </Box>
-        <IconButton onClick={onClose} size="small">
-          <CloseIcon />
-        </IconButton>
+        <Stack direction="row" spacing={1}>
+          <IconButton size="small" color="error" onClick={handleDelete} title="Hapus Produk">
+            <DeleteIcon />
+          </IconButton>
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
       </Stack>
 
       {/* Tabs */}

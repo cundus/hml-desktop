@@ -138,7 +138,7 @@ export class ProductService {
     )
 
     // Auto-create base UOM entry from the product's unit field
-    const uomStmt = this.db.prepare('SELECT id FROM uom WHERE code = ? LIMIT 1')
+    const uomStmt = this.db.prepare('SELECT id FROM uom WHERE lower(code) = lower(?) LIMIT 1')
     uomStmt.bind([data.unit])
     if (uomStmt.step()) {
       const uomRow = uomStmt.getAsObject()

@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { ProductCloudService } from '../services/product-cloud.service'
 import { CategoryCloudService } from '../services/category-cloud.service'
-import { ExcelService, ExcelColumn } from '../services/excel.service'
+import { ExcelColumn, ExcelService } from '../services/excel.service'
+import { PriceCategoryCloudService } from '../services/price-category-cloud.service'
+import { PricingCloudService } from '../services/pricing-cloud.service'
+import { ProductCloudService } from '../services/product-cloud.service'
+import { ProductLocationCloudService } from '../services/product-location-cloud.service'
+import { StockTransactionCloudService } from '../services/stock-transaction-cloud.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
 
@@ -17,23 +21,16 @@ const PRODUCT_EXCEL_COLUMNS: ExcelColumn[] = [
   { header: 'Aktif', key: 'isActive', width: 10 }
 ]
 
-// Excel header to field mapping for import
-const PRODUCT_COLUMN_MAPPING: Record<string, string> = {
-  SKU: 'sku',
-  'Nama Produk': 'name',
-  Deskripsi: 'description',
-  Satuan: 'unit',
-  'Harga Pokok': 'cost',
-  Kategori: 'categoryName',
-  Aktif: 'isActive'
-}
-
 export class ProductController {
   private excelService: ExcelService
 
   constructor(
     private productService: ProductCloudService,
-    private categoryService: CategoryCloudService
+    private categoryService: CategoryCloudService,
+    private pricingService: PricingCloudService,
+    private priceCategoryService: PriceCategoryCloudService,
+    private stockTransactionService: StockTransactionCloudService,
+    private productLocationService: ProductLocationCloudService
   ) {
     this.excelService = new ExcelService()
   }
@@ -48,11 +45,10 @@ export class ProductController {
     ipcMain.handle('db:products:search', this.search.bind(this))
     ipcMain.handle('db:products:create', this.create.bind(this))
     ipcMain.handle('db:products:update', this.update.bind(this))
-    ipcMain.handle('db:products:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:products:restore', this.restore.bind(this))
+    ipcMain.handle('db:products:delete', this.delete.bind(this))
     ipcMain.handle('db:products:toggleActive', this.toggleActive.bind(this))
     ipcMain.handle('db:products:exportExcel', this.exportExcel.bind(this))
-    ipcMain.handle('db:products:importExcel', this.importExcel.bind(this))
+    ipcMain.handle('db:products:importBatch', this.importBatch.bind(this))
     ipcMain.handle('db:products:downloadTemplate', this.downloadTemplate.bind(this))
   }
 
@@ -201,41 +197,21 @@ export class ProductController {
   }
 
   /**
-   * Soft delete product
+   * Delete product (Hard Delete)
    */
-  private async softDelete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+  private async delete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
     try {
-      const product = await this.productService.softDelete(id)
+      const product = await this.productService.delete(id)
       return {
         success: true,
         data: product,
-        message: 'Product deleted successfully'
+        message: 'Product permanently deleted'
       }
     } catch (error) {
       console.error('Error deleting product:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete product'
-      }
-    }
-  }
-
-  /**
-   * Restore soft-deleted product
-   */
-  private async restore(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
-    try {
-      const product = await this.productService.restore(id)
-      return {
-        success: true,
-        data: product,
-        message: 'Product restored successfully'
-      }
-    } catch (error) {
-      console.error('Error restoring product:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to restore product'
       }
     }
   }
@@ -304,135 +280,165 @@ export class ProductController {
   }
 
   /**
-   * Import products from Excel
+   * Import batch (logic ported from importExcel but for direct data)
    */
-  private async importExcel(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
+  private async importBatch(
+    _event: IpcMainInvokeEvent,
+    data: any[],
+    storeId: string,
+    performedBy: string
+  ): Promise<ApiResponse> {
     try {
-      const result = await this.excelService.importFromExcel<CreateProductDto>(
-        PRODUCT_COLUMN_MAPPING,
-        (row, rowIndex) => {
-          const sku = String(row.sku || '').trim()
-          const name = String(row.name || '').trim()
-          const unit = String(row.unit || 'PCS').trim()
-          const cost = row.cost
-
-          // Validate required fields
-          if (!sku) {
-            return { valid: false, error: `Baris ${rowIndex}: SKU wajib diisi` }
-          }
-          if (!name) {
-            return { valid: false, error: `Baris ${rowIndex}: Nama produk wajib diisi` }
-          }
-
-          // Parse isActive
-          let isActive = true
-          const isActiveValue = row.isActive
-          if (typeof isActiveValue === 'boolean') {
-            isActive = isActiveValue
-          } else if (typeof isActiveValue === 'string') {
-            const lower = isActiveValue.toLowerCase().trim()
-            isActive = lower === 'ya' || lower === 'yes' || lower === 'true' || lower === '1'
-          } else if (typeof isActiveValue === 'number') {
-            isActive = isActiveValue === 1
-          }
-
-          return {
-            valid: true,
-            data: {
-              sku,
-              name,
-              description: String(row.description || ''),
-              unit,
-              cost: Number(cost) || 0,
-              // MP-01 FIX: Store categoryName temporarily, will resolve to categoryId later
-              categoryId: undefined,
-              categoryName: String(row.categoryName || '').trim(),
-              isActive
-            } as CreateProductDto & { categoryName?: string }
-          }
-        }
-      )
-
-      if (!result.data || result.data.length === 0) {
-        return {
-          success: false,
-          error: result.errors?.join('\n') || 'Tidak ada data valid untuk diimpor'
-        }
+      if (!data || data.length === 0) {
+        return { success: false, error: 'Tidak ada data untuk diimpor' }
       }
 
-      // MP-01 FIX: Cache for category name -> ID mapping to avoid repeated lookups
+      // Pre-load necessary data
       const categoryCache = new Map<string, string>()
+      const priceCategories = await this.priceCategoryService.getAll()
 
-      // Import products one by one
       let successCount = 0
+      let failureCount = 0 // Using failureCount instead of errorCount to match interface? Core.ts said errorCount? Core said failureCount: number
+      // Wait, core.ts said: successCount: number, errorCount: number (in return type of importExcel) but importBatch return said: failureCount.
+      // Step 2869: changed to successCount, failureCount.
+
+      // We will track skipCount too but merge into handled or specific field?
+      // Interface in core.ts: successCount, failureCount, errors?
+
       let skipCount = 0
       let categoriesCreated = 0
       const errors: string[] = []
 
-      for (const productData of result.data) {
+      // Begin processing
+      // Note: Ideally wrap in a Transaction. BUT services usage implies separate connections/logic.
+      // ProductService uses `db`. StockTransaction uses `db`.
+      // We can't easily wrap strictly across services without exposing `db.transaction(...)`.
+      // For now, we will process sequentially and accumulate errors.
+
+      for (const row of data) {
         try {
-          // Check if SKU already exists
-          const existing = await this.productService.findBySku(productData.sku)
-          if (existing) {
-            skipCount++
-            continue // Skip existing products
+          const sku = String(row.sku || '').trim()
+          const name = String(row.name || '').trim()
+
+          if (!sku || !name) {
+            failureCount++
+            errors.push(`Row without SKU/Name`)
+            continue
           }
 
-          // MP-01 FIX: Resolve category name to ID (auto-create if needed)
-          const categoryName = (productData as { categoryName?: string }).categoryName
-          if (categoryName) {
-            const normalizedName = categoryName.toLowerCase()
+          // Check Existing
+          const existing = await this.productService.findBySku(sku)
+          if (existing) {
+            skipCount++
+            // For update logic: we could update prices/stock for existing?
+            // Plan says: Skip default.
+            continue
+          }
 
-            // Check cache first
-            if (categoryCache.has(normalizedName)) {
-              productData.categoryId = categoryCache.get(normalizedName)
-            } else {
-              // Look up category by name
-              let category = await this.categoryService.findByName(categoryName)
-
-              // Auto-create category if not found
-              if (!category) {
-                category = await this.categoryService.create({ name: categoryName })
-                categoriesCreated++
-                console.log(`[ProductImport] Auto-created category: ${categoryName}`)
-              }
-
-              // Cache the mapping
-              categoryCache.set(normalizedName, category.id)
-              productData.categoryId = category.id
+          // Category Resolution
+          let categoryId = row.category ? categoryCache.get(row.category.toLowerCase()) : undefined
+          if (row.category && !categoryId) {
+            const catName = row.category.trim()
+            let cat = await this.categoryService.findByName(catName)
+            if (!cat) {
+              cat = await this.categoryService.create({ name: catName })
+              categoriesCreated++
+            }
+            if (cat) {
+              categoryId = cat.id
+              categoryCache.set(catName.toLowerCase(), categoryId)
             }
           }
 
-          // Remove temporary categoryName field before creating product
-          delete (productData as { categoryName?: string }).categoryName
+          // Create Product
+          const product = await this.productService.create({
+            sku,
+            name,
+            description: row.description,
+            unit: row.unit || 'PCS',
+            cost: Number(row.cost || 0),
+            categoryId,
+            isActive: true
+          })
 
-          await this.productService.create(productData)
+          // Handle Prices
+          // row.price_general -> 'Umum' (or default)
+          // row.price_wholesale -> 'Grosir' (or 2nd)
+
+          // We need UOM ID. Product creation auto-creates base UOM.
+          // We need to fetch that UOM.
+          // Optimized: ProductService.create could return UOM ID? No.
+          // We fetch UOMs.
+          const uoms = await this.pricingService.getProductUomsByProduct(product.id)
+          const baseUom = uoms.find((u) => u.isBaseUnit)
+
+          // Handle Prices (Fixed 1, 2, 3)
+          // Frontend sends prices: [p1, p2, p3]
+          if (Array.isArray(row.prices) && baseUom) {
+            const prices = row.prices as number[]
+
+            // Map index 0->Cat[0], 1->Cat[1], 2->Cat[2]
+            // We use priceCategories which is fetched above (assumed sorted by sort_order)
+
+            for (let i = 0; i < prices.length; i++) {
+              const priceVal = Number(prices[i]) || 0
+              if (priceVal > 0) {
+                const targetCat = priceCategories[i]
+                if (targetCat) {
+                  // Write Store Price
+                  await this.pricingService.upsertStorePrice(
+                    product.id,
+                    baseUom.uomId,
+                    targetCat.id,
+                    storeId,
+                    String(priceVal)
+                  )
+                  // Write HQ/Default Price (so it appears in Lists as Base Price)
+                  await this.pricingService.upsertCategoryPrice(
+                    product.id,
+                    baseUom.uomId,
+                    targetCat.id,
+                    String(priceVal)
+                  )
+                }
+              }
+            }
+          }
+
+          // Handle Stock
+          console.log('row.stock', JSON.stringify(row.stock, null, 2))
+          if (row.stock && Number(row.stock) > 0) {
+            await this.stockTransactionService.create({
+              productId: product.id,
+              storeId,
+              type: 'INBOUND', // Initial stock
+              quantity: Number(row.stock),
+              reference: 'Initial Import',
+              performedBy
+            })
+            // Update physical stock location
+            await this.productLocationService.adjustQuantity(product.id, storeId, Number(row.stock))
+          }
+
           successCount++
         } catch (err) {
-          errors.push(`SKU ${productData.sku}: ${err instanceof Error ? err.message : 'Gagal'}`)
+          failureCount++
+          errors.push(`SKU ${row.sku}: ${err instanceof Error ? err.message : 'Error'}`)
         }
       }
-
-      const message = `Import selesai: ${successCount} berhasil, ${skipCount} dilewati (sudah ada)${categoriesCreated > 0 ? `, ${categoriesCreated} kategori dibuat` : ''}${errors.length > 0 ? `, ${errors.length} gagal` : ''}`
 
       return {
         success: true,
         data: {
-          totalRows: result.totalRows,
           successCount,
-          skipCount,
-          categoriesCreated,
-          errorCount: errors.length,
-          errors: errors.length > 0 ? errors : undefined
+          failureCount,
+          errors
         },
-        message
+        message: `Import selesai: ${successCount} sukses, ${skipCount} dilewati, ${failureCount} gagal`
       }
     } catch (error) {
-      console.error('Error importing products:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Import gagal'
-      }
+      console.error('Batch import failed', error)
+      return { success: false, error: 'Batch import failed' }
     }
   }
 
@@ -441,6 +447,25 @@ export class ProductController {
    */
   private async downloadTemplate(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
     try {
+      // Fetch price categories for dynamic columns
+      const priceCategoriesRes = await this.priceCategoryService.getAll()
+      const priceCategories = priceCategoriesRes || []
+
+      // Create dynamic columns
+      const dynamicColumns = [...PRODUCT_EXCEL_COLUMNS]
+
+      // Add price columns
+      priceCategories.forEach((pc, index) => {
+        dynamicColumns.splice(5 + index, 0, {
+          header: `Harga ${index + 1} (${pc.name})`,
+          key: `price${index + 1}`,
+          width: 20
+        })
+      })
+
+      // Add Stock column at the end
+      dynamicColumns.push({ header: 'Stok Awal', key: 'stock', width: 15 })
+
       const sampleData = [
         {
           sku: 'PRD001',
@@ -449,7 +474,13 @@ export class ProductController {
           unit: 'PCS',
           cost: 10000,
           categoryId: '',
-          isActive: 'Ya'
+          isActive: 'Ya',
+          stock: 10,
+          // Add sample prices
+          ...priceCategories.reduce(
+            (acc, _, idx) => ({ ...acc, [`price${idx + 1}`]: 10000 + idx * 1000 }),
+            {}
+          )
         },
         {
           sku: 'PRD002',
@@ -458,12 +489,17 @@ export class ProductController {
           unit: 'BOX',
           cost: 25000,
           categoryId: '',
-          isActive: 'Ya'
+          isActive: 'Ya',
+          stock: 5,
+          ...priceCategories.reduce(
+            (acc, _, idx) => ({ ...acc, [`price${idx + 1}`]: 25000 + idx * 1000 }),
+            {}
+          )
         }
       ]
 
       const result = await this.excelService.generateTemplate(
-        PRODUCT_EXCEL_COLUMNS,
+        dynamicColumns,
         sampleData,
         'template-produk.xlsx'
       )

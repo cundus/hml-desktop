@@ -20,6 +20,8 @@ import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import InventoryIcon from '@mui/icons-material/Inventory'
+import UploadIcon from '@mui/icons-material/CloudUpload'
+import ProductImportDialog from './ProductImportDialog'
 
 interface Product {
   id: string
@@ -56,6 +58,7 @@ export default function ProductList({
   const [categoryFilter, setCategoryFilter] = useState('')
   const [page, setPage] = useState(1)
   const [categories, setCategories] = useState<Category[]>([])
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
 
   // Load categories
   useEffect(() => {
@@ -108,6 +111,10 @@ export default function ProductList({
 
   const handleAddProduct = (): void => {
     navigate('/master-product')
+  }
+
+  const handleImportSuccess = (): void => {
+    onRefresh()
   }
 
   return (
@@ -168,6 +175,15 @@ export default function ProductList({
           sx={{ mr: 1 }}
         >
           Inventori
+        </Button>
+        <Button
+          variant="outlined"
+          size="small"
+          startIcon={<UploadIcon />}
+          onClick={() => setImportDialogOpen(true)}
+          sx={{ mr: 1 }}
+        >
+          Import
         </Button>
         <Button variant="contained" size="small" startIcon={<AddIcon />} onClick={handleAddProduct}>
           Tambah Produk
@@ -248,6 +264,12 @@ export default function ProductList({
           />
         </Box>
       )}
+
+      <ProductImportDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
     </Box>
   )
 }

@@ -1,31 +1,46 @@
-import { ipcMain } from 'electron'
-import { ProductLocationService } from '../services/product-location.service'
-import { StockTransactionService } from '../services/stock-transaction.service'
-import { StockAdjustmentService, StockAdjustment } from '../services/stock-adjustment.service'
-import { ProductService } from '../services/product.service'
-import { StoreService } from '../services/store.service'
+import { ipcMain, IpcMainInvokeEvent } from 'electron'
+import { ProductLocationCloudService } from '../services/product-location-cloud.service'
+import { StockTransactionCloudService } from '../services/stock-transaction-cloud.service'
+import {
+  StockAdjustmentCloudService,
+  StockAdjustment
+} from '../services/stock-adjustment-cloud.service'
+import { ProductCloudService } from '../services/product-cloud.service'
+import { StoreCloudService } from '../services/store-cloud.service'
 import { PurchaseOrderService } from '../services/purchase-order.service'
-import { getLocalDb } from '../localDb'
+import { ApiResponse } from '../types/response'
 
-export function registerInventoryHandlers(): void {
-  const db = getLocalDb()
-  const productLocationService = new ProductLocationService(db)
-  const stockTransactionService = new StockTransactionService(db)
-  const stockAdjustmentService = new StockAdjustmentService(db)
-  const productService = new ProductService(db)
-  const storeService = new StoreService(db)
-  const purchaseOrderService = new PurchaseOrderService(db)
+export class InventoryController {
+  constructor(
+    private productLocationService: ProductLocationCloudService,
+    private stockTransactionService: StockTransactionCloudService,
+    private stockAdjustmentService: StockAdjustmentCloudService,
+    private productService: ProductCloudService,
+    private storeService: StoreCloudService,
+    private purchaseOrderService: PurchaseOrderService
+  ) {}
 
-  // Get stock overview
-  ipcMain.handle('inventory:stock-overview', async (_, storeId?: string) => {
+  registerHandlers(): void {
+    ipcMain.handle('inventory:stock-overview', this.getStockOverview.bind(this))
+    ipcMain.handle('inventory:stock-transactions', this.getStockTransactions.bind(this))
+    ipcMain.handle('inventory:stock-adjustments', this.getStockAdjustments.bind(this))
+    ipcMain.handle('inventory:create-adjustment', this.createAdjustment.bind(this))
+    ipcMain.handle('inventory:low-stock', this.getLowStock.bind(this))
+    ipcMain.handle('inventory:bulk-create-adjustments', this.bulkCreateAdjustments.bind(this))
+  }
+
+  private async getStockOverview(
+    _event: IpcMainInvokeEvent,
+    storeId?: string
+  ): Promise<ApiResponse> {
     try {
-      const stores = storeId ? [storeId] : (await storeService.findAll()).map((s) => s.id)
+      const stores = storeId ? [storeId] : (await this.storeService.findAll()).map((s) => s.id)
 
       const stockOverview: unknown[] = []
 
       for (const store of stores) {
-        const locations = await productLocationService.findByStoreId(store)
-        const orderedPOs = await purchaseOrderService.findByStoreId(store)
+        const locations = await this.productLocationService.findByStoreId(store)
+        const orderedPOs = await this.purchaseOrderService.findByStoreId(store)
         const orderedQuantityMap = new Map<string, number>()
 
         for (const po of orderedPOs) {
@@ -38,7 +53,7 @@ export function registerInventoryHandlers(): void {
         }
 
         for (const location of locations) {
-          const product = await productService.findById(location.productId)
+          const product = await this.productService.findById(location.productId)
           if (product) {
             stockOverview.push({
               id: location.id,
@@ -51,7 +66,7 @@ export function registerInventoryHandlers(): void {
               reservedQuantity: location.reservedQuantity,
               availableQuantity: location.quantity - location.reservedQuantity,
               orderedQuantity: orderedQuantityMap.get(product.id) || 0,
-              lowStockThreshold: 10, // TODO: Make this configurable per product
+              lowStockThreshold: 10, // TODO: Make this configurable
               isLowStock: location.quantity - location.reservedQuantity < 10
             })
           }
@@ -63,19 +78,16 @@ export function registerInventoryHandlers(): void {
       console.error('Error fetching stock overview:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
-  })
+  }
 
-  // Get stock transactions
-  ipcMain.handle('inventory:stock-transactions', async () => {
+  private async getStockTransactions(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
     try {
-      const transactions = await stockTransactionService.findAll()
-
-      // Enrich with product and store names
+      const transactions = await this.stockTransactionService.findAll()
       const enrichedTransactions: unknown[] = []
 
       for (const transaction of transactions) {
-        const product = await productService.findById(transaction.productId)
-        const store = await storeService.findById(transaction.storeId)
+        const product = await this.productService.findById(transaction.productId)
+        const store = await this.storeService.findById(transaction.storeId)
 
         enrichedTransactions.push({
           ...transaction,
@@ -89,96 +101,93 @@ export function registerInventoryHandlers(): void {
       console.error('Error fetching stock transactions:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
-  })
+  }
 
-  // Get stock adjustments
-  ipcMain.handle(
-    'inventory:stock-adjustments',
-    async (_, filters?: { productId?: string; storeId?: string }) => {
-      try {
-        const adjustments = await stockAdjustmentService.findAll()
-
-        // Filter if needed
-        let filteredAdjustments = adjustments
-        if (filters?.productId) {
-          filteredAdjustments = filteredAdjustments.filter((a) => a.productId === filters.productId)
-        }
-        if (filters?.storeId) {
-          filteredAdjustments = filteredAdjustments.filter((a) => a.storeId === filters.storeId)
-        }
-
-        // Enrich with product and store names
-        const enrichedAdjustments: unknown[] = []
-
-        for (const adjustment of filteredAdjustments) {
-          const product = await productService.findById(adjustment.productId)
-          const store = await storeService.findById(adjustment.storeId)
-
-          enrichedAdjustments.push({
-            ...adjustment,
-            productName: product?.name || 'Unknown',
-            storeName: store?.name || 'Unknown'
-          })
-        }
-
-        return { success: true, data: enrichedAdjustments }
-      } catch (error) {
-        console.error('Error fetching stock adjustments:', error)
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
-      }
-    }
-  )
-
-  // Create stock adjustment
-  ipcMain.handle(
-    'inventory:create-adjustment',
-    async (
-      _,
-      data: {
-        productId: string
-        storeId: string
-        difference: number
-        note?: string
-        performedBy: string
-      }
-    ) => {
-      try {
-        // Create the adjustment record
-        const adjustment = await stockAdjustmentService.create(data)
-
-        // Update the product location
-        await productLocationService.adjustQuantity(data.productId, data.storeId, data.difference)
-
-        // Create stock transaction
-        await stockTransactionService.create({
-          productId: data.productId,
-          storeId: data.storeId,
-          type: 'ADJUSTMENT',
-          quantity: data.difference,
-          reference: `ADJ-${adjustment.id}`,
-          performedBy: data.performedBy
-        })
-
-        return { success: true, data: adjustment }
-      } catch (error) {
-        console.error('Error creating stock adjustment:', error)
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
-      }
-    }
-  )
-
-  // Get low stock items
-  ipcMain.handle('inventory:low-stock', async (_, storeId?: string, threshold: number = 10) => {
+  private async getStockAdjustments(
+    _event: IpcMainInvokeEvent,
+    filters?: { productId?: string; storeId?: string }
+  ): Promise<ApiResponse> {
     try {
-      const stores = storeId ? [storeId] : (await storeService.findAll()).map((s) => s.id)
+      let adjustments = await this.stockAdjustmentService.findAll()
 
+      if (filters?.productId) {
+        adjustments = adjustments.filter((a) => a.productId === filters.productId)
+      }
+      if (filters?.storeId) {
+        adjustments = adjustments.filter((a) => a.storeId === filters.storeId)
+      }
+
+      const enrichedAdjustments: unknown[] = []
+
+      for (const adjustment of adjustments) {
+        const product = await this.productService.findById(adjustment.productId)
+        const store = await this.storeService.findById(adjustment.storeId)
+
+        enrichedAdjustments.push({
+          ...adjustment,
+          productName: product?.name || 'Unknown',
+          storeName: store?.name || 'Unknown'
+        })
+      }
+
+      return { success: true, data: enrichedAdjustments }
+    } catch (error) {
+      console.error('Error fetching stock adjustments:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async createAdjustment(
+    _event: IpcMainInvokeEvent,
+    data: {
+      productId: string
+      storeId: string
+      difference: number
+      note?: string
+      performedBy: string
+    }
+  ): Promise<ApiResponse> {
+    try {
+      const adjustment = await this.stockAdjustmentService.create(data)
+
+      // Update product location
+      await this.productLocationService.adjustQuantity(
+        data.productId,
+        data.storeId,
+        data.difference
+      )
+
+      // Create stock transaction
+      await this.stockTransactionService.create({
+        productId: data.productId,
+        storeId: data.storeId,
+        type: 'ADJUSTMENT',
+        quantity: data.difference,
+        reference: `ADJ-${adjustment.id}`,
+        performedBy: data.performedBy
+      })
+
+      return { success: true, data: adjustment }
+    } catch (error) {
+      console.error('Error creating stock adjustment:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async getLowStock(
+    _event: IpcMainInvokeEvent,
+    storeId?: string,
+    threshold: number = 10
+  ): Promise<ApiResponse> {
+    try {
+      const stores = storeId ? [storeId] : (await this.storeService.findAll()).map((s) => s.id)
       const lowStockItems: unknown[] = []
 
       for (const store of stores) {
-        const locations = await productLocationService.findByStoreId(store)
+        const locations = await this.productLocationService.findByStoreId(store)
 
         for (const location of locations) {
-          const product = await productService.findById(location.productId)
+          const product = await this.productService.findById(location.productId)
           if (product) {
             const availableQuantity = location.quantity - location.reservedQuantity
             if (availableQuantity < threshold) {
@@ -205,49 +214,42 @@ export function registerInventoryHandlers(): void {
       console.error('Error fetching low stock items:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
-  })
+  }
 
-  // Bulk create stock adjustments
-  ipcMain.handle(
-    'inventory:bulk-create-adjustments',
-    async (
-      _,
-      adjustments: Array<{
-        productId: string
-        storeId: string
-        difference: number
-        note?: string
-        performedBy: string
-      }>
-    ) => {
-      try {
-        const results: StockAdjustment[] = []
+  private async bulkCreateAdjustments(
+    _event: IpcMainInvokeEvent,
+    adjustments: Array<{
+      productId: string
+      storeId: string
+      difference: number
+      note?: string
+      performedBy: string
+    }>
+  ): Promise<ApiResponse> {
+    try {
+      const results: StockAdjustment[] = []
 
-        for (const adj of adjustments) {
-          // Create the adjustment record
-          const adjustment = await stockAdjustmentService.create(adj)
+      for (const adj of adjustments) {
+        const adjustment = await this.stockAdjustmentService.create(adj)
 
-          // Update the product location
-          await productLocationService.adjustQuantity(adj.productId, adj.storeId, adj.difference)
+        await this.productLocationService.adjustQuantity(adj.productId, adj.storeId, adj.difference)
 
-          // Create stock transaction
-          await stockTransactionService.create({
-            productId: adj.productId,
-            storeId: adj.storeId,
-            type: 'ADJUSTMENT',
-            quantity: adj.difference,
-            reference: `BULK-ADJ-${Date.now()}`,
-            performedBy: adj.performedBy
-          })
+        await this.stockTransactionService.create({
+          productId: adj.productId,
+          storeId: adj.storeId,
+          type: 'ADJUSTMENT',
+          quantity: adj.difference,
+          reference: `BULK-ADJ-${Date.now()}`,
+          performedBy: adj.performedBy
+        })
 
-          results.push(adjustment)
-        }
-
-        return { success: true, data: results }
-      } catch (error) {
-        console.error('Error creating bulk stock adjustments:', error)
-        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+        results.push(adjustment)
       }
+
+      return { success: true, data: results }
+    } catch (error) {
+      console.error('Error creating bulk stock adjustments:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
-  )
+  }
 }

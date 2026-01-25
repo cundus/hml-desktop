@@ -192,9 +192,10 @@ export class ProductCloudService {
           ]
         )
         // Auto-create base UOM in cloud
-        const uomResult = await pool.query('SELECT id FROM uom WHERE code = $1 LIMIT 1', [
-          data.unit
-        ])
+        const uomResult = await pool.query(
+          'SELECT id FROM uom WHERE lower(code) = lower($1) LIMIT 1',
+          [data.unit]
+        )
         if (uomResult.rows.length > 0) {
           const uomId = uomResult.rows[0].id as string
           const productUomId = randomUUID()
@@ -203,6 +204,52 @@ export class ProductCloudService {
             [productUomId, id, uomId, 1, true, now, now]
           )
         }
+
+        // SYNC TO LOCAL DB IMMEDIATELY (Required for PricingService to find FK)
+        try {
+          this.localDb.run(
+            'INSERT INTO product (id, sku, name, description, unit, cost, weight, category_id, supplier_id, is_service, is_active, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              id,
+              data.sku,
+              data.name,
+              product.description,
+              data.unit,
+              data.cost,
+              data.weight ?? 0,
+              product.categoryId,
+              product.supplierId,
+              product.isService ? 1 : 0,
+              product.isActive ? 1 : 0,
+              now.getTime(),
+              now.getTime(),
+              now.getTime() // Mark as synced
+            ]
+          )
+          // Auto-create base UOM locally
+          const uomStmt = this.localDb.prepare(
+            'SELECT id FROM uom WHERE lower(code) = lower(?) LIMIT 1'
+          )
+          uomStmt.bind([data.unit])
+          if (uomStmt.step()) {
+            const uomId = uomStmt.getAsObject().id as string
+            // const productUomId = randomUUID() // Use new ID or same? Cloud used randomUUID(). Ideally consistent but Local FKs don't care about UOM ID, only Product ID?
+            // Actually PricingService uses uom_id (from master uom). product_uom id is less critical unless synced?
+            // Let's generate new ID or share? If we don't save productUomId from Cloud, we can't match?
+            // Code: const productUomId = randomUUID().
+            // We should ideally return full structure.
+            // But for now, separate ID is fine as long as logic holds.
+            this.localDb.run(
+              'INSERT INTO product_uom (id, product_id, uom_id, conversion_factor, is_base_unit, created_at, updated_at, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              [randomUUID(), id, uomId, 1, 1, now.getTime(), now.getTime(), now.getTime()]
+            )
+          }
+          uomStmt.free()
+          saveDb(this.localDb)
+        } catch (localErr) {
+          console.error('[ProductCloud] Failed to sync local after cloud create:', localErr)
+        }
+
         return product
       } catch (error) {
         console.error('[ProductCloud] create error, queuing:', error)
@@ -228,7 +275,7 @@ export class ProductCloudService {
       ]
     )
     // Auto-create base UOM locally
-    const uomStmt = this.localDb.prepare('SELECT id FROM uom WHERE code = ? LIMIT 1')
+    const uomStmt = this.localDb.prepare('SELECT id FROM uom WHERE lower(code) = lower(?) LIMIT 1')
     uomStmt.bind([data.unit])
     if (uomStmt.step()) {
       const uomId = uomStmt.getAsObject().id as string
@@ -336,57 +383,55 @@ export class ProductCloudService {
     return updated
   }
 
-  async softDelete(id: string): Promise<Product> {
+  async delete(id: string): Promise<Product> {
     const existing = await this.findById(id)
     if (!existing) throw new Error('Product not found')
-    const now = new Date()
-    const deleted: Product = { ...existing, deletedAt: now, updatedAt: now }
 
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE product SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
-          now,
-          now,
-          id
-        ])
-        return deleted
+        // Cascade delete in Cloud
+        // 1. Transactions
+        await pool.query('DELETE FROM stock_transaction WHERE product_id = $1', [id])
+        // 2. Prices
+        await pool.query('DELETE FROM store_product_uom_price WHERE product_id = $1', [id])
+        await pool.query('DELETE FROM product_uom_category_price WHERE product_id = $1', [id])
+        // 3. UOMs
+        await pool.query('DELETE FROM product_uom WHERE product_id = $1', [id])
+        // 4. Product
+        await pool.query('DELETE FROM product WHERE id = $1', [id])
+
+        // Also delete from Local to keep sync
+        this.deleteLocal(id)
+
+        return existing
       } catch (error) {
         console.error('[ProductCloud] delete error, queuing:', error)
       }
     }
 
-    this.localDb.run('UPDATE product SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      now.getTime(),
-      id
-    ])
-    saveDb(this.localDb)
+    // Local Delete
+    this.deleteLocal(id)
     await this.queueService.add('DELETE', 'product', { id })
-    return deleted
+    return existing
   }
 
-  async restore(id: string): Promise<Product> {
-    const now = new Date()
-    if (this.isOnline()) {
-      try {
-        const pool = getCloudDb().getPool()
-        await pool.query('UPDATE product SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
-          now,
-          id
-        ])
-      } catch (error) {
-        console.error('[ProductCloud] restore error:', error)
-      }
-    }
-    this.localDb.run('UPDATE product SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      id
-    ])
+  private deleteLocal(id: string): void {
+    // 1. Transactions
+    this.localDb.run('DELETE FROM stock_transaction WHERE product_id = ?', [id])
+    // 2. Prices
+    this.localDb.run('DELETE FROM store_product_uom_price WHERE product_id = ?', [id])
+    this.localDb.run('DELETE FROM product_uom_category_price WHERE product_id = ?', [id])
+    // 3. UOMs
+    this.localDb.run('DELETE FROM product_uom WHERE product_id = ?', [id])
+    // 4. Product
+    this.localDb.run('DELETE FROM product WHERE id = ?', [id])
     saveDb(this.localDb)
-    const restored = await this.findById(id)
-    if (!restored) throw new Error('Product not found after restore')
-    return restored
+  }
+
+  // Restore removed (Hardware Delete)
+  async restore(_id: string): Promise<Product> {
+    throw new Error('Restore not supported for hard deleted products')
   }
 
   async toggleActive(id: string): Promise<Product> {

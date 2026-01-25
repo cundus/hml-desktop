@@ -212,72 +212,40 @@ export class CategoryCloudService {
   /**
    * Soft delete category
    */
-  async softDelete(id: string): Promise<Category> {
+  async delete(id: string): Promise<Category> {
     const existing = await this.findById(id)
-    if (!existing) {
-      throw new Error('Category not found')
-    }
-
-    const now = new Date()
-    const deleted: Category = {
-      ...existing,
-      deletedAt: now,
-      updatedAt: now
-    }
+    if (!existing) throw new Error('Category not found')
 
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        await pool.query('UPDATE category SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
-          now,
-          now,
-          id
-        ])
-        console.log('[CategoryCloud] Deleted in cloud:', id)
-        return deleted
+        await pool.query('DELETE FROM category WHERE id = $1', [id])
+
+        this.deleteLocal(id)
+
+        return existing
       } catch (error) {
         console.error('[CategoryCloud] delete cloud error, queuing:', error)
       }
     }
 
     // Offline or error: delete local + queue
-    this.deleteLocal(id, now)
+    this.deleteLocal(id)
     await this.queueService.add('DELETE', this.tableName, { id })
-    console.log('[CategoryCloud] Delete queued:', id)
 
-    return deleted
+    return existing
+  }
+
+  private deleteLocal(id: string): void {
+    this.localDb.run('DELETE FROM category WHERE id = ?', [id])
+    saveDb(this.localDb)
   }
 
   /**
    * Restore soft-deleted category
    */
-  async restore(id: string): Promise<Category> {
-    const now = new Date()
-
-    if (this.isOnline()) {
-      try {
-        const pool = getCloudDb().getPool()
-        await pool.query('UPDATE category SET deleted_at = NULL, updated_at = $1 WHERE id = $2', [
-          now,
-          id
-        ])
-      } catch (error) {
-        console.error('[CategoryCloud] restore cloud error:', error)
-      }
-    }
-
-    // Update local
-    this.localDb.run('UPDATE category SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      id
-    ])
-    saveDb(this.localDb)
-
-    const restored = await this.findById(id)
-    if (!restored) {
-      throw new Error('Category not found after restore')
-    }
-    return restored
+  async restore(_id: string): Promise<Category> {
+    throw new Error('Restore not supported for hard deleted categories')
   }
 
   // ==================== LOCAL DB HELPERS ====================
@@ -295,15 +263,6 @@ export class CategoryCloudService {
       cat.name,
       cat.updatedAt.getTime(),
       cat.id
-    ])
-    saveDb(this.localDb)
-  }
-
-  private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE category SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      now.getTime(),
-      id
     ])
     saveDb(this.localDb)
   }

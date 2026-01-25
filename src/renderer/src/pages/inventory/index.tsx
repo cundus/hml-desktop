@@ -79,19 +79,27 @@ export default function InventoryPage(): React.ReactElement {
     setError(null)
 
     try {
+      let currentStoreId = branchStoreId || selectedStoreId
+
       // Load stores if admin (no branch store)
       if (!branchStoreId) {
         const storesRes = await window.api.db.stores.getAll()
         if (storesRes.success && storesRes.data) {
           setStores(storesRes.data)
-          if (!selectedStoreId && storesRes.data.length > 0) {
-            setSelectedStoreId(storesRes.data[0].id)
+          if (!currentStoreId && storesRes.data.length > 0) {
+            currentStoreId = storesRes.data[0].id
+            setSelectedStoreId(currentStoreId)
           }
         }
       }
 
       // Use branch store if set, otherwise use selected store
-      const storeId = branchStoreId || selectedStoreId
+      const storeId = currentStoreId
+
+      if (!storeId) {
+        setLoading(false)
+        return
+      }
 
       // Load stock overview
       const overviewResult = await window.api.db.inventory.getStockOverview(storeId)

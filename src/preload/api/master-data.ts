@@ -50,10 +50,7 @@ export const categoryApi = {
     ipcRenderer.invoke('db:categories:update', id, data) as Promise<ApiResponse<Category>>,
 
   delete: (id: string) =>
-    ipcRenderer.invoke('db:categories:softDelete', id) as Promise<ApiResponse<Category>>,
-
-  restore: (id: string) =>
-    ipcRenderer.invoke('db:categories:restore', id) as Promise<ApiResponse<Category>>
+    ipcRenderer.invoke('db:categories:delete', id) as Promise<ApiResponse<Category>>
 }
 
 // Supplier API

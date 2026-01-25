@@ -15,8 +15,7 @@ export class CategoryController {
     ipcMain.handle('db:categories:getById', this.getById.bind(this))
     ipcMain.handle('db:categories:create', this.create.bind(this))
     ipcMain.handle('db:categories:update', this.update.bind(this))
-    ipcMain.handle('db:categories:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:categories:restore', this.restore.bind(this))
+    ipcMain.handle('db:categories:delete', this.delete.bind(this))
   }
 
   /**
@@ -108,41 +107,21 @@ export class CategoryController {
   }
 
   /**
-   * Soft delete category
+   * Delete category (Hard Delete)
    */
-  private async softDelete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+  private async delete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
     try {
-      const category = await this.categoryService.softDelete(id)
+      const category = await this.categoryService.delete(id)
       return {
         success: true,
         data: category,
-        message: 'Category deleted successfully'
+        message: 'Category permanently deleted'
       }
     } catch (error) {
       console.error('Error deleting category:', error)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to delete category'
-      }
-    }
-  }
-
-  /**
-   * Restore soft-deleted category
-   */
-  private async restore(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
-    try {
-      const category = await this.categoryService.restore(id)
-      return {
-        success: true,
-        data: category,
-        message: 'Category restored successfully'
-      }
-    } catch (error) {
-      console.error('Error restoring category:', error)
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to restore category'
       }
     }
   }

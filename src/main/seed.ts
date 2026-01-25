@@ -91,11 +91,7 @@ export async function resetAndReseedPermissions(db: Database): Promise<void> {
   saveDb(db)
 }
 
-const priceCategoryCatalog: SeedPriceCategory[] = [
-  { id: 'RETAIL', name: 'Retail' },
-  { id: 'WHOLESALE', name: 'Grosir' },
-  { id: 'MEMBER', name: 'Member' }
-]
+const priceCategoryCatalog: SeedPriceCategory[] = [{ id: 'RETAIL', name: 'RETAIL' }]
 
 export async function seedPriceCategories(db: Database): Promise<void> {
   const now = Date.now()

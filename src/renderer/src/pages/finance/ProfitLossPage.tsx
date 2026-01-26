@@ -83,6 +83,9 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [report, setReport] = useState<ProfitLossSummary | null>(null)
+
+  // ... existing dateRange state ...
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -92,18 +95,25 @@ export default function ProfitLossPage(): React.JSX.Element {
 
   useEffect(() => {
     void loadData()
-  }, [branchStoreId])
+  }, [branchStoreId, dateRange]) // Re-fetch report when date changes
 
   const loadData = async (): Promise<void> => {
     try {
       setLoading(true)
 
-      const [transactionsRes, productsRes, expensesRes, categoriesRes] = await Promise.all([
-        window.api.db.transactions.getAll(),
-        window.api.db.products.getAll(),
-        window.api.db.expenses.getAll(),
-        window.api.db.categories.getAll()
-      ])
+      // Parallel fetch: Existing Data (for breakdown) + New Report (for accuracy)
+      const [transactionsRes, productsRes, expensesRes, categoriesRes, reportRes] =
+        await Promise.all([
+          window.api.db.transactions.getAll(),
+          window.api.db.products.getAll(),
+          window.api.db.expenses.getAll(),
+          window.api.db.categories.getAll(),
+          window.api.db.transactions.getProfitLossReport(
+            dateRange.start.toISOString(),
+            dateRange.end.toISOString(),
+            branchStoreId
+          )
+        ])
 
       if (transactionsRes.success) {
         const allTxns = transactionsRes.data ?? []
@@ -128,6 +138,45 @@ export default function ProfitLossPage(): React.JSX.Element {
           branchStoreId ? allExpenses.filter((e) => e.storeId === branchStoreId) : allExpenses
         )
       }
+
+      // Handle Report Data
+      if (reportRes.success && reportRes.data) {
+        // Map API response to Summary format
+        // API returns: revenue, cogs, grossProfit, margin
+        // We map API revenue -> netRevenue (assuming it's net of returns)
+        const data = reportRes.data
+
+        // Calculate expenses locally for now (until API supports it) to get Net Profit
+        // We can use the 'expenses' state once set, but here we are in same tick.
+        // Let's filter expenses manually here for the report state
+        let opsExpenses = 0
+        if (expensesRes.success) {
+          const allExp = expensesRes.data ?? []
+          const filteredExp = allExp.filter((e) => {
+            const d = new Date(e.createdAt)
+            return (
+              d >= dateRange.start &&
+              d <= dateRange.end &&
+              (!branchStoreId || e.storeId === branchStoreId)
+            )
+          })
+          opsExpenses = filteredExp.reduce((sum, e) => sum + parseFloat(e.total), 0)
+        }
+
+        setReport({
+          grossRevenue: data.revenue, // API doesn't split Gross yet
+          discounts: 0,
+          netRevenue: data.revenue,
+          costOfGoodsSold: data.cogs,
+          grossProfit: data.grossProfit,
+          operatingExpenses: opsExpenses,
+          netProfit: data.grossProfit - opsExpenses,
+          profitMargin:
+            data.revenue > 0 ? ((data.grossProfit - opsExpenses) / data.revenue) * 100 : 0
+        })
+      } else {
+        setReport(null) // Fallback to calculation if API fails
+      }
     } catch (error) {
       console.error('Failed to load profit/loss data:', error)
     } finally {
@@ -135,7 +184,7 @@ export default function ProfitLossPage(): React.JSX.Element {
     }
   }
 
-  // Filter data by date range
+  // Filter data by date range (Effectively used for Breakdown)
   const filteredData = useMemo(() => {
     const startTime = dateRange.start.getTime()
     const endTime = dateRange.end.getTime()
@@ -160,6 +209,10 @@ export default function ProfitLossPage(): React.JSX.Element {
 
   // Calculate P&L Summary
   const summary = useMemo((): ProfitLossSummary => {
+    // If we have accurate report from API, USE IT.
+    if (report) return report
+
+    // Fallback: Client Side Calculation
     let grossRevenue = 0
     let discounts = 0
     let costOfGoodsSold = 0
@@ -199,7 +252,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       netProfit,
       profitMargin
     }
-  }, [filteredData, productMap])
+  }, [filteredData, productMap, report])
 
   // Category breakdown
   const categoryBreakdown = useMemo((): CategoryBreakdown[] => {

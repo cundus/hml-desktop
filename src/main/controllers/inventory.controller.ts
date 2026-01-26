@@ -7,7 +7,7 @@ import {
 } from '../services/stock-adjustment-cloud.service'
 import { ProductCloudService } from '../services/product-cloud.service'
 import { StoreCloudService } from '../services/store-cloud.service'
-import { PurchaseOrderService } from '../services/purchase-order.service'
+import { PurchaseOrderCloudService } from '../services/purchase-order-cloud.service'
 import { ApiResponse } from '../types/response'
 
 export class InventoryController {
@@ -17,7 +17,7 @@ export class InventoryController {
     private stockAdjustmentService: StockAdjustmentCloudService,
     private productService: ProductCloudService,
     private storeService: StoreCloudService,
-    private purchaseOrderService: PurchaseOrderService
+    private purchaseOrderService: PurchaseOrderCloudService
   ) {}
 
   registerHandlers(): void {
@@ -27,6 +27,7 @@ export class InventoryController {
     ipcMain.handle('inventory:create-adjustment', this.createAdjustment.bind(this))
     ipcMain.handle('inventory:low-stock', this.getLowStock.bind(this))
     ipcMain.handle('inventory:bulk-create-adjustments', this.bulkCreateAdjustments.bind(this))
+    ipcMain.handle('inventory:product-details', this.getProductStockDetails.bind(this))
   }
 
   private async getStockOverview(
@@ -212,6 +213,66 @@ export class InventoryController {
       return { success: true, data: lowStockItems }
     } catch (error) {
       console.error('Error fetching low stock items:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async getProductStockDetails(
+    _event: IpcMainInvokeEvent,
+    productId: string,
+    storeId: string
+  ): Promise<ApiResponse> {
+    try {
+      // 1. Get Product Details
+      const product = await this.productService.findById(productId)
+      if (!product) throw new Error('Product not found')
+
+      // 2. Get Store Details
+      const store = await this.storeService.findById(storeId)
+      if (!store) throw new Error('Store not found')
+
+      // 3. Get Total Stock (ProductLocation)
+      const locations = await this.productLocationService.findByStoreId(storeId)
+      const location = locations.find((l) => l.productId === productId)
+      const totalStock = location ? location.quantity : 0
+      const reservedStock = location ? location.reservedQuantity : 0
+
+      // 4. Get Active Batches (FIFO Layers)
+      const activeBatches = await this.stockTransactionService.getActiveBatches(productId, storeId)
+      const activeBatchesSum = activeBatches.reduce((sum, b) => sum + b.quantity, 0)
+
+      // Use the higher of location.quantity or calculated active batches
+      // This handles cases where ProductLocation might be out of sync with Transactions
+      const adjustedTotal = Math.max(totalStock, activeBatchesSum)
+
+      // 5. Get Recent Transactions (History)
+      const allTransactions = await this.stockTransactionService.findByProductId(productId)
+      const storeTransactions = allTransactions.filter((t) => t.storeId === storeId).slice(0, 50) // Limit to last 50 transactions
+
+      return {
+        success: true,
+        data: {
+          product: {
+            id: product.id,
+            name: product.name,
+            sku: product.sku,
+            unit: product.unit
+          },
+          store: {
+            id: store.id,
+            name: store.name
+          },
+          stock: {
+            total: adjustedTotal,
+            reserved: reservedStock,
+            available: adjustedTotal - reservedStock
+          },
+          batches: activeBatches,
+          history: storeTransactions
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching product stock details:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }

@@ -14,6 +14,7 @@ import InventoryPricingPage from './pages/inventory/Pricing'
 import InventoryTransactionsPage from './pages/inventory/Transactions'
 import InventoryManagementPage from './pages/inventory'
 import BulkStockAdjustmentsPage from './pages/inventory/BulkAdjustments'
+import ProductStockDetailPage from './pages/inventory/ProductStockDetail'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
 import Pets from './pages/Pets'
@@ -168,7 +169,8 @@ const router = createHashRouter([
               { path: 'inventory/pricing', element: <InventoryPricingPage /> },
               { path: 'inventory/batches', element: <InventoryBatchesPage /> },
               { path: 'inventory/transactions', element: <InventoryTransactionsPage /> },
-              { path: 'inventory/adjustments', element: <BulkStockAdjustmentsPage /> }
+              { path: 'inventory/adjustments', element: <BulkStockAdjustmentsPage /> },
+              { path: 'inventory/product/:productId', element: <ProductStockDetailPage /> }
             ]
           },
           {

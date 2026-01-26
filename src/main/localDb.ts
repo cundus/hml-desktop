@@ -356,12 +356,20 @@ async function createTables(database: Database): Promise<void> {
       product_id TEXT NOT NULL,
       code TEXT NOT NULL,
       expiry_date INTEGER,
+      cost TEXT NOT NULL DEFAULT '0',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       synced_at INTEGER,
       deleted_at INTEGER
     )
   `)
+
+  // Migration: Add cost to batch if missing
+  try {
+    database.run(`ALTER TABLE batch ADD COLUMN cost TEXT NOT NULL DEFAULT '0'`)
+  } catch {
+    // Column already exists
+  }
 
   // Product Location table - inventory per store
   database.run(`

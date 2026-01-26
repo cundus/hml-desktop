@@ -34,9 +34,10 @@ import {
   seedPriceCategories,
   backfillProductUomsAndStorePrices,
   seedPermissions,
-  seedPointSettings
+  seedPointSettings,
+  seedReturnTables
 } from './seed'
-import { PurchaseOrderService, ReceiptService, TransactionService } from './services'
+import { ReceiptService, TransactionService } from './services'
 import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
 import { PriceCategoryController } from './controllers/price-category.controller'
@@ -76,6 +77,9 @@ import { SyncService } from './services/sync.service'
 import { initPeriodicSync } from './services/periodic-sync.service'
 import { PointCloudService } from './services/point.service'
 import { PointController } from './controllers/point.controller'
+import { ReturnService } from './services/return.service'
+import { ReturnController } from './controllers/return.controller'
+import { PurchaseOrderCloudService } from './services/purchase-order-cloud.service'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -92,6 +96,7 @@ export async function bootstrap(): Promise<void> {
   await seedPriceCategories(db)
   await backfillProductUomsAndStorePrices(db)
   await seedPointSettings(db)
+  await seedReturnTables(db)
 
   // Initialize cloud-first infrastructure
   const queueService = new QueueService(db)
@@ -122,7 +127,7 @@ export async function bootstrap(): Promise<void> {
   const productPriceService = new ProductPriceCloudService(db, queueService)
   const productLocationService = new ProductLocationCloudService(db, queueService)
   const batchService = new BatchCloudService(db, queueService)
-  const stockTransactionService = new StockTransactionCloudService(db, queueService)
+  const stockTransactionService = new StockTransactionCloudService(db, queueService, batchService)
   const pricingService = new PricingCloudService(db, queueService)
   const priceCategoryService = new PriceCategoryCloudService(db, queueService)
   const stockAdjustmentService = new StockAdjustmentCloudService(db, queueService)
@@ -131,20 +136,22 @@ export async function bootstrap(): Promise<void> {
   const pointService = new PointCloudService(db, queueService)
 
   // Initialize sales/POS service (with inventory integration for INV-001)
+  // Initialize sales/POS service (with inventory integration for INV-001)
   const transactionService = new TransactionService(
     db,
     stockTransactionService,
     productLocationService,
     queueService,
-    pointService
+    pointService,
+    batchService
   )
 
   // Initialize purchasing service
-  // Initialize purchasing service
-  const purchaseOrderService = new PurchaseOrderService(
-    db
-    // stockTransactionService,
-    // productLocationService
+  const purchaseOrderService = new PurchaseOrderCloudService(
+    db,
+    queueService,
+    stockTransactionService,
+    productLocationService
   )
 
   // Initialize expense service
@@ -281,6 +288,16 @@ export async function bootstrap(): Promise<void> {
   // Register cloud controller (handles sync:* IPC)
   const cloudController = new CloudController(queueProcessor)
   cloudController.registerHandlers()
+
+  // Initialize and register Return Service/Controller
+  const returnService = new ReturnService(
+    db,
+    queueService,
+    stockTransactionService,
+    productLocationService
+  )
+  const returnController = new ReturnController(returnService)
+  returnController.registerHandlers()
 
   const inventoryController = new InventoryController(
     productLocationService,

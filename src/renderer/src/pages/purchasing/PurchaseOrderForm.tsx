@@ -404,7 +404,23 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     sx={{ width: 80 }}
                   />
                 </TableCell>
-                <TableCell align="right">{item.cost.toLocaleString('id-ID')}</TableCell>
+                <TableCell align="right">
+                  <TextField
+                    type="number"
+                    value={item.cost}
+                    onChange={(e) => {
+                      const newItems = [...items]
+                      const newCost = parseFloat(e.target.value) || 0
+                      newItems[index].cost = newCost
+                      newItems[index].subtotal = newItems[index].quantity * newCost
+                      setItems(newItems)
+                    }}
+                    size="small"
+                    inputProps={{ min: 0 }}
+                    disabled={status === 'RECEIVED'}
+                    sx={{ width: 100 }}
+                  />
+                </TableCell>
                 <TableCell align="right">{item.subtotal.toLocaleString('id-ID')}</TableCell>
                 <TableCell align="right">
                   <IconButton

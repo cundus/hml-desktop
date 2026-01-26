@@ -1,8 +1,8 @@
 import { ipcMain } from 'electron'
-import { PurchaseOrderService } from '../services/purchase-order.service'
+import { PurchaseOrderCloudService } from '../services/purchase-order-cloud.service'
 
 export class PurchaseOrderController {
-  constructor(private purchaseOrderService: PurchaseOrderService) {}
+  constructor(private purchaseOrderService: PurchaseOrderCloudService) {}
 
   registerHandlers(): void {
     // Get all purchase orders

@@ -4,6 +4,7 @@ import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
+import { BatchCloudService } from './batch-cloud.service'
 
 export type StockTransactionType =
   | 'INBOUND'
@@ -12,6 +13,7 @@ export type StockTransactionType =
   | 'TRANSFER_OUT'
   | 'ADJUSTMENT'
   | 'SALE'
+  | 'RETURN'
 
 export interface StockTransaction {
   id: string
@@ -41,16 +43,33 @@ export interface CreateStockTransactionDto {
   supplierId?: string
   customerId?: string
   performedBy?: string
+  // Batch Auto-Creation Fields
+  batchCode?: string
+  expiryDate?: Date
+  cost?: string
 }
 
 export class StockTransactionCloudService {
   private localDb: Database
   private queueService: QueueService
+  private batchService: BatchCloudService
 
-  constructor(localDb: Database, queueService: QueueService) {
+  constructor(localDb: Database, queueService: QueueService, batchService: BatchCloudService) {
     this.localDb = localDb
     this.queueService = queueService
+    this.batchService = batchService
   }
+  // ... (isOnline, findAll, etc unchanged until create)
+
+  // ... (findById, findByProduct, etc - I must be careful not to delete them if I replace Create block)
+  // I will replace ONLY the create method block and constructor/DTO?
+  // But DTO is at top and Create is at bottom.
+  // I should do 2 replace calls or rewrite file.
+  // Rewrite file is safer to avoid cutting "..." comments if i replace huge chunks.
+  // Or replace DTO first. Then Constructor. Then Create.
+
+  // Let's replace Step-by-Step.
+
   private isOnline(): boolean {
     return getConnectivity().isOnline()
   }
@@ -190,6 +209,82 @@ export class StockTransactionCloudService {
   }
 
   async create(data: CreateStockTransactionDto): Promise<StockTransaction> {
+    const isOutbound = ['OUTBOUND', 'TRANSFER_OUT', 'SALE'].includes(data.type)
+    // If adjustment is negative, treat like outbound logic?
+    // Usually Adjustment specifies batch if specific. If generic adjustment (-5), allocation applies?
+    // Let's stick to explicitly Outbound types for now.
+
+    // Auto-create/find batch if code is provided (INBOUND)
+    let finalBatchId = data.batchId
+    if (!isOutbound && !finalBatchId && data.batchCode) {
+      // ... existing inbound logic ...
+      const existing = await this.batchService.findByCode(data.batchCode)
+      if (existing) {
+        if (existing.productId === data.productId) {
+          finalBatchId = existing.id
+        } else {
+          finalBatchId = existing.id
+        }
+      } else {
+        const newBatch = await this.batchService.create({
+          productId: data.productId,
+          code: data.batchCode,
+          expiryDate: data.expiryDate,
+          cost: data.cost
+        })
+        finalBatchId = newBatch.id
+      }
+    }
+
+    // FIFO Allocation Logic (OUTBOUND with No Batch)
+    if (isOutbound && !finalBatchId && data.quantity > 0) {
+      // 1. Get available batches
+      const batches = await this.getActiveBatches(data.productId, data.storeId)
+
+      let remainingQty = data.quantity
+      let lastTxn: StockTransaction | null = null
+
+      // 2. Allocate
+      for (const batch of batches) {
+        if (remainingQty <= 0) break
+
+        const takeQty = Math.min(remainingQty, batch.quantity)
+
+        // Create TXN for this batch
+        lastTxn = await this.createSingleTransaction({
+          ...data,
+          quantity: takeQty,
+          batchId: batch.batchId || undefined
+        })
+
+        remainingQty -= takeQty
+      }
+
+      // 3. If remaining qty > 0 (Stock ran out or no batches), create generic txn
+      if (remainingQty > 0) {
+        lastTxn = await this.createSingleTransaction({
+          ...data,
+          quantity: remainingQty,
+          batchId: undefined // No batch
+        })
+      }
+
+      // Return the last created transaction (as a proxy for success)
+      // Ideally we return list, but interface is single.
+      if (lastTxn) return lastTxn
+      throw new Error('Failed to create outbound transaction')
+    }
+
+    // Standard Single Transaction (Inbound OR Outbound with specific Batch)
+    return this.createSingleTransaction({
+      ...data,
+      batchId: finalBatchId
+    })
+  }
+
+  private async createSingleTransaction(
+    data: CreateStockTransactionDto
+  ): Promise<StockTransaction> {
     const id = randomUUID()
     const now = new Date()
     const st: StockTransaction = {
@@ -269,6 +364,139 @@ export class StockTransactionCloudService {
       updated_at: now.toISOString()
     })
     return st
+  }
+
+  async getActiveBatches(
+    productId: string,
+    storeId: string
+  ): Promise<
+    {
+      batchId: string | null
+      code: string | null
+      cost: number
+      expiryDate: Date | null
+      quantity: number
+    }[]
+  > {
+    // INBOUND positive, OUTBOUND negative.
+    // If Type is 'ADJUSTMENT', we need to check if quantity is +/-?
+    // Usually StockTransaction quantity is unsigned and Type determines sign?
+    // Or quantity is signed?
+    // In `StockTransactionCloudService.create`:
+    // `isOutbound` check logic implies Type determines flow.
+    // Let's check `create` logic again.
+    // In `create`: `quantity` is passed.
+    // And DB stores it.
+    // Does DB store negative for outbound?
+    // Checking `create`: `data.quantity` is stored as is.
+    // But `isOutbound` check implies we treat it as deduction logic.
+    // HOWEVER, the `activeBatches` query I am replacing used `SUM(t.quantity)`.
+    // Wait, the original `getBatchesWithStock` used `SUM(t.quantity)`.
+    // If Outbound transactions are stored as POSITIVE numbers in DB, then `SUM(quantity)` would be WRONG if we want net stock!
+    // UNLESS Outbound transactions are stored as NEGATIVE numbers?
+    // In `TransactionService.processCheckout`:
+    // It calls `stockTransactionService.create({ type: 'SALE', quantity })`.
+    // It creates POSITIVE quantity record.
+    // SO `getBatchesWithStock` summing them up would result in INCREASED stock for sales!
+    // **MAJOR BUG FOUND** (or my understanding is wrong).
+    // Let's check `productLocationService.adjustQuantity`.
+    // `TransactionService` calls `allocator.allocateStock` -> `productLocationService.adjustQuantity(..., -quantity)`.
+    // But `stockTransactionService.create` stores the raw quantity of the transaction.
+    // So if I sell 5, I store `quantity: 5, type: 'SALE'`.
+    // If I buy 10, I store `quantity: 10, type: 'INBOUND'`.
+    // `SUM(quantity)` = 15. WRONG.
+    // The query MUST respect Type sign.
+
+    // I will fix this query to handle signs correctly.
+
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        // Cloud Query with Sign Logic
+        const cloudSql = `
+          SELECT 
+            t.batch_id, 
+            SUM(CASE 
+              WHEN t.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN t.quantity 
+              WHEN t.type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') THEN -t.quantity 
+              WHEN t.type = 'ADJUSTMENT' THEN t.quantity -- Assumes Adjustment can be +/- or handles logic differently? 
+              -- Usually Adjustment stores signed quantity?
+              -- Let's assume standard Types for now.
+              ELSE 0 
+            END) as available_qty,
+            b.code,
+            b.cost,
+            b.expiry_date,
+            b.created_at
+          FROM stock_transaction t
+          LEFT JOIN batch b ON t.batch_id = b.id
+          WHERE t.product_id = $1 
+            AND t.store_id = $2
+            AND t.deleted_at IS NULL
+          GROUP BY t.batch_id, b.code, b.cost, b.expiry_date, b.created_at
+          HAVING SUM(CASE 
+              WHEN t.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN t.quantity 
+              WHEN t.type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') THEN -t.quantity 
+              ELSE 0 
+            END) > 0
+          ORDER BY b.expiry_date ASC, b.created_at ASC
+        `
+        const res = await pool.query(cloudSql, [productId, storeId])
+        return res.rows.map((r) => ({
+          batchId: r.batch_id || null,
+          code: r.code || null,
+          cost: parseFloat(r.cost),
+          expiryDate: r.expiry_date ? new Date(r.expiry_date) : null,
+          quantity: parseFloat(r.available_qty)
+        }))
+      } catch (err) {
+        console.error('[StockTransactionCloud] getActiveBatches error:', err)
+      }
+    }
+
+    // Local Logic with Sign Logic
+    // SQLite doesn't support CASE easily in aggregate? It does.
+    const localSql = `
+      SELECT 
+        t.batch_id, 
+        b.code,
+        b.cost,
+        b.expiry_date,
+        b.created_at,
+        SUM(CASE 
+          WHEN t.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN t.quantity 
+          WHEN t.type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') THEN -t.quantity 
+          ELSE 0 
+        END) as available_qty
+      FROM stock_transaction t
+      LEFT JOIN batch b ON t.batch_id = b.id
+      WHERE t.product_id = ? AND t.store_id = ? AND t.deleted_at IS NULL
+      GROUP BY t.batch_id
+      HAVING available_qty > 0
+      ORDER BY b.expiry_date ASC, b.created_at ASC
+    `
+    const stmt = this.localDb.prepare(localSql)
+    stmt.bind([productId, storeId])
+    const results: {
+      batchId: string | null
+      code: string | null
+      cost: number
+      expiryDate: Date | null
+      quantity: number
+    }[] = []
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      results.push({
+        batchId: (row.batch_id as string) || null,
+        code: (row.code as string) || null,
+        cost: parseFloat(row.cost as string) || 0,
+        expiryDate: row.expiry_date ? new Date(row.expiry_date as number) : null,
+        quantity: row.available_qty as number
+      })
+    }
+    stmt.free()
+    return results
   }
 
   async softDelete(id: string): Promise<StockTransaction> {

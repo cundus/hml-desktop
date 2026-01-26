@@ -184,5 +184,23 @@ export class TransactionController {
         }
       }
     })
+
+    // Get Profit Loss Report
+    ipcMain.handle(
+      'db:transactions:getProfitLossReport',
+      async (_, startDate: string, endDate: string, storeId?: string) => {
+        try {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          const report = await this.transactionService.getProfitLossReport(start, end, storeId)
+          return { success: true, data: report }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
   }
 }

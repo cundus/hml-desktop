@@ -382,6 +382,41 @@ const ENTITY_CONFIG: Record<
       'device_id'
     ],
     hasDeviceId: true
+  },
+  transaction_return: {
+    columns: [
+      'id',
+      'transaction_id',
+      'return_number',
+      'store_id',
+      'total_refund',
+      'reason',
+      'created_by',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at'
+    ],
+    hasDeviceId: false
+  },
+  purchase_order: {
+    columns: [
+      'id',
+      'code',
+      'supplier_id',
+      'store_id',
+      'status',
+      'total',
+      'created_at',
+      'updated_at',
+      'synced_at',
+      'deleted_at'
+    ],
+    hasDeviceId: false
+  },
+  purchase_order_item: {
+    columns: ['id', 'po_id', 'product_id', 'quantity', 'cost', 'created_at', 'updated_at'],
+    hasDeviceId: false
   }
 }
 

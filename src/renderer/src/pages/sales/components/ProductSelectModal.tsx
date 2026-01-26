@@ -89,21 +89,13 @@ export default function ProductSelectModal({
         // Use getStockOverview for consistency with inventory page
         if (storeId) {
           try {
-            // Try to get stock from inventory overview (same as inventory page)
-            const overviewRes = await window.api.db.inventory.getStockOverview(storeId)
-            if (overviewRes.success && overviewRes.data) {
-              const productStock = overviewRes.data.find((item) => item.productId === product.id)
-              if (productStock) {
-                // Use availableQuantity for accurate stock (quantity - reserved)
-                setBaseStock(productStock.availableQuantity ?? productStock.quantity ?? 0)
-              } else {
-                // Product not in overview, try productLocations as fallback
-                const stockRes = await window.api.db.productLocations.getByProductAndStore(
-                  product.id,
-                  storeId
-                )
-                setBaseStock(stockRes.data?.quantity ?? 0)
-              }
+            // Use getProductStockDetails to get accurate stock calculation (including unbatched adjustments)
+            const detailRes = await window.api.db.inventory.getProductStockDetails(
+              product.id,
+              storeId
+            )
+            if (detailRes.success && detailRes.data) {
+              setBaseStock(detailRes.data.stock.available)
             } else {
               setBaseStock(0)
             }

@@ -378,3 +378,57 @@ export async function seedPointSettings(db: Database): Promise<void> {
   saveDb(db)
   console.log('✓ Point settings tables seeded')
 }
+
+export async function seedReturnTables(db: Database): Promise<void> {
+  // transaction_return table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transaction_return (
+      id TEXT PRIMARY KEY,
+      transaction_id TEXT NOT NULL,
+      return_number TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      total_refund TEXT NOT NULL,
+      reason TEXT,
+      created_by TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      FOREIGN KEY (transaction_id) REFERENCES transactions(id)
+    )
+  `)
+
+  // transaction_return_item table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transaction_return_item (
+      id TEXT PRIMARY KEY,
+      return_id TEXT NOT NULL,
+      transaction_item_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      refund_price TEXT NOT NULL,
+      restock INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      FOREIGN KEY (return_id) REFERENCES transaction_return(id),
+      FOREIGN KEY (transaction_item_id) REFERENCES transaction_items(id)
+    )
+  `)
+
+  // Migration: Add columns to transaction_return_item if missing
+  try {
+    db.run(`ALTER TABLE transaction_return_item ADD COLUMN synced_at INTEGER`)
+  } catch {
+    /* ignore */
+  }
+  try {
+    db.run(`ALTER TABLE transaction_return_item ADD COLUMN deleted_at INTEGER`)
+  } catch {
+    /* ignore */
+  }
+
+  saveDb(db)
+  console.log('✓ Return tables seeded')
+}

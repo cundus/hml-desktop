@@ -9,7 +9,13 @@ import {
   Tooltip
 } from '@mui/material'
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
-import { Search as SearchIcon, Warning as WarningIcon, Add as AddIcon } from '@mui/icons-material'
+import { useNavigate } from 'react-router-dom'
+import {
+  Search as SearchIcon,
+  Warning as WarningIcon,
+  Add as AddIcon,
+  InfoOutlined as InfoIcon
+} from '@mui/icons-material'
 import { StockOverviewItem } from 'src/preload/api/inventory'
 
 interface StockOverviewTabProps {
@@ -20,6 +26,7 @@ interface StockOverviewTabProps {
 export default function StockOverviewTab({ data }: StockOverviewTabProps): React.ReactElement {
   const [searchText, setSearchText] = useState('')
   const [loading] = useState(false)
+  const navigate = useNavigate()
 
   const filteredData = useMemo(() => {
     if (!searchText) return data
@@ -36,6 +43,15 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
   const lowStockItems = useMemo(() => {
     return filteredData.filter((item) => item.isLowStock)
   }, [filteredData])
+
+  const handleViewDetail = (item: StockOverviewItem): void => {
+    navigate(`/inventory/product/${item.productId}?storeId=${item.storeId}`)
+  }
+
+  const handleQuickAdjust = async (item: StockOverviewItem): Promise<void> => {
+    // TODO: Implement quick adjustment dialog
+    console.log('Quick adjust for:', item)
+  }
 
   const columns: GridColDef[] = [
     {
@@ -108,31 +124,21 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
       width: 100,
       sortable: false,
       renderCell: (params: GridRenderCellParams<StockOverviewItem>) => (
-        <Tooltip title="Penyesuaian Cepat">
-          <IconButton size="small" onClick={() => handleQuickAdjust(params.row)}>
-            <AddIcon />
-          </IconButton>
-        </Tooltip>
+        <Box>
+          <Tooltip title="Detail Stok">
+            <IconButton size="small" onClick={() => handleViewDetail(params.row)} color="primary">
+              <InfoIcon />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Penyesuaian Cepat">
+            <IconButton size="small" onClick={() => handleQuickAdjust(params.row)}>
+              <AddIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       )
     }
   ]
-
-  const handleQuickAdjust = async (item: StockOverviewItem): Promise<void> => {
-    // TODO: Implement quick adjustment dialog
-    console.log('Quick adjust for:', item)
-  }
-
-  // const handleExport = async (): Promise<void> => {
-  //   setLoading(true)
-  //   try {
-  //     // TODO: Implement export functionality
-  //     console.log('Exporting stock overview...')
-  //   } catch (error) {
-  //     console.error('Export failed:', error)
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
 
   return (
     <Box>

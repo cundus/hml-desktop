@@ -35,7 +35,10 @@ const transactionSchema = z.object({
   batchId: z.string().optional(),
   supplierId: z.string().optional(),
   customerId: z.string().optional(),
-  performedBy: z.string().optional()
+  performedBy: z.string().optional(),
+  batchCode: z.string().optional(),
+  expiryDate: z.string().optional(), // Date input returns string
+  cost: z.string().optional()
 })
 
 type TransactionFormValues = z.infer<typeof transactionSchema>
@@ -88,6 +91,7 @@ export default function TransactionsPage(): React.JSX.Element {
   const {
     register,
     handleSubmit,
+    watch,
     reset,
     control,
     formState: { errors, isSubmitting }
@@ -208,7 +212,11 @@ export default function TransactionsPage(): React.JSX.Element {
 
   const onSubmit = async (values: TransactionFormValues): Promise<void> => {
     try {
-      const response = await window.api.db.stockTransactions.create(values)
+      const payload = {
+        ...values,
+        expiryDate: values.expiryDate ? new Date(values.expiryDate) : undefined
+      }
+      const response = await window.api.db.stockTransactions.create(payload)
       if (response.success) {
         await loadData()
         closeDialog()
@@ -490,6 +498,36 @@ export default function TransactionsPage(): React.JSX.Element {
                 />
               )}
             />
+
+            {watch('type') === 'INBOUND' && (
+              <>
+                <TextField
+                  {...register('batchCode')}
+                  label="Kode Batch (Opsional)"
+                  fullWidth
+                  margin="normal"
+                  helperText="Kosongkan jika tidak ada batch khusus"
+                />
+
+                <TextField
+                  {...register('expiryDate')}
+                  label="Tanggal Kadaluarsa"
+                  type="date"
+                  fullWidth
+                  margin="normal"
+                  InputLabelProps={{ shrink: true }}
+                />
+
+                <TextField
+                  {...register('cost')}
+                  label="Harga Modal (Cost per Unit)"
+                  type="number"
+                  fullWidth
+                  margin="normal"
+                  helperText="Harga beli per unit untuk batch ini"
+                />
+              </>
+            )}
 
             <TextField
               {...register('reference')}

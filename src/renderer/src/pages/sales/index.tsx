@@ -330,10 +330,11 @@ export default function SalesPage(): React.JSX.Element {
 
   const handleCheckout = useCallback((): void => {
     if (cartItems.length === 0) return
-    if (!defaultStoreId) {
+    const targetStoreId = currentShift?.storeId ?? defaultStoreId
+    if (!targetStoreId) {
       setSnackbar({
         open: true,
-        message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
+        message: 'Tidak ada toko aktif. Silakan buka shift atau atur toko default.',
         severity: 'error'
       })
       return
@@ -359,10 +360,11 @@ export default function SalesPage(): React.JSX.Element {
       _downPayment?: number
     ): Promise<void> => {
       if (cartItems.length === 0) return
-      if (!defaultStoreId) {
+      const targetStoreId = currentShift?.storeId ?? defaultStoreId
+      if (!targetStoreId) {
         setSnackbar({
           open: true,
-          message: 'Tidak ada toko default. Silakan tambahkan toko terlebih dahulu.',
+          message: 'Tidak ada toko aktif. Silakan buka shift atau atur toko default.',
           severity: 'error'
         })
         return
@@ -399,7 +401,7 @@ export default function SalesPage(): React.JSX.Element {
         const totalDiscountAmount = discount + pointDiscount
         const result = await window.api.db.transactions.create({
           code,
-          storeId: defaultStoreId,
+          storeId: currentShift?.storeId ?? defaultStoreId,
           subtotal: subtotal.toString(),
           discount: totalDiscountAmount.toString(),
           tax: '0',
@@ -836,7 +838,7 @@ export default function SalesPage(): React.JSX.Element {
         <ProductSelectModal
           open={productSelectModalOpen}
           product={selectedProduct as ProductForSelection | null}
-          storeId={defaultStoreId}
+          storeId={currentShift?.storeId ?? defaultStoreId}
           enableMultiUomPricing={featureFlags.enableMultiUomPricing}
           onClose={() => {
             setProductSelectModalOpen(false)

@@ -6,6 +6,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
 import PrintIcon from '@mui/icons-material/Print'
 import SaveIcon from '@mui/icons-material/Save'
+import RestartAltIcon from '@mui/icons-material/RestartAlt'
 import Alert from '@mui/material/Alert'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
@@ -36,6 +37,7 @@ import ProductSelectModal, {
 import DeliveryOrderModal from './components/DeliveryOrderModal'
 import { globalAlert } from '../../lib/globalAlert'
 import { formatCurrency } from '../../utils/currency'
+import ReturnTransactionDialog from './components/ReturnTransactionDialog'
 
 interface TransactionItem {
   id: string
@@ -109,7 +111,10 @@ export default function TransactionDetailPage(): React.JSX.Element {
   const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
   const [selectedItemIndex, setSelectedItemIndex] = useState<number | null>(null)
   const [modalProduct, setModalProduct] = useState<ProductForSelection | null>(null)
+
   const [deliveryOrderModalOpen, setDeliveryOrderModalOpen] = useState(false)
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false)
+  const [returns, setReturns] = useState<any[]>([])
 
   useEffect(() => {
     if (transactionId) {
@@ -163,7 +168,10 @@ export default function TransactionDetailPage(): React.JSX.Element {
         window.api.db.products.getAll(),
         window.api.db.customers.getAll(),
         window.api.db.stores.getAll(),
-        window.api.db.users.getAll()
+        window.api.db.customers.getAll(),
+        window.api.db.stores.getAll(),
+        window.api.db.users.getAll(),
+        window.api.db.returns.getByTransactionId(transactionId!)
       ])
 
       if (!txnRes.success || !txnRes.data) {
@@ -209,6 +217,11 @@ export default function TransactionDetailPage(): React.JSX.Element {
       const custMap = new Map(custs.map((c) => [c.id, c.name]))
 
       const txn = txnRes.data
+      const returnList = txnRes.data
+        ? (await window.api.db.returns.getByTransactionId(txn.id)).data
+        : []
+      if (Array.isArray(returnList)) setReturns(returnList)
+
       const enrichedItems = (txn.items ?? []).map((item) => {
         const product = prods.find((p) => p.id === item.productId)
         return {
@@ -500,6 +513,14 @@ export default function TransactionDetailPage(): React.JSX.Element {
               onClick={() => setDeliveryOrderModalOpen(true)}
             >
               Cetak Surat Jalan
+            </Button>
+            <Button
+              variant="outlined"
+              color="warning"
+              startIcon={<RestartAltIcon />}
+              onClick={() => setReturnDialogOpen(true)}
+            >
+              Retur Barang
             </Button>
             <Button variant="contained" startIcon={<EditIcon />} onClick={handleStartEdit}>
               Edit <Kbd keys={['E']} size="small" />
@@ -832,6 +853,54 @@ export default function TransactionDetailPage(): React.JSX.Element {
           }}
           onConfirm={handleProductOptionsConfirm}
         />
+      )}
+
+      {transaction && (
+        <ReturnTransactionDialog
+          open={returnDialogOpen}
+          onClose={() => setReturnDialogOpen(false)}
+          transaction={transaction}
+          onSuccess={() => {
+            loadData()
+            globalAlert.success('Retur berhasil disimpan')
+          }}
+        />
+      )}
+
+      {returns.length > 0 && (
+        <Card sx={{ mt: 3, mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Riwayat Retur
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>No. Retur</TableCell>
+                  <TableCell>Tanggal</TableCell>
+                  <TableCell>Item</TableCell>
+                  <TableCell align="right">Total Refund</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {returns.map((ret) => (
+                  <TableRow key={ret.id}>
+                    <TableCell>{ret.return_number || ret.returnNumber}</TableCell>
+                    <TableCell>{formatDate(ret.created_at || ret.createdAt)}</TableCell>
+                    <TableCell>
+                      {(ret.items || [])
+                        .map((i: any) => `${i.productName || 'Item'} (${i.quantity})`)
+                        .join(', ')}
+                    </TableCell>
+                    <TableCell align="right">
+                      {formatCurrency(Number(ret.total_refund || ret.totalRefund))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       <DeliveryOrderModal

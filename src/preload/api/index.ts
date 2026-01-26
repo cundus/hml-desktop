@@ -80,6 +80,7 @@ import { paymentMethodApi } from './payment-method'
 import { salesPersonApi } from './sales-person'
 import { queueApi } from './queue'
 import { pointsApi } from './points'
+import { returns as returnsApi } from './returns'
 
 // Receipt printing API
 const receiptApi = {
@@ -186,5 +187,8 @@ export const db = {
   queue: queueApi,
 
   // Points (member loyalty program)
-  points: pointsApi
+  points: pointsApi,
+
+  // Returns
+  returns: returnsApi
 }

@@ -10,6 +10,7 @@ export interface Batch {
   productId: string
   code: string
   expiryDate: Date | null
+  cost: string
   createdAt: Date
   updatedAt: Date
   syncedAt: Date | null
@@ -20,7 +21,9 @@ export interface CreateBatchDto {
   productId: string
   code: string
   expiryDate?: Date
+  cost?: string
 }
+
 export interface UpdateBatchDto {
   code: string
   expiryDate?: Date
@@ -171,6 +174,7 @@ export class BatchCloudService {
       productId: data.productId,
       code: data.code,
       expiryDate: data.expiryDate ?? null,
+      cost: data.cost ?? '0',
       createdAt: now,
       updatedAt: now,
       syncedAt: null,
@@ -181,8 +185,8 @@ export class BatchCloudService {
       try {
         const pool = getCloudDb().getPool()
         await pool.query(
-          'INSERT INTO batch (id, product_id, code, expiry_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6)',
-          [id, data.productId, data.code, data.expiryDate ?? null, now, now]
+          'INSERT INTO batch (id, product_id, code, expiry_date, cost, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+          [id, data.productId, data.code, data.expiryDate ?? null, batch.cost, now, now]
         )
         return batch
       } catch (error) {
@@ -191,12 +195,13 @@ export class BatchCloudService {
     }
 
     this.localDb.run(
-      'INSERT INTO batch (id, product_id, code, expiry_date, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO batch (id, product_id, code, expiry_date, cost, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [
         id,
         data.productId,
         data.code,
         data.expiryDate?.getTime() ?? null,
+        batch.cost,
         now.getTime(),
         now.getTime()
       ]
@@ -207,6 +212,7 @@ export class BatchCloudService {
       product_id: data.productId,
       code: data.code,
       expiry_date: data.expiryDate?.toISOString() ?? null,
+      cost: batch.cost,
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
@@ -289,6 +295,7 @@ export class BatchCloudService {
       productId: row.product_id as string,
       code: row.code as string,
       expiryDate: row.expiry_date ? new Date(row.expiry_date as string) : null,
+      cost: (row.cost as string) || '0',
       createdAt: new Date(row.created_at as string),
       updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
@@ -302,10 +309,134 @@ export class BatchCloudService {
       productId: row.product_id as string,
       code: row.code as string,
       expiryDate: row.expiry_date ? new Date(row.expiry_date as number) : null,
+      cost: (row.cost as string) || '0',
       createdAt: new Date(row.created_at as number),
       updatedAt: new Date(row.updated_at as number),
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null
     }
+  }
+
+  /**
+   * Allocate stock from batches based on FIFO (First-Expired, First-Out)
+   * Returns list of { batch_id, quantity } to be deducted.
+   */
+  async allocateStock(
+    productId: string,
+    storeId: string,
+    quantity: number
+  ): Promise<{ batch_id: string; quantity: number }[]> {
+    if (quantity <= 0) return []
+
+    // 1. Fetch available batches with their current quantity
+    // Cloud Logic
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const query = `
+          SELECT 
+            st.batch_id, 
+            SUM(CASE WHEN st.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN st.quantity 
+                     WHEN st.type IN ('OUTBOUND', 'TRANSFER_OUT', 'ADJUSTMENT', 'SALE', 'WASTE') THEN -st.quantity 
+                     ELSE 0 END) as current_qty,
+            b.expiry_date,
+            b.created_at
+          FROM stock_transaction st
+          LEFT JOIN batch b ON st.batch_id = b.id
+          WHERE st.product_id = $1 
+            AND st.store_id = $2
+            AND st.deleted_at IS NULL
+            AND st.batch_id IS NOT NULL
+          GROUP BY st.batch_id, b.expiry_date, b.created_at
+          HAVING SUM(CASE WHEN st.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN st.quantity 
+                          WHEN st.type IN ('OUTBOUND', 'TRANSFER_OUT', 'ADJUSTMENT', 'SALE', 'WASTE') THEN -st.quantity 
+                          ELSE 0 END) > 0
+          ORDER BY b.expiry_date ASC NULLS LAST, b.created_at ASC
+        `
+        const result = await pool.query(query, [productId, storeId])
+
+        return this.calculateAllocation(result.rows, quantity)
+      } catch (error) {
+        console.error('[BatchCloud] allocateStock error, falling back to local:', error)
+      }
+    }
+
+    // Local Logic (Sql.js)
+    const stmt = this.localDb.prepare(`
+      SELECT 
+        st.batch_id, 
+        st.type,
+        st.quantity,
+        b.expiry_date,
+        b.created_at
+      FROM stock_transaction st
+      LEFT JOIN batch b ON st.batch_id = b.id
+      WHERE st.product_id = ? 
+        AND st.store_id = ?
+        AND st.deleted_at IS NULL
+        AND st.batch_id IS NOT NULL
+    `)
+    stmt.bind([productId, storeId])
+
+    const batchStockMap = new Map<string, { qty: number; expiry: number; created: number }>()
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const batchId = row.batch_id as string
+      const type = row.type as string
+      const qty = row.quantity as number
+      const expiry = row.expiry_date
+        ? new Date(row.expiry_date as number | string).getTime()
+        : Number.MAX_SAFE_INTEGER
+      const created = row.created_at ? new Date(row.created_at as number | string).getTime() : 0
+
+      if (!batchStockMap.has(batchId)) {
+        batchStockMap.set(batchId, { qty: 0, expiry, created })
+      }
+
+      const current = batchStockMap.get(batchId)!
+
+      const inboundTypes = ['INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN']
+      const outboundTypes = ['OUTBOUND', 'TRANSFER_OUT', 'ADJUSTMENT', 'SALE', 'WASTE']
+
+      if (inboundTypes.includes(type)) {
+        current.qty += qty
+      } else if (outboundTypes.includes(type)) {
+        current.qty -= qty
+      }
+    }
+    stmt.free()
+
+    const availableBatches = Array.from(batchStockMap.entries())
+      .filter(([_, data]) => data.qty > 0)
+      .map(([id, data]) => ({
+        batch_id: id,
+        current_qty: data.qty,
+        expiry_date: data.expiry,
+        created_at: data.created
+      }))
+      .sort((a, b) => {
+        if (a.expiry_date !== b.expiry_date) return a.expiry_date - b.expiry_date
+        return a.created_at - b.created_at
+      })
+
+    return this.calculateAllocation(availableBatches, quantity)
+  }
+
+  private calculateAllocation(
+    availableBatches: { batch_id: string; current_qty: number }[],
+    requestedQty: number
+  ): { batch_id: string; quantity: number }[] {
+    const allocations: { batch_id: string; quantity: number }[] = []
+    let remaining = requestedQty
+
+    for (const batch of availableBatches) {
+      if (remaining <= 0) break
+      const take = Math.min(remaining, batch.current_qty)
+      allocations.push({ batch_id: batch.batch_id, quantity: take })
+      remaining -= take
+    }
+
+    return allocations
   }
 }

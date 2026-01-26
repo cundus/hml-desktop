@@ -64,6 +64,7 @@ export const batches = pgTable('batch', {
   productId: text('product_id').notNull(),
   code: text('code').notNull(),
   expiryDate: timestamp('expiry_date', { withTimezone: false }),
+  cost: numeric('cost').notNull().default('0'),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

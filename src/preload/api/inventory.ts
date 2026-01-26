@@ -277,6 +277,32 @@ export interface StockOverviewItem {
   isLowStock: boolean
 }
 
+export interface ProductStockDetail {
+  product: {
+    id: string
+    name: string
+    sku: string
+    unit: string
+  }
+  store: {
+    id: string
+    name: string
+  }
+  stock: {
+    total: number
+    reserved: number
+    available: number
+  }
+  batches: Array<{
+    batchId: string | null
+    code: string | null
+    cost: number
+    expiryDate: Date | null
+    quantity: number
+  }>
+  history: StockTransaction[]
+}
+
 // Inventory Management API
 export const inventoryApi = {
   // Stock Overview
@@ -326,5 +352,11 @@ export const inventoryApi = {
   ) =>
     ipcRenderer.invoke('inventory:bulk-create-adjustments', adjustments) as Promise<
       ApiResponse<StockAdjustment[]>
+    >,
+
+  // Product Stock Details
+  getProductStockDetails: (productId: string, storeId: string) =>
+    ipcRenderer.invoke('inventory:product-details', productId, storeId) as Promise<
+      ApiResponse<ProductStockDetail>
     >
 }

@@ -1,0 +1,9 @@
+ALTER TABLE "transaction_return" ALTER COLUMN "id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return" ALTER COLUMN "transaction_id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return" ALTER COLUMN "store_id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return" ALTER COLUMN "created_by" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return_item" ALTER COLUMN "id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return_item" ALTER COLUMN "return_id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return_item" ALTER COLUMN "transaction_item_id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "transaction_return_item" ALTER COLUMN "product_id" SET DATA TYPE text;--> statement-breakpoint
+ALTER TABLE "batch" ADD COLUMN "cost" numeric DEFAULT '0' NOT NULL;

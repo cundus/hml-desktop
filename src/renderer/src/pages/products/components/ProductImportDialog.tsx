@@ -38,6 +38,7 @@ interface ImportRow {
   category?: string
   unit?: string
   cost?: number
+  weight?: number
   price1?: number
   price2?: number
   price3?: number
@@ -143,6 +144,7 @@ export default function ProductImportDialog({
           const category = normRow.get('kategori') || normRow.get('category')
           const unit = normRow.get('satuan') || normRow.get('unit')
           const cost = Number(normRow.get('modal') || normRow.get('cost') || 0)
+          const weight = Number(normRow.get('berat') || normRow.get('berat (gram)') || normRow.get('weight') || 0)
           const stock = Number(
             normRow.get('stok') || normRow.get('stok awal') || normRow.get('stock') || 0
           )
@@ -154,6 +156,7 @@ export default function ProductImportDialog({
             category,
             unit,
             cost,
+            weight,
             stock,
             price1: p1,
             price2: p2,
@@ -193,6 +196,7 @@ export default function ProductImportDialog({
         category: r.category,
         unit: r.unit || 'Pcs',
         cost: r.cost,
+        weight: r.weight,
         stock: r.stock,
         prices: [r.price1, r.price2, r.price3] // Send array
       }))
@@ -260,8 +264,8 @@ export default function ProductImportDialog({
       const h3 = cats[2] ? `Harga 3 (${cats[2].name})` : 'Harga 3'
 
       const wsData = [
-        ['SKU', 'Nama', 'Kategori', 'Satuan', 'Modal', h1, h2, h3, 'Stok'],
-        ['BRG001', 'Contoh Produk', 'Makanan', 'Pcs', 10000, 15000, 14000, 13000, 10]
+        ['SKU', 'Nama', 'Kategori', 'Satuan', 'Modal', 'Berat (gram)', h1, h2, h3, 'Stok'],
+        ['BRG001', 'Contoh Produk', 'Makanan', 'Pcs', 10000, 500, 15000, 14000, 13000, 10]
       ]
 
       const ws = XLSX.utils.aoa_to_sheet(wsData)

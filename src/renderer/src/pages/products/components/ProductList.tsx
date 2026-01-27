@@ -7,20 +7,20 @@ import InputAdornment from '@mui/material/InputAdornment'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
-import Pagination from '@mui/material/Pagination'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableContainer from '@mui/material/TableContainer'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import Dialog from '@mui/material/Dialog'
+import DialogTitle from '@mui/material/DialogTitle'
+import DialogContent from '@mui/material/DialogContent'
+import DialogContentText from '@mui/material/DialogContentText'
+import DialogActions from '@mui/material/DialogActions'
 import SearchIcon from '@mui/icons-material/Search'
 import AddIcon from '@mui/icons-material/Add'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import InventoryIcon from '@mui/icons-material/Inventory'
 import UploadIcon from '@mui/icons-material/CloudUpload'
+import DeleteIcon from '@mui/icons-material/Delete'
+import { DataGrid, GridColDef, GridRenderCellParams, GridRowSelectionModel } from '@mui/x-data-grid'
 import ProductImportDialog from './ProductImportDialog'
 
 interface Product {
@@ -28,6 +28,8 @@ interface Product {
   sku: string
   name: string
   unit: string
+  cost?: string
+  weight?: string
   categoryId?: string
 }
 
@@ -44,8 +46,6 @@ interface ProductListProps {
   onRefresh: () => void
 }
 
-const ITEMS_PER_PAGE = 25
-
 export default function ProductList({
   products,
   loading,
@@ -56,9 +56,11 @@ export default function ProductList({
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
-  const [page, setPage] = useState(1)
   const [categories, setCategories] = useState<Category[]>([])
   const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [selectionModel, setSelectionModel] = useState<GridRowSelectionModel>({ type: 'include', ids: new Set() })
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Load categories
   useEffect(() => {
@@ -96,19 +98,6 @@ export default function ProductList({
     return result
   }, [products, search, categoryFilter])
 
-  // Paginated products
-  const paginatedProducts = useMemo(() => {
-    const start = (page - 1) * ITEMS_PER_PAGE
-    return filteredProducts.slice(start, start + ITEMS_PER_PAGE)
-  }, [filteredProducts, page])
-
-  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
-
-  // Reset page when filters change
-  useEffect(() => {
-    setPage(1)
-  }, [search, categoryFilter])
-
   const handleAddProduct = (): void => {
     navigate('/master-product')
   }
@@ -117,19 +106,111 @@ export default function ProductList({
     onRefresh()
   }
 
+  const handleRowClick = (params: { row: Product }): void => {
+    onSelectProduct(params.row.id)
+  }
+
+  const handleDeleteSelected = async (): Promise<void> => {
+    const selectedIds = Array.from(selectionModel.ids) as string[]
+    if (selectedIds.length === 0) return
+
+    setDeleting(true)
+    try {
+      const res = await window.api.db.products.deleteBatch(selectedIds)
+      if (res.success) {
+        setSelectionModel({ type: 'include', ids: new Set() })
+        setDeleteDialogOpen(false)
+        onRefresh()
+      } else {
+        console.error('Failed to delete products:', res.error)
+      }
+    } catch (error) {
+      console.error('Failed to delete products', error)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  // Column definitions
+  const columns: GridColDef[] = [
+    {
+      field: 'sku',
+      headerName: 'SKU',
+      width: 120,
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography fontWeight={600}>{params.value}</Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'name',
+      headerName: 'Nama Produk',
+      flex: 1,
+      minWidth: 180,
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography noWrap>{params.value}</Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'categoryId',
+      headerName: 'Kategori',
+      width: 130,
+      valueGetter: (_, row) => categoryMap.get(row.categoryId) || '-',
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography noWrap>{params.value}</Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'cost',
+      headerName: 'Modal',
+      width: 110,
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography>
+            {params.value
+              ? Number(params.value).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 })
+              : '-'}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'weight',
+      headerName: 'Berat (g)',
+      width: 90,
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Typography>{params.value ? `${params.value}g` : '-'}</Typography>
+        </Box>
+      )
+    },
+    {
+      field: 'unit',
+      headerName: 'Satuan',
+      width: 90,
+      renderCell: (params: GridRenderCellParams<Product>) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+          <Chip label={params.value} size="small" variant="outlined" />
+        </Box>
+      )
+    }
+  ]
+
   return (
     <Box
       sx={{
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
-        borderRight: selectedProductId ? '1px solid' : 'none',
-        borderColor: 'divider',
-        pr: selectedProductId ? 1 : 0
+        flexDirection: 'column'
       }}
     >
       {/* Header */}
-      <Stack direction="row" spacing={1} mb={2} alignItems="center">
+      <Stack direction="row" spacing={1} mb={2} alignItems="center" flexWrap="wrap">
         <TextField
           size="small"
           placeholder="Cari SKU / nama..."
@@ -142,7 +223,7 @@ export default function ProductList({
               </InputAdornment>
             )
           }}
-          sx={{ flex: 1 }}
+          sx={{ flex: 1, minWidth: 200 }}
         />
         <TextField
           select
@@ -172,7 +253,6 @@ export default function ProductList({
           size="small"
           startIcon={<InventoryIcon />}
           onClick={() => navigate('/inventory')}
-          sx={{ mr: 1 }}
         >
           Inventori
         </Button>
@@ -181,7 +261,6 @@ export default function ProductList({
           size="small"
           startIcon={<UploadIcon />}
           onClick={() => setImportDialogOpen(true)}
-          sx={{ mr: 1 }}
         >
           Import
         </Button>
@@ -190,86 +269,97 @@ export default function ProductList({
         </Button>
       </Stack>
 
+      {/* Selection Actions */}
+      {selectionModel.ids.size > 0 && (
+        <Stack direction="row" spacing={1} mb={1} alignItems="center">
+          <Typography variant="body2" color="text.secondary">
+            {selectionModel.ids.size} produk dipilih
+          </Typography>
+          <Button
+            variant="contained"
+            color="error"
+            size="small"
+            startIcon={<DeleteIcon />}
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            Hapus Terpilih
+          </Button>
+        </Stack>
+      )}
+
       {/* Count */}
       <Typography variant="caption" color="text.secondary" mb={1}>
         {filteredProducts.length} produk ditemukan
       </Typography>
 
-      {/* Table List */}
-      <Box sx={{ flex: 1, overflow: 'auto', minHeight: 0 }}>
+      {/* DataGrid */}
+      <Box sx={{ flex: 1, minHeight: 0 }}>
         {loading ? (
           <Box display="flex" justifyContent="center" py={4}>
             <CircularProgress />
           </Box>
-        ) : filteredProducts.length === 0 ? (
-          <Typography color="text.secondary" textAlign="center" py={4}>
-            Tidak ada produk
-          </Typography>
         ) : (
-          <TableContainer>
-            <Table stickyHeader size="small" padding="normal">
-              <TableHead>
-                <TableRow>
-                  <TableCell>SKU</TableCell>
-                  <TableCell>Nama Produk</TableCell>
-                  <TableCell>Kategori</TableCell>
-                  <TableCell>Satuan</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {paginatedProducts.map((product) => {
-                  const isSelected = product.id === selectedProductId
-                  return (
-                    <TableRow
-                      key={product.id}
-                      hover
-                      onClick={() => onSelectProduct(product.id)}
-                      selected={isSelected}
-                      sx={{
-                        cursor: 'pointer',
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(25, 118, 210, 0.12) !important'
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(25, 118, 210, 0.2) !important'
-                        }
-                      }}
-                    >
-                      <TableCell sx={{ fontWeight: 600 }}>{product.sku}</TableCell>
-                      <TableCell>{product.name}</TableCell>
-                      <TableCell>
-                        {product.categoryId ? categoryMap.get(product.categoryId) || '-' : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip label={product.unit} size="small" variant="outlined" />
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <DataGrid
+            rows={filteredProducts}
+            columns={columns}
+            checkboxSelection
+            disableRowSelectionOnClick
+            rowSelectionModel={selectionModel}
+            onRowSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
+            onRowClick={handleRowClick}
+            pageSizeOptions={[25, 50, 100]}
+            initialState={{
+              pagination: { paginationModel: { pageSize: 25 } }
+            }}
+            getRowClassName={(params) =>
+              params.row.id === selectedProductId ? 'Mui-selected' : ''
+            }
+            sx={{
+              height: '100%',
+              '& .MuiDataGrid-cell:focus': { outline: 'none' },
+              '& .MuiDataGrid-cell:focus-within': { outline: 'none' },
+              '& .MuiDataGrid-row': { cursor: 'pointer' },
+              '& .Mui-selected': {
+                backgroundColor: 'rgba(25, 118, 210, 0.12) !important'
+              },
+              '& .Mui-selected:hover': {
+                backgroundColor: 'rgba(25, 118, 210, 0.2) !important'
+              }
+            }}
+          />
         )}
       </Box>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <Box display="flex" justifyContent="center" mt={2}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, p) => setPage(p)}
-            size="small"
-            color="primary"
-          />
-        </Box>
-      )}
-
+      {/* Import Dialog */}
       <ProductImportDialog
         open={importDialogOpen}
         onClose={() => setImportDialogOpen(false)}
         onSuccess={handleImportSuccess}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Hapus Produk</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Apakah Anda yakin ingin menghapus {selectionModel.ids.size} produk yang dipilih? Tindakan ini
+            tidak dapat dibatalkan.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>
+            Batal
+          </Button>
+          <Button
+            onClick={() => void handleDeleteSelected()}
+            color="error"
+            variant="contained"
+            disabled={deleting}
+          >
+            {deleting ? 'Menghapus...' : 'Hapus'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

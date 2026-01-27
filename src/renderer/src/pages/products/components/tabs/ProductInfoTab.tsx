@@ -4,6 +4,7 @@ import TextField from '@mui/material/TextField'
 import Button from '@mui/material/Button'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
+import Grid from '@mui/material/Grid'
 import Alert from '@mui/material/Alert'
 import SaveIcon from '@mui/icons-material/Save'
 import { globalAlert } from '../../../../lib/globalAlert'
@@ -14,6 +15,7 @@ interface Product {
   name: string
   unit: string
   cost: string
+  weight?: string
   categoryId?: string
 }
 
@@ -35,6 +37,7 @@ export default function ProductInfoTab({
   const [sku, setSku] = useState(product.sku)
   const [unit, setUnit] = useState(product.unit)
   const [cost, setCost] = useState(product.cost)
+  const [weight, setWeight] = useState(product.weight || '0')
   const [categoryId, setCategoryId] = useState(product.categoryId || '')
   const [categories, setCategories] = useState<Category[]>([])
   const [saving, setSaving] = useState(false)
@@ -59,6 +62,7 @@ export default function ProductInfoTab({
     setSku(product.sku)
     setUnit(product.unit)
     setCost(product.cost)
+    setWeight(product.weight || '0')
     setCategoryId(product.categoryId || '')
     setHasChanges(false)
   }, [product])
@@ -70,9 +74,10 @@ export default function ProductInfoTab({
       sku !== product.sku ||
       unit !== product.unit ||
       cost !== product.cost ||
+      weight !== (product.weight || '0') ||
       categoryId !== (product.categoryId || '')
     setHasChanges(changed)
-  }, [name, sku, unit, cost, categoryId, product])
+  }, [name, sku, unit, cost, weight, categoryId, product])
 
   const handleSave = async (): Promise<void> => {
     if (!name.trim() || !sku.trim()) {
@@ -87,6 +92,7 @@ export default function ProductInfoTab({
         sku: sku.trim(),
         unit,
         cost,
+        weight,
         categoryId: categoryId || null
       })
       if (res.success) {
@@ -104,55 +110,90 @@ export default function ProductInfoTab({
   }
 
   return (
-    <Box>
-      <Stack spacing={2.5} maxWidth={500}>
-        <TextField
-          label="Nama Produk"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-          fullWidth
-        />
+    <Box sx={{ pt: 2 }}>
+      <Grid container spacing={2}>
+        {/* Row 1: Name and SKU */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            label="Nama Produk"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            fullWidth
+            size="small"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            label="SKU"
+            value={sku}
+            onChange={(e) => setSku(e.target.value)}
+            required
+            fullWidth
+            size="small"
+          />
+        </Grid>
 
-        <TextField
-          label="SKU"
-          value={sku}
-          onChange={(e) => setSku(e.target.value)}
-          required
-          fullWidth
-        />
+        {/* Row 2: Category and Unit */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            select
+            label="Kategori"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            fullWidth
+            size="small"
+          >
+            <MenuItem value="">-- Tidak ada --</MenuItem>
+            {categories.map((cat) => (
+              <MenuItem key={cat.id} value={cat.id}>
+                {cat.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            label="Satuan Dasar"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value)}
+            fullWidth
+            size="small"
+          />
+        </Grid>
 
-        <TextField
-          select
-          label="Kategori"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          fullWidth
-        >
-          <MenuItem value="">-- Tidak ada --</MenuItem>
-          {categories.map((cat) => (
-            <MenuItem key={cat.id} value={cat.id}>
-              {cat.name}
-            </MenuItem>
-          ))}
-        </TextField>
+        {/* Row 3: Cost and Weight */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            label="Harga Modal (Rp)"
+            value={cost}
+            onChange={(e) => setCost(e.target.value)}
+            type="number"
+            inputProps={{ min: 0 }}
+            fullWidth
+            size="small"
+          />
+        </Grid>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <TextField
+            label="Berat (gram)"
+            value={weight}
+            onChange={(e) => setWeight(e.target.value)}
+            type="number"
+            inputProps={{ min: 0 }}
+            fullWidth
+            size="small"
+          />
+        </Grid>
+      </Grid>
 
-        <TextField label="Satuan Dasar" value={unit} onChange={(e) => setUnit(e.target.value)} />
-
-        <TextField
-          label="Harga Modal (Base Cost)"
-          value={cost}
-          onChange={(e) => setCost(e.target.value)}
-          type="number"
-          inputProps={{ min: 0 }}
-        />
-
+      {/* Actions */}
+      <Stack direction="row" spacing={2} mt={3} alignItems="center">
         {hasChanges && (
-          <Alert severity="info" sx={{ py: 0.5 }}>
+          <Alert severity="info" sx={{ py: 0, flex: 1 }}>
             Ada perubahan yang belum disimpan
           </Alert>
         )}
-
         <Button
           variant="contained"
           startIcon={<SaveIcon />}
@@ -165,3 +206,4 @@ export default function ProductInfoTab({
     </Box>
   )
 }
+

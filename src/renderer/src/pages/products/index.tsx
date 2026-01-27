@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Group, Panel, Separator } from 'react-resizable-panels'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import useAuth from '../../hooks/useAuth'
@@ -117,37 +116,18 @@ export default function ProductManagementPage(): React.JSX.Element {
         Manajemen Produk
       </Typography>
 
-      <Box sx={{ flex: 1, minHeight: 0 }}>
-        {selectedProductId ? (
-          <Group defaultLayout={{ list: 50, detail: 50 }}>
-            <Panel id="list" minSize={30}>
-              <Box sx={{ height: '100%', pr: 1 }}>
-                <ProductList
-                  products={products}
-                  loading={loading}
-                  selectedProductId={selectedProductId}
-                  onSelectProduct={handleSelectProduct}
-                  onRefresh={loadProducts}
-                />
-              </Box>
-            </Panel>
-
-            <Separator />
-
-            <Panel id="detail" minSize={30}>
-              <Box sx={{ height: '100%', overflow: 'auto', pl: 1 }}>
-                <ProductDetail
-                  productId={selectedProductId}
-                  activeTab={activeTab}
-                  availableTabs={availableTabs}
-                  onTabChange={handleTabChange}
-                  onClose={() => handleSelectProduct(null)}
-                  onProductUpdated={loadProducts}
-                />
-              </Box>
-            </Panel>
-          </Group>
-        ) : (
+      {/* Fixed Vertical Layout */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 2 }}>
+        {/* Top: Product List (60%) */}
+        <Box
+          sx={{
+            flex: selectedProductId ? '0 0 60%' : 1,
+            minHeight: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
           <ProductList
             products={products}
             loading={loading}
@@ -155,6 +135,29 @@ export default function ProductManagementPage(): React.JSX.Element {
             onSelectProduct={handleSelectProduct}
             onRefresh={loadProducts}
           />
+        </Box>
+
+        {/* Bottom: Product Detail (40%) - Only shown when product selected */}
+        {selectedProductId && (
+          <Box
+            sx={{
+              flex: '0 0 40%',
+              minHeight: 0,
+              overflow: 'auto',
+              borderTop: 1,
+              borderColor: 'divider',
+              pt: 2
+            }}
+          >
+            <ProductDetail
+              productId={selectedProductId}
+              activeTab={activeTab}
+              availableTabs={availableTabs}
+              onTabChange={handleTabChange}
+              onClose={() => handleSelectProduct(null)}
+              onProductUpdated={loadProducts}
+            />
+          </Box>
         )}
       </Box>
     </Box>

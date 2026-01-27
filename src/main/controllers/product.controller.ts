@@ -50,6 +50,7 @@ export class ProductController {
     ipcMain.handle('db:products:exportExcel', this.exportExcel.bind(this))
     ipcMain.handle('db:products:importBatch', this.importBatch.bind(this))
     ipcMain.handle('db:products:downloadTemplate', this.downloadTemplate.bind(this))
+    ipcMain.handle('db:products:deleteBatch', this.deleteBatch.bind(this))
   }
 
   /**
@@ -217,6 +218,30 @@ export class ProductController {
   }
 
   /**
+   * Delete multiple products (Batch Delete)
+   */
+  private async deleteBatch(_event: IpcMainInvokeEvent, ids: string[]): Promise<ApiResponse> {
+    try {
+      if (!ids || ids.length === 0) {
+        return { success: false, error: 'No product IDs provided' }
+      }
+
+      const result = await this.productService.deleteMany(ids)
+      return {
+        success: true,
+        data: result,
+        message: `Deleted ${result.successCount} products`
+      }
+    } catch (error) {
+      console.error('Error batch deleting products:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete products'
+      }
+    }
+  }
+
+  /**
    * Toggle product active status
    */
   private async toggleActive(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
@@ -326,14 +351,9 @@ export class ProductController {
             continue
           }
 
-          // Check Existing
-          const existing = await this.productService.findBySku(sku)
-          if (existing) {
-            skipCount++
-            // For update logic: we could update prices/stock for existing?
-            // Plan says: Skip default.
-            continue
-          }
+          // Check Existing - Update if exists instead of skipping
+          let existing = await this.productService.findBySku(sku)
+          let product: { id: string }
 
           // Category Resolution
           let categoryId = row.category ? categoryCache.get(row.category.toLowerCase()) : undefined
@@ -350,16 +370,31 @@ export class ProductController {
             }
           }
 
-          // Create Product
-          const product = await this.productService.create({
-            sku,
-            name,
-            description: row.description,
-            unit: row.unit || 'PCS',
-            cost: Number(row.cost || 0),
-            categoryId,
-            isActive: true
-          })
+          if (existing) {
+            // Update existing product
+            const updatedProduct = await this.productService.update(existing.id, {
+              name,
+              description: row.description,
+              unit: row.unit || 'PCS',
+              cost: Number(row.cost || 0),
+              weight: Number(row.weight || 0),
+              categoryId,
+              isActive: true
+            })
+            product = { id: updatedProduct.id }
+          } else {
+            // Create new product
+            product = await this.productService.create({
+              sku,
+              name,
+              description: row.description,
+              unit: row.unit || 'PCS',
+              cost: Number(row.cost || 0),
+              weight: Number(row.weight || 0),
+              categoryId,
+              isActive: true
+            })
+          }
 
           // Handle Prices
           // row.price_general -> 'Umum' (or default)

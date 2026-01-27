@@ -20,6 +20,7 @@ interface Product {
   name: string
   unit: string
   cost: string
+  weight?: string
   categoryId?: string
 }
 
@@ -59,6 +60,7 @@ export default function ProductDetail({
           name: res.data.name,
           unit: res.data.unit ?? 'PCS',
           cost: res.data.cost ?? '0',
+          weight: res.data.weight ?? '0',
           categoryId: res.data.categoryId ?? undefined
         })
       }
@@ -122,7 +124,7 @@ export default function ProductDetail({
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', pl: 2 }}>
       {/* Header */}
-      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" mb={2}>
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between" >
         <Box>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Typography variant="h6" fontWeight={600}>

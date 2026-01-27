@@ -416,6 +416,27 @@ export class ProductCloudService {
     return existing
   }
 
+  /**
+   * Delete multiple products by IDs
+   */
+  async deleteMany(ids: string[]): Promise<{ successCount: number; failureCount: number; errors: string[] }> {
+    let successCount = 0
+    let failureCount = 0
+    const errors: string[] = []
+
+    for (const id of ids) {
+      try {
+        await this.delete(id)
+        successCount++
+      } catch (error) {
+        failureCount++
+        errors.push(`Failed to delete product ${id}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      }
+    }
+
+    return { successCount, failureCount, errors }
+  }
+
   private deleteLocal(id: string): void {
     // 1. Transactions
     this.localDb.run('DELETE FROM stock_transaction WHERE product_id = ?', [id])

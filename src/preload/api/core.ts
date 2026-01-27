@@ -198,5 +198,14 @@ export const productApi = {
     >,
 
   downloadTemplate: () =>
-    ipcRenderer.invoke('db:products:downloadTemplate') as Promise<ApiResponse<{ filePath: string }>>
+    ipcRenderer.invoke('db:products:downloadTemplate') as Promise<ApiResponse<{ filePath: string }>>,
+
+  deleteBatch: (ids: string[]) =>
+    ipcRenderer.invoke('db:products:deleteBatch', ids) as Promise<
+      ApiResponse<{
+        successCount: number
+        failureCount: number
+        errors?: string[]
+      }>
+    >
 }

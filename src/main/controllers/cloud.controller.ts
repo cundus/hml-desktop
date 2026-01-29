@@ -2,6 +2,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { getCloudDb } from '../services/cloud-db.service'
 import { getConnectivity } from '../services/connectivity.service'
 import { QueueProcessorService } from '../services/queue-processor.service'
+import { AppConfigService } from '../services/app-config.service'
 import { ApiResponse } from '../types/response'
 
 interface SyncStatus {
@@ -26,7 +27,10 @@ interface SyncResult {
  * Replaces old SyncController with cloud-first pattern
  */
 export class CloudController {
-  constructor(private queueProcessor: QueueProcessorService) {}
+  constructor(
+    private queueProcessor: QueueProcessorService,
+    private appConfigService?: AppConfigService
+  ) {}
 
   registerHandlers(): void {
     ipcMain.handle('sync:connect', this.connectToCloud.bind(this))
@@ -52,6 +56,12 @@ export class CloudController {
       // Start connectivity monitoring and queue processor
       getConnectivity().startMonitoring()
       this.queueProcessor.start()
+
+      // Save cloudDbUrl to app config for persistence across app restarts/updates
+      if (this.appConfigService) {
+        await this.appConfigService.setCloudDbUrl(cloudDatabaseUrl)
+        console.log('[CloudController] Saved cloud database URL to configuration')
+      }
 
       return {
         success: true,

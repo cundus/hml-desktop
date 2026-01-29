@@ -184,8 +184,22 @@ export async function bootstrap(): Promise<void> {
   // Initialize sales person service
   const salesPersonService = new SalesPersonService(db)
 
-  // Auto-connect to cloud if PG_DATABASE_URL or DATABASE_URL is set
-  const pgUrl = process.env.PG_DATABASE_URL || process.env.DATABASE_URL
+  // Auto-connect to cloud if PG_DATABASE_URL is set OR if cloudDbUrl is stored in app config
+  let pgUrl = process.env.PG_DATABASE_URL || process.env.DATABASE_URL
+  
+  // If no env var, try to get stored cloud URL from app config
+  if (!pgUrl) {
+    try {
+      const deviceConfig = await appConfigService.getDeviceConfig()
+      if (deviceConfig.cloudDbUrl) {
+        pgUrl = deviceConfig.cloudDbUrl
+        console.log('✓ Found stored cloud database URL from configuration')
+      }
+    } catch (error) {
+      console.warn('⚠ Failed to read stored cloud config:', error instanceof Error ? error.message : error)
+    }
+  }
+
   if (pgUrl) {
     try {
       // Initialize cloud DB connection (new cloud-first system)
@@ -286,7 +300,7 @@ export async function bootstrap(): Promise<void> {
   queueController.registerHandlers()
 
   // Register cloud controller (handles sync:* IPC)
-  const cloudController = new CloudController(queueProcessor)
+  const cloudController = new CloudController(queueProcessor, appConfigService)
   cloudController.registerHandlers()
 
   // Initialize and register Return Service/Controller

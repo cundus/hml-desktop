@@ -80,6 +80,8 @@ import { PointController } from './controllers/point.controller'
 import { ReturnService } from './services/return.service'
 import { ReturnController } from './controllers/return.controller'
 import { PurchaseOrderCloudService } from './services/purchase-order-cloud.service'
+import { AuditLogService } from './services/audit-log.service'
+import { AuditLogController } from './controllers/audit-log.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -323,5 +325,10 @@ export async function bootstrap(): Promise<void> {
   )
   inventoryController.registerHandlers()
 
-  console.log('✓ All 25 services and controllers initialized (sql.js local + cloud sync ready)')
+  // Initialize and register Audit Log Service/Controller
+  const auditLogService = new AuditLogService()
+  const auditLogController = new AuditLogController(auditLogService)
+  auditLogController.registerHandlers()
+
+  console.log('✓ All 26 services and controllers initialized (sql.js local + cloud sync ready)')
 }

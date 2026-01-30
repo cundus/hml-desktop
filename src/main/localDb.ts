@@ -726,11 +726,19 @@ async function createTables(database: Database): Promise<void> {
     CREATE TABLE IF NOT EXISTS audit_log (
       id TEXT PRIMARY KEY,
       action TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT,
       user_id TEXT NOT NULL,
+      user_name TEXT,
+      store_id TEXT,
+      store_name TEXT,
+      device_id TEXT,
+      old_values TEXT,
+      new_values TEXT,
+      metadata TEXT,
       created_at INTEGER NOT NULL,
       synced_at INTEGER,
-      deleted_at INTEGER,
-      device_id TEXT
+      deleted_at INTEGER
     )
   `)
 

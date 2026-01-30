@@ -56,7 +56,8 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
   { id: 'settings.app-config.manage', name: 'Manage app configuration' },
   { id: 'settings.printer.manage', name: 'Manage printer settings' },
-  { id: 'settings.points.manage', name: 'Manage member points settings' }
+  { id: 'settings.points.manage', name: 'Manage member points settings' },
+  { id: 'audit.view', name: 'View audit logs', description: 'Access to view system audit logs and user activity history' }
 ]
 
 /**

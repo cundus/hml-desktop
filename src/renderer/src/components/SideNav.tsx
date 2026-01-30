@@ -264,6 +264,12 @@ const menus: MenuItem[] = [
         label: 'Member Points',
         path: '/settings/points',
         permissions: ['settings.points.manage']
+      },
+      {
+        key: 'audit-logs',
+        label: 'Audit Log',
+        path: '/settings/audit-logs',
+        permissions: ['audit.view']
       }
     ]
   },

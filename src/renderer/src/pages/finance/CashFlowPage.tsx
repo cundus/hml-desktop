@@ -10,8 +10,10 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useBranchConfig from '../../hooks/useBranchConfig'
 import { formatCurrency } from '../../utils/currency'
@@ -26,6 +28,12 @@ interface Transaction {
   createdAt: Date
   storeId: string
   paymentMethod: string
+}
+
+interface Store {
+  id: string
+  name: string
+  code: string
 }
 
 interface Expense {
@@ -56,6 +64,8 @@ interface ChartDataPoint {
 export default function CashFlowPage(): React.JSX.Element {
   const { storeId: branchStoreId } = useBranchConfig()
   const [loading, setLoading] = useState(true)
+  const [stores, setStores] = useState<Store[]>([])
+  const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [dateRange, setDateRange] = useState<DateRange>(() => {
@@ -74,10 +84,20 @@ export default function CashFlowPage(): React.JSX.Element {
     try {
       setLoading(true)
 
-      const [transactionsRes, expensesRes] = await Promise.all([
+      const [transactionsRes, expensesRes, storesRes] = await Promise.all([
         window.api.db.transactions.getAll(),
-        window.api.db.expenses.getAll()
+        window.api.db.expenses.getAll(),
+        window.api.db.stores.getAll()
       ])
+
+      if (storesRes.success) {
+        // For branch users, only show their store
+        setStores(
+          branchStoreId
+            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
+            : (storesRes.data ?? [])
+        )
+      }
 
       if (transactionsRes.success) {
         const allTxns = transactionsRes.data ?? []
@@ -100,23 +120,29 @@ export default function CashFlowPage(): React.JSX.Element {
     }
   }
 
-  // Filter data by date range
+  // Filter data by date range and selected store
   const filteredData = useMemo(() => {
     const startTime = dateRange.start.getTime()
     const endTime = dateRange.end.getTime()
 
-    const filteredTxns = transactions.filter((t) => {
+    let filteredTxns = transactions.filter((t) => {
       const txnTime = new Date(t.createdAt).getTime()
       return txnTime >= startTime && txnTime <= endTime
     })
 
-    const filteredExpenses = expenses.filter((e) => {
+    let filteredExpenses = expenses.filter((e) => {
       const expTime = new Date(e.createdAt).getTime()
       return expTime >= startTime && expTime <= endTime
     })
 
+    // Apply store filter if selected
+    if (selectedStore) {
+      filteredTxns = filteredTxns.filter((t) => t.storeId === selectedStore)
+      filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore)
+    }
+
     return { transactions: filteredTxns, expenses: filteredExpenses }
-  }, [transactions, expenses, dateRange])
+  }, [transactions, expenses, dateRange, selectedStore])
 
   // Calculate summaries
   const summary = useMemo(() => {
@@ -214,9 +240,26 @@ export default function CashFlowPage(): React.JSX.Element {
         </Button>
       </Stack>
 
-      {/* Period Selector */}
+      {/* Period Selector and Store Filter */}
       <Paper sx={{ p: 2, mb: 3 }} className="no-print">
-        <PeriodSelector value={dateRange} onChange={setDateRange} />
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <PeriodSelector value={dateRange} onChange={setDateRange} />
+          <TextField
+            select
+            label="Toko"
+            value={selectedStore}
+            onChange={(e) => setSelectedStore(e.target.value)}
+            sx={{ minWidth: 200 }}
+            size="small"
+          >
+            <MenuItem value="">Semua Toko</MenuItem>
+            {stores.map((store) => (
+              <MenuItem key={store.id} value={store.id}>
+                {store.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </Paper>
 
       {/* Print Header (only visible when printing) */}

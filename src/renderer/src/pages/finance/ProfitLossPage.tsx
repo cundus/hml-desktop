@@ -11,6 +11,7 @@ import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
 import Divider from '@mui/material/Divider'
+import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -18,6 +19,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import useBranchConfig from '../../hooks/useBranchConfig'
 import { formatCurrency } from '../../utils/currency'
@@ -58,6 +60,12 @@ interface Expense {
   categoryName?: string
 }
 
+interface Store {
+  id: string
+  name: string
+  code: string
+}
+
 interface ProfitLossSummary {
   grossRevenue: number
   discounts: number
@@ -80,6 +88,8 @@ interface CategoryBreakdown {
 export default function ProfitLossPage(): React.JSX.Element {
   const { storeId: branchStoreId } = useBranchConfig()
   const [loading, setLoading] = useState(true)
+  const [stores, setStores] = useState<Store[]>([])
+  const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -102,18 +112,28 @@ export default function ProfitLossPage(): React.JSX.Element {
       setLoading(true)
 
       // Parallel fetch: Existing Data (for breakdown) + New Report (for accuracy)
-      const [transactionsRes, productsRes, expensesRes, categoriesRes, reportRes] =
+      const [transactionsRes, productsRes, expensesRes, categoriesRes, storesRes, reportRes] =
         await Promise.all([
           window.api.db.transactions.getAll(),
           window.api.db.products.getAll(),
           window.api.db.expenses.getAll(),
           window.api.db.categories.getAll(),
+          window.api.db.stores.getAll(),
           window.api.db.transactions.getProfitLossReport(
             dateRange.start.toISOString(),
             dateRange.end.toISOString(),
             branchStoreId
           )
         ])
+
+      if (storesRes.success) {
+        // For branch users, only show their store
+        setStores(
+          branchStoreId
+            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
+            : (storesRes.data ?? [])
+        )
+      }
 
       if (transactionsRes.success) {
         const allTxns = transactionsRes.data ?? []
@@ -184,23 +204,29 @@ export default function ProfitLossPage(): React.JSX.Element {
     }
   }
 
-  // Filter data by date range (Effectively used for Breakdown)
+  // Filter data by date range and selected store (Effectively used for Breakdown)
   const filteredData = useMemo(() => {
     const startTime = dateRange.start.getTime()
     const endTime = dateRange.end.getTime()
 
-    const filteredTxns = transactions.filter((t) => {
+    let filteredTxns = transactions.filter((t) => {
       const txnTime = new Date(t.createdAt).getTime()
       return txnTime >= startTime && txnTime <= endTime
     })
 
-    const filteredExpenses = expenses.filter((e) => {
+    let filteredExpenses = expenses.filter((e) => {
       const expTime = new Date(e.createdAt).getTime()
       return expTime >= startTime && expTime <= endTime
     })
 
+    // Apply store filter if selected
+    if (selectedStore) {
+      filteredTxns = filteredTxns.filter((t) => t.storeId === selectedStore)
+      filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore)
+    }
+
     return { transactions: filteredTxns, expenses: filteredExpenses }
-  }, [transactions, expenses, dateRange])
+  }, [transactions, expenses, dateRange, selectedStore])
 
   // Create product map for quick lookup
   const productMap = useMemo(() => {
@@ -321,9 +347,26 @@ export default function ProfitLossPage(): React.JSX.Element {
         </Button>
       </Stack>
 
-      {/* Period Selector */}
+      {/* Period Selector and Store Filter */}
       <Paper sx={{ p: 2, mb: 3 }} className="no-print">
-        <PeriodSelector value={dateRange} onChange={setDateRange} />
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
+          <PeriodSelector value={dateRange} onChange={setDateRange} />
+          <TextField
+            select
+            label="Toko"
+            value={selectedStore}
+            onChange={(e) => setSelectedStore(e.target.value)}
+            sx={{ minWidth: 200 }}
+            size="small"
+          >
+            <MenuItem value="">Semua Toko</MenuItem>
+            {stores.map((store) => (
+              <MenuItem key={store.id} value={store.id}>
+                {store.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
       </Paper>
 
       {/* Print Header */}

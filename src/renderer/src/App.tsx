@@ -49,6 +49,7 @@ import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
 import { CashFlowPage, ProfitLossPage } from './pages/finance'
 import SetupPage from './pages/Setup'
 import ProductManagementPage from './pages/products'
+import AuditLogs from './pages/settings/AuditLogs'
 
 const router = createHashRouter([
   { path: '/setup', element: <SetupPage /> },
@@ -198,6 +199,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['finance.profit-loss']} />,
             children: [{ path: 'finance/profit-loss', element: <ProfitLossPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['audit.view']} />,
+            children: [{ path: 'settings/audit-logs', element: <AuditLogs /> }]
           }
         ]
       }

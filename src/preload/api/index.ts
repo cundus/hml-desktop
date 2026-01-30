@@ -57,7 +57,8 @@ import {
   userRoleApi,
   permissionApi,
   rolePermissionApi,
-  authApi
+  authApi,
+  auditApi
 } from './core'
 import {
   productPriceApi,
@@ -190,5 +191,8 @@ export const db = {
   points: pointsApi,
 
   // Returns
-  returns: returnsApi
+  returns: returnsApi,
+
+  // Audit Log (audit trail)
+  audit: auditApi
 }

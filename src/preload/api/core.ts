@@ -209,3 +209,45 @@ export const productApi = {
       }>
     >
 }
+
+// Audit Log Types
+export interface AuditLogRecord {
+  id: string
+  action: string
+  entityType: string
+  entityId: string | null
+  userId: string
+  userName: string | null
+  storeId: string | null
+  storeName: string | null
+  deviceId: string | null
+  oldValues: object | null
+  newValues: object | null
+  metadata: object | null
+  createdAt: Date
+}
+
+export interface AuditLogFilters {
+  startDate?: string
+  endDate?: string
+  action?: string
+  entityType?: string
+  userId?: string
+  storeId?: string
+  limit?: number
+  offset?: number
+}
+
+// Audit Log API
+export const auditApi = {
+  getAll: (filters: AuditLogFilters = {}) =>
+    ipcRenderer.invoke('db:audit:getAll', filters) as Promise<ApiResponse<AuditLogRecord[]>>,
+
+  getCount: (filters: Omit<AuditLogFilters, 'limit' | 'offset'> = {}) =>
+    ipcRenderer.invoke('db:audit:getCount', filters) as Promise<ApiResponse<number>>,
+
+  cleanup: (retentionDays: number) =>
+    ipcRenderer.invoke('db:audit:cleanup', retentionDays) as Promise<
+      ApiResponse<number>
+    >
+}

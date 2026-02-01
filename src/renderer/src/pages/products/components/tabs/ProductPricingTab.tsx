@@ -22,6 +22,9 @@ import RefreshIcon from '@mui/icons-material/Refresh'
 import SaveIcon from '@mui/icons-material/Save'
 import CategoryIcon from '@mui/icons-material/Category'
 import StoreIcon from '@mui/icons-material/Store'
+import DeleteIcon from '@mui/icons-material/Delete'
+import IconButton from '@mui/material/IconButton'
+import Tooltip from '@mui/material/Tooltip'
 import CurrencyInput from '../../../../components/CurrencyInput'
 import { globalAlert } from '../../../../lib/globalAlert'
 
@@ -394,6 +397,23 @@ export default function ProductPricingTab({
     setStoreCost(newCost.toString())
   }
 
+  const handleDeleteUom = async (id: string, uomCode: string): Promise<void> => {
+    const confirmed = await globalAlert.confirm(
+      `Hapus satuan "${uomCode}"? Data harga untuk satuan ini juga akan dihapus.`,
+      'Hapus Satuan'
+    )
+    if (!confirmed) return
+
+    try {
+      await window.api.db.pricing.deleteProductUom(id)
+      globalAlert.success(`Satuan ${uomCode} berhasil dihapus`)
+      loadData()
+    } catch (error) {
+      console.error('Failed to delete UOM', error)
+      globalAlert.error('Gagal menghapus satuan')
+    }
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={4}>
@@ -492,6 +512,7 @@ export default function ProductPricingTab({
                     {cat.name}
                   </TableCell>
                 ))}
+              <TableCell sx={{ fontWeight: 'bold', width: 60 }}>Aksi</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -548,6 +569,19 @@ export default function ProductPricingTab({
                         />
                       </TableCell>
                     ))}
+                  <TableCell>
+                    {!uom.isBaseUnit && (
+                      <Tooltip title="Hapus satuan">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteUom(uom.id, uom.uomCode)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </TableCell>
                 </TableRow>
               )
             })}

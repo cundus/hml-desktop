@@ -653,8 +653,15 @@ export class SyncService {
     // Only select columns that exist in both local and cloud
     const columns = config.columns.join(', ')
     const tableName = pgTable(entityName) // Quote table name for PostgreSQL
+    
+    // Only include synced_at in query if the entity has that column
+    const hasSyncedAt = config.columns.includes('synced_at')
+    const whereClause = hasSyncedAt
+      ? `WHERE updated_at > $1 OR synced_at > $1 OR synced_at IS NULL`
+      : `WHERE updated_at > $1`
+    
     const cloudRecords = await this.cloudPool.query(
-      `SELECT ${columns} FROM ${tableName} WHERE updated_at > $1 OR synced_at > $1 OR synced_at IS NULL`,
+      `SELECT ${columns} FROM ${tableName} ${whereClause}`,
       [lastPullDate]
     )
 
@@ -780,12 +787,17 @@ export class SyncService {
     if (!config) throw new Error(`Unknown entity: ${entityName}`)
 
     const lastPushAt = this.getLastSyncTime(entityName, 'last_push_at')
+    
+    // Only include synced_at in query if the entity has that column
+    const hasSyncedAt = config.columns.includes('synced_at')
 
     // Fetch local records that were updated since last push
     const columns = config.columns.join(', ')
-    const stmt = this.localDb.prepare(
-      `SELECT ${columns} FROM ${entityName} WHERE updated_at > ? OR synced_at IS NULL`
-    )
+    const whereClause = hasSyncedAt
+      ? `WHERE updated_at > ? OR synced_at IS NULL`
+      : `WHERE updated_at > ?`
+    
+    const stmt = this.localDb.prepare(`SELECT ${columns} FROM ${entityName} ${whereClause}`)
     stmt.bind([lastPushAt])
 
     const localRecords: Record<string, unknown>[] = []
@@ -827,11 +839,13 @@ export class SyncService {
           }
         }
 
-        // Mark as synced locally
-        this.localDb.run(`UPDATE ${entityName} SET synced_at = ? WHERE id = ?`, [
-          Date.now(),
-          localRecord.id as string
-        ])
+        // Mark as synced locally (only if entity has synced_at column)
+        if (hasSyncedAt) {
+          this.localDb.run(`UPDATE ${entityName} SET synced_at = ? WHERE id = ?`, [
+            Date.now(),
+            localRecord.id as string
+          ])
+        }
       } catch (error) {
         console.error(`Error pushing record ${localRecord.id}:`, error)
         throw error

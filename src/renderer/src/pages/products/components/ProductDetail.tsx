@@ -122,7 +122,7 @@ export default function ProductDetail({
   }
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', pl: 2 }}>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3 }}>
       {/* Header */}
       <Stack direction="row" alignItems="flex-start" justifyContent="space-between" >
         <Box>

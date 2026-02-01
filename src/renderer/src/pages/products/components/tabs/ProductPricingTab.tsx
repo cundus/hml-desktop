@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Table from '@mui/material/Table'
@@ -15,9 +15,13 @@ import Typography from '@mui/material/Typography'
 import Stack from '@mui/material/Stack'
 import Chip from '@mui/material/Chip'
 import CircularProgress from '@mui/material/CircularProgress'
+import FormControl from '@mui/material/FormControl'
+import InputLabel from '@mui/material/InputLabel'
+import Select from '@mui/material/Select'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import SaveIcon from '@mui/icons-material/Save'
 import CategoryIcon from '@mui/icons-material/Category'
+import StoreIcon from '@mui/icons-material/Store'
 import CurrencyInput from '../../../../components/CurrencyInput'
 import { globalAlert } from '../../../../lib/globalAlert'
 
@@ -33,6 +37,11 @@ interface ProductUomRow {
 }
 
 interface PriceCategory {
+  id: string
+  name: string
+}
+
+interface Store {
   id: string
   name: string
 }
@@ -53,10 +62,61 @@ export default function ProductPricingTab({
   const [uomMargins, setUomMargins] = useState<Record<string, { pct: string; fixed: string }>>({})
   const [baseCost, setBaseCost] = useState('0')
 
+  // Store-specific cost state
+  const [stores, setStores] = useState<Store[]>([])
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('')
+  const [storeCost, setStoreCost] = useState<string>('0')
+  const [hasStoreCost, setHasStoreCost] = useState(false)
+
   // Add UOM state
   const [uomMasters, setUomMasters] = useState<{ id: string; code: string; name: string }[]>([])
   const [newUomId, setNewUomId] = useState('')
   const [newConversionFactor, setNewConversionFactor] = useState('1')
+
+  // Load stores on mount
+  useEffect(() => {
+    const loadStores = async (): Promise<void> => {
+      try {
+        const res = await window.api.db.stores.getAll()
+        const storeList = (res.data ?? []).map((s) => ({ id: s.id, name: s.name }))
+        setStores(storeList)
+        // Auto-select first store
+        if (storeList.length > 0 && !selectedStoreId) {
+          setSelectedStoreId(storeList[0].id)
+        }
+      } catch (error) {
+        console.error('Failed to load stores', error)
+      }
+    }
+    loadStores()
+  }, [])
+
+  // Load store-specific cost when store changes
+  const loadStoreCost = useCallback(async (): Promise<void> => {
+    if (!selectedStoreId || !productId) return
+
+    try {
+      const res = await window.api.db.productPrices.getByProductAndStore(productId, selectedStoreId)
+      if (res.data) {
+        setStoreCost(res.data.cost)
+        setHasStoreCost(true)
+      } else {
+        // No store-specific cost, use base cost
+        setStoreCost(baseCost)
+        setHasStoreCost(false)
+      }
+    } catch (error) {
+      console.error('Failed to load store cost', error)
+      setStoreCost(baseCost)
+      setHasStoreCost(false)
+    }
+  }, [selectedStoreId, productId, baseCost])
+
+  useEffect(() => {
+    if (selectedStoreId && baseCost) {
+      loadStoreCost()
+    }
+  }, [selectedStoreId, baseCost, loadStoreCost])
 
   useEffect(() => {
     loadData()
@@ -102,14 +162,17 @@ export default function ProductPricingTab({
 
       setProductUoms(uomRows)
 
-      // Load prices for each UOM
+      // Load prices for each UOM - use store-specific prices if store is selected
       const pricesMap: Record<string, Record<string, string>> = {}
       const marginsMap: Record<string, { pct: string; fixed: string }> = {}
+      const storeToUse = selectedStoreId || (stores.length > 0 ? stores[0].id : '')
 
       for (const uom of uomRows) {
-        const pricesRes = await window.api.db.pricing.getCategoryPrices({
+        // Use getAvailableCategoryPrices which returns store-specific or fallback to default
+        const pricesRes = await window.api.db.pricing.getAvailableCategoryPrices({
           productId,
-          uomId: uom.uomId
+          uomId: uom.uomId,
+          storeId: storeToUse
         })
         const catPrices = pricesRes.data ?? []
         pricesMap[uom.uomId] = {}
@@ -139,12 +202,88 @@ export default function ProductPricingTab({
     }
   }
 
+  // Load store-specific prices when store changes
+  const loadStorePrices = useCallback(async (): Promise<void> => {
+    if (!selectedStoreId || productUoms.length === 0) return
+
+    try {
+      const pricesMap: Record<string, Record<string, string>> = {}
+      const marginsMap: Record<string, { pct: string; fixed: string }> = {}
+      const currentBaseCost = hasStoreCost ? Number(storeCost) : Number(baseCost)
+
+      for (const uom of productUoms) {
+        const pricesRes = await window.api.db.pricing.getAvailableCategoryPrices({
+          productId,
+          uomId: uom.uomId,
+          storeId: selectedStoreId
+        })
+        const catPrices = pricesRes.data ?? []
+        pricesMap[uom.uomId] = {}
+        for (const cp of catPrices) {
+          pricesMap[uom.uomId][cp.priceCategoryId] = cp.price
+        }
+
+        // Calculate margin from retail price
+        const retailPrice = Number(pricesMap[uom.uomId]['RETAIL'] || 0)
+        const effectiveCost = uom.costOverride
+          ? Number(uom.cost || 0)
+          : currentBaseCost * uom.conversionFactor
+        const marginFixed = retailPrice - effectiveCost
+        const marginPct = effectiveCost > 0 ? (marginFixed / effectiveCost) * 100 : 0
+        marginsMap[uom.uomId] = {
+          pct: marginPct.toFixed(1),
+          fixed: marginFixed.toString()
+        }
+      }
+
+      setAllUomPrices(pricesMap)
+      setUomMargins(marginsMap)
+    } catch (error) {
+      console.error('Failed to load store prices', error)
+    }
+  }, [selectedStoreId, productId, productUoms, baseCost, storeCost, hasStoreCost])
+
+  // Reload prices when store changes
+  useEffect(() => {
+    if (selectedStoreId && productUoms.length > 0) {
+      loadStorePrices()
+    }
+  }, [selectedStoreId, loadStorePrices])
+
+  // Get effective cost considering store-specific cost
   const getEffectiveCost = (uom: ProductUomRow): number => {
+    // Use store cost if available, otherwise base cost
+    const currentBaseCost = hasStoreCost ? Number(storeCost) : Number(baseCost)
+    
     if (uom.costOverride && uom.cost) {
       return Number(uom.cost)
     }
-    return Number(baseCost) * uom.conversionFactor
+    return currentBaseCost * uom.conversionFactor
   }
+
+  // Recalculate margins when store cost changes
+  useEffect(() => {
+    if (productUoms.length > 0 && Object.keys(allUomPrices).length > 0) {
+      const currentBaseCost = hasStoreCost ? Number(storeCost) : Number(baseCost)
+      const newMargins: Record<string, { pct: string; fixed: string }> = {}
+      
+      for (const uom of productUoms) {
+        const prices = allUomPrices[uom.uomId] || {}
+        const retailPrice = Number(prices['RETAIL'] || 0)
+        
+        // Calculate effective cost inline to avoid stale closure
+        let effectiveCost = currentBaseCost * uom.conversionFactor
+        if (uom.costOverride && uom.cost) {
+          effectiveCost = Number(uom.cost)
+        }
+        
+        const fixed = retailPrice - effectiveCost
+        const pct = effectiveCost > 0 ? (fixed / effectiveCost) * 100 : 0
+        newMargins[uom.uomId] = { pct: pct.toFixed(1), fixed: fixed.toString() }
+      }
+      setUomMargins(newMargins)
+    }
+  }, [storeCost, hasStoreCost, baseCost, productUoms, allUomPrices])
 
   const handleMarginChange = (uomId: string, newPct: string): void => {
     const uom = productUoms.find((u) => u.uomId === uomId)
@@ -218,24 +357,41 @@ export default function ProductPricingTab({
   const handleSaveAll = async (): Promise<void> => {
     setSaving(true)
     try {
-      for (const uom of productUoms) {
-        const prices = allUomPrices[uom.uomId] || {}
-        for (const [categoryId, price] of Object.entries(prices)) {
-          await window.api.db.pricing.upsertCategoryPrice({
-            productId,
-            uomId: uom.uomId,
-            priceCategoryId: categoryId,
-            price
-          })
+      // Always save store-specific cost when a store is selected
+      if (selectedStoreId) {
+        await window.api.db.productPrices.upsertCost(productId, selectedStoreId, storeCost)
+      }
+
+      // Save prices per store (using upsertStorePrice)
+      if (selectedStoreId) {
+        for (const uom of productUoms) {
+          const prices = allUomPrices[uom.uomId] || {}
+          for (const [categoryId, price] of Object.entries(prices)) {
+            await window.api.db.pricing.upsertStorePrice({
+              productId,
+              uomId: uom.uomId,
+              priceCategoryId: categoryId,
+              storeId: selectedStoreId,
+              price
+            })
+          }
         }
       }
       globalAlert.success('Harga berhasil disimpan')
+      setHasStoreCost(true)
+      
+      // Reload data to reflect saved changes
+      await loadStoreCost()
     } catch (error) {
       console.error('Failed to save prices', error)
       globalAlert.error('Gagal menyimpan harga')
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleStoreCostChange = (newCost: number): void => {
+    setStoreCost(newCost.toString())
   }
 
   if (loading) {
@@ -248,6 +404,45 @@ export default function ProductPricingTab({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Store Selector */}
+      <Stack direction="row" spacing={2} alignItems="center" mb={2} mt={2}>
+        <StoreIcon color="action" />
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <InputLabel>Pilih Toko</InputLabel>
+          <Select
+            value={selectedStoreId}
+            label="Pilih Toko"
+            onChange={(e) => setSelectedStoreId(e.target.value)}
+          >
+            {stores.map((store) => (
+              <MenuItem key={store.id} value={store.id}>
+                {store.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Harga Modal Toko:
+          </Typography>
+          <CurrencyInput
+            value={Number(storeCost)}
+            onChange={handleStoreCostChange}
+            size="small"
+            sx={{ width: 150 }}
+          />
+          {hasStoreCost && (
+            <Chip label="Custom" size="small" color="info" variant="outlined" />
+          )}
+          {!hasStoreCost && (
+            <Chip label="Default" size="small" color="default" variant="outlined" />
+          )}
+        </Box>
+        <Typography variant="caption" color="text.secondary">
+          (Default: Rp {Number(baseCost).toLocaleString('id-ID')})
+        </Typography>
+      </Stack>
+
       {/* Action Buttons */}
       <Stack direction="row" justifyContent="flex-end" spacing={1} mb={2}>
         <Button
@@ -327,6 +522,7 @@ export default function ProductPricingTab({
                     <TextField
                       size="small"
                       value={margins.pct}
+                      disabled
                       onChange={(e) => handleMarginChange(uom.uomId, e.target.value)}
                       type="number"
                       sx={{ width: 80 }}

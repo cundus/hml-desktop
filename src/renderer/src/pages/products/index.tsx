@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
 import Typography from '@mui/material/Typography'
 import useAuth from '../../hooks/useAuth'
 import ProductList from './components/ProductList'
@@ -113,42 +115,35 @@ export default function ProductManagementPage(): React.JSX.Element {
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <Typography variant="h5" gutterBottom>
-        Manajemen Produk
+        Dashboard Produk
       </Typography>
 
-      {/* Fixed Vertical Layout */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, gap: 2 }}>
-        {/* Top: Product List (60%) */}
-        <Box
-          sx={{
-            flex: selectedProductId ? '0 0 60%' : 1,
-            minHeight: 0,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column'
-          }}
-        >
-          <ProductList
-            products={products}
-            loading={loading}
-            selectedProductId={selectedProductId}
-            onSelectProduct={handleSelectProduct}
-            onRefresh={loadProducts}
-          />
-        </Box>
+      {/* Product List - Full Height */}
+      <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <ProductList
+          products={products}
+          loading={loading}
+          selectedProductId={selectedProductId}
+          onSelectProduct={handleSelectProduct}
+          onRefresh={loadProducts}
+        />
+      </Box>
 
-        {/* Bottom: Product Detail (40%) - Only shown when product selected */}
-        {selectedProductId && (
-          <Box
-            sx={{
-              flex: '0 0 40%',
-              minHeight: 0,
-              overflow: 'auto',
-              borderTop: 1,
-              borderColor: 'divider',
-              pt: 2
-            }}
-          >
+      {/* Product Detail Modal */}
+      <Dialog
+        open={!!selectedProductId}
+        onClose={() => handleSelectProduct(null)}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          sx: {
+            height: '85vh',
+            maxHeight: '85vh'
+          }
+        }}
+      >
+        <DialogContent sx={{ p: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
+          {selectedProductId && (
             <ProductDetail
               productId={selectedProductId}
               activeTab={activeTab}
@@ -157,9 +152,10 @@ export default function ProductManagementPage(): React.JSX.Element {
               onClose={() => handleSelectProduct(null)}
               onProductUpdated={loadProducts}
             />
-          </Box>
-        )}
-      </Box>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   )
 }
+

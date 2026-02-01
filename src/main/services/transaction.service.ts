@@ -943,12 +943,25 @@ export class TransactionService {
     }
     retStmt.free()
 
-    // 2. Calculate COGS (HPP) from Stock Transactions (SALE type) linked to Batches
-    // Query joins stock_transaction -> batch to get cost * quantity
+    // 2. Calculate COGS (HPP) from Stock Transactions (SALE type)
+    // Priority: batch.cost (FIFO) -> product_price.cost (per store) -> product.cost (default)
     let cogsQuery = `
-      SELECT SUM(CAST(st.quantity AS REAL) * CAST(COALESCE(b.cost, '0') AS REAL)) as total_cogs
+      SELECT SUM(
+        CAST(st.quantity AS REAL) * CAST(
+          COALESCE(
+            b.cost,
+            pp.cost,
+            p.cost,
+            '0'
+          ) AS REAL
+        )
+      ) as total_cogs
       FROM stock_transaction st
       LEFT JOIN batch b ON st.batch_id = b.id
+      LEFT JOIN product p ON st.product_id = p.id
+      LEFT JOIN product_price pp ON st.product_id = pp.product_id 
+        AND pp.store_id = st.store_id 
+        AND pp.deleted_at IS NULL
       WHERE st.type = 'SALE' 
         AND st.deleted_at IS NULL 
         AND st.created_at >= ? 

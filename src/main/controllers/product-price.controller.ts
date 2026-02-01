@@ -124,5 +124,21 @@ export class ProductPriceController {
         }
       }
     })
+
+    // Upsert cost for specific product and store
+    ipcMain.handle(
+      'db:productPrices:upsertCost',
+      async (_, productId: string, storeId: string, cost: string, price?: string) => {
+        try {
+          const result = await this.productPriceService.upsertCost(productId, storeId, cost, price)
+          return { success: true, data: result }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
   }
 }

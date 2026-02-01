@@ -22,6 +22,8 @@ import { Paper } from '@mui/material'
 
 const drawerWidth = 200
 
+declare const APP_VERSION: string
+
 function formatDateTime(date: Date): { date: string; time: string; day: string } {
   const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
   const day = days[date.getDay()]
@@ -126,6 +128,12 @@ export default function MainLayout(): React.JSX.Element {
               {day}, {date} • {time}
             </Typography>
           </Box>
+          <Chip
+            label={`v${APP_VERSION}`}
+            size="small"
+            variant="outlined"
+            sx={{ mr: 1, fontSize: '0.7rem', height: 22, color: 'inherit', borderColor: 'rgba(255,255,255,0.3)' }}
+          />
           <QueueStatusIndicator />
           <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}

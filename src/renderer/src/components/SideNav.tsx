@@ -116,17 +116,23 @@ const menus: MenuItem[] = [
     ]
   },
   {
-    key: 'pricing',
-    label: 'Manajemen Harga',
+    key: 'product-management',
+    label: 'Manajemen Produk',
     icon: <LocalOfferIcon fontSize="small" />,
-    permissions: ['pricing.manage'],
+    permissions: ['master.product.manage', 'pricing.manage'],
     children: [
       {
-        key: 'pricing-products',
-        label: 'Harga Produk',
-        path: '/pricing/products',
-        permissions: ['pricing.products']
+        key: 'product-dashboard',
+        label: 'Dashboard Produk',
+        path: '/products',
+        permissions: ['master.product.manage']
       },
+      // {
+      //   key: 'pricing-products',
+      //   label: 'Harga Produk',
+      //   path: '/pricing/products',
+      //   permissions: ['pricing.products']
+      // },
       {
         key: 'pricing-categories',
         label: 'Kategori Harga',
@@ -189,18 +195,6 @@ const menus: MenuItem[] = [
             label: 'Master Pengguna',
             path: '/master-user',
             permissions: ['master.user.manage']
-          },
-          {
-            key: 'master-product',
-            label: 'Produk',
-            path: '/master-product',
-            permissions: ['master.product.manage']
-          },
-          {
-            key: 'product-management',
-            label: 'Manajemen Produk',
-            path: '/products',
-            permissions: ['master.product.manage', 'pricing.products', 'inventory.view']
           },
           {
             key: 'master-category',
@@ -354,3 +348,4 @@ export default function SideNav(): React.JSX.Element {
     </List>
   )
 }
+

@@ -310,6 +310,37 @@ export class ProductPriceCloudService {
     return restored
   }
 
+  /**
+   * Upsert cost for a specific product and store.
+   * Creates a new record if it doesn't exist, updates if it does.
+   */
+  async upsertCost(
+    productId: string,
+    storeId: string,
+    cost: string,
+    price?: string
+  ): Promise<ProductPrice> {
+    const existing = await this.findByProductAndStore(productId, storeId)
+
+    if (existing) {
+      // Update existing record
+      return this.update(existing.id, {
+        price: price ?? existing.price,
+        cost,
+        isActive: existing.isActive
+      })
+    } else {
+      // Create new record
+      return this.create({
+        productId,
+        storeId,
+        price: price ?? '0',
+        cost,
+        isActive: true
+      })
+    }
+  }
+
   private mapCloudRow(row: Record<string, unknown>): ProductPrice {
     return {
       id: row.id as string,

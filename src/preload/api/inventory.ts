@@ -97,7 +97,12 @@ export const productPriceApi = {
     ipcRenderer.invoke('db:productPrices:delete', id) as Promise<ApiResponse<ProductPrice>>,
 
   restore: (id: string) =>
-    ipcRenderer.invoke('db:productPrices:restore', id) as Promise<ApiResponse<ProductPrice>>
+    ipcRenderer.invoke('db:productPrices:restore', id) as Promise<ApiResponse<ProductPrice>>,
+
+  upsertCost: (productId: string, storeId: string, cost: string, price?: string) =>
+    ipcRenderer.invoke('db:productPrices:upsertCost', productId, storeId, cost, price) as Promise<
+      ApiResponse<ProductPrice>
+    >
 }
 
 // Product Location API

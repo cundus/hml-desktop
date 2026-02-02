@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import CopyAllIcon from '@mui/icons-material/CopyAll'
+import CalculateIcon from '@mui/icons-material/Calculate'
 import {
   Dialog,
   DialogTitle,
@@ -357,9 +358,45 @@ export default function ProductPricingTab({
       })
       if (res.success) {
         globalAlert.success('UOM berhasil ditambahkan')
+        
+        // Auto-fill prices from Base UOM
+        const factor = Number(newConversionFactor) || 1
+        const baseUom = productUoms.find((u) => u.isBaseUnit)
+        
+        // Reload first to get the new UOM row
+        await loadData()
+        
+        // Then apply calculated prices if base UOM exists and not base unit
+        if (baseUom && productUoms.length > 0) {
+           const basePrices = allUomPrices[baseUom.uomId] || {}
+           const newPrices: Record<string, string> = {}
+           let hasUpdated = false
+           
+           for (const [catId, price] of Object.entries(basePrices)) {
+             const baseVal = Number(price)
+             if (!isNaN(baseVal)) {
+               newPrices[catId] = Math.round(baseVal * factor).toString()
+               hasUpdated = true
+             }
+           }
+           
+           if (hasUpdated) {
+             // Directly update the state for the NEW UOM (need to find its ID from reload or just update map)
+             // Since loadData is async state update, we might need to wait or just blindly set
+             // But simpler: just setAllUomPrices merging the new Key
+             setAllUomPrices(prev => ({
+               ...prev,
+               [uomMaster.id]: newPrices
+             }))
+             
+             // Optional: Auto-save these calculated prices to backend immediately? 
+             // Request was "autofill", implying UI fill. User can then save.
+             // We'll leave it as UI fill (unsaved until user clicks Save)
+           }
+        }
+
         setNewUomId('')
         setNewConversionFactor('1')
-        loadData()
       }
     } catch (error) {
       console.error('Failed to add UOM', error)
@@ -449,6 +486,63 @@ export default function ProductPricingTab({
     }
   }
 
+  const handleAutoCalculate = (): void => {
+    const baseUom = productUoms.find((u) => u.isBaseUnit)
+    if (!baseUom) {
+      globalAlert.error('Tidak ada satuan dasar (Base UOM)')
+      return
+    }
+
+    const basePrices = allUomPrices[baseUom.uomId] || {}
+    const newAllPrices = { ...allUomPrices }
+    let updateCount = 0
+
+    productUoms.forEach((uom) => {
+      if (uom.isBaseUnit) return // Skip base unit
+
+      const newPrices = { ...newAllPrices[uom.uomId] }
+      const factor = uom.conversionFactor
+
+      Object.entries(basePrices).forEach(([catId, price]) => {
+        const baseVal = Number(price)
+        if (!isNaN(baseVal)) {
+          newPrices[catId] = Math.round(baseVal * factor).toString()
+        }
+      })
+
+      newAllPrices[uom.uomId] = newPrices
+      updateCount++
+    })
+
+    setAllUomPrices(newAllPrices)
+    
+    // Also recalculate margins for UI consistency
+    const currentBaseCost = hasStoreCost ? Number(storeCost) : Number(baseCost)
+    const newMargins = { ...uomMargins }
+    
+    productUoms.forEach((uom) => {
+        if (uom.isBaseUnit) return
+        
+        const retailPriceStr = newAllPrices[uom.uomId]['RETAIL']
+        const retailPrice = Number(retailPriceStr || 0)
+        
+        // Calculate effective cost
+        let effectiveCost = currentBaseCost * uom.conversionFactor
+        if (uom.costOverride && uom.cost) {
+            effectiveCost = Number(uom.cost)
+        }
+
+        const fixed = retailPrice - effectiveCost
+        const pct = effectiveCost > 0 ? (fixed / effectiveCost) * 100 : 0
+        newMargins[uom.uomId] = { pct: pct.toFixed(1), fixed: fixed.toString() }
+    })
+    
+    setUomMargins(newMargins)
+    
+    globalAlert.success(`Harga dihitung ulang untuk ${updateCount} satuan`)
+  }
+
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={4}>
@@ -507,6 +601,16 @@ export default function ProductPricingTab({
           sx={{ mr: 2 }}
         >
           Atur Kategori
+        </Button>
+        <Button
+            variant="outlined"
+            size="small"
+            startIcon={<CalculateIcon />}
+            onClick={handleAutoCalculate}
+            disabled={productUoms.length < 2}
+            sx={{ mr: 1 }}
+        >
+            Hitung Otomatis
         </Button>
         <Button
             variant="outlined"

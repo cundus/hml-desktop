@@ -12,6 +12,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import SearchIcon from '@mui/icons-material/Search'
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart'
+import Pagination from '@mui/material/Pagination'
 import Kbd from '../../../components/Kbd'
 
 export type Product = {
@@ -37,6 +38,9 @@ export default function ProductBrowser({
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [selectedIndex, setSelectedIndex] = useState(0)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 20
+
   const searchInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
@@ -48,9 +52,10 @@ export default function ProductBrowser({
     return () => clearTimeout(timer)
   }, [])
 
-  // Reset selection when search or category changes
+  // Reset selection and page when search or category changes
   useEffect(() => {
     setSelectedIndex(0)
+    setPage(1)
   }, [search, activeCategory])
 
   const categories = useMemo(
@@ -71,6 +76,12 @@ export default function ProductBrowser({
     [products, search, activeCategory]
   )
 
+  const pageCount = Math.ceil(filtered.length / PAGE_SIZE)
+  const displayedProducts = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  )
+
   const handleCategoryClick = (category: string | null): void => {
     setActiveCategory((prev) => (prev === category ? null : category))
   }
@@ -78,31 +89,47 @@ export default function ProductBrowser({
   // Handle keyboard navigation & selection via keyboard
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent): void => {
-      if (filtered.length === 0) return
+      if (displayedProducts.length === 0) return
 
       if (e.key === 'ArrowDown') {
         e.preventDefault()
-        setSelectedIndex((prev) => Math.min(prev + 1, filtered.length - 1))
+        setSelectedIndex((prev) => Math.min(prev + 1, displayedProducts.length - 1))
       } else if (e.key === 'ArrowUp') {
         e.preventDefault()
         setSelectedIndex((prev) => Math.max(prev - 1, 0))
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        onAdd(filtered[selectedIndex])
+        const product = displayedProducts[selectedIndex]
+        if (product) {
+          onAdd(product)
+        }
+      } else if (e.key === 'ArrowRight') {
+        // Optional: Next page
+        if (page < pageCount) setPage((p) => p + 1)
+      } else if (e.key === 'ArrowLeft') {
+        // Optional: Prev page
+        if (page > 1) setPage((p) => p - 1)
       }
     },
-    [filtered, selectedIndex, onAdd]
+    [displayedProducts, selectedIndex, onAdd, page, pageCount]
   )
 
   // Scroll selected item into view
   useEffect(() => {
-    if (listRef.current && filtered.length > 0) {
-      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement
+    if (listRef.current && displayedProducts.length > 0) {
+      // Ensure index is valid for current page
+      const validIndex = Math.min(selectedIndex, displayedProducts.length - 1)
+      if (validIndex !== selectedIndex) {
+        setSelectedIndex(validIndex)
+        return
+      }
+
+      const selectedElement = listRef.current.children[validIndex] as HTMLElement
       if (selectedElement) {
         selectedElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
       }
     }
-  }, [selectedIndex, filtered.length])
+  }, [selectedIndex, displayedProducts.length])
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, height: '100%' }}>
@@ -139,7 +166,7 @@ export default function ProductBrowser({
           <span>Pilih</span>
         </Typography>
         {categories.length > 0 && (
-          <Stack direction="row" spacing={1} mt={1} flexWrap="wrap">
+          <Stack direction="row" spacing={1} alignItems="center" justifyContent="flex-start" gap={1} mt={1} flexWrap="wrap">
             <Chip
               label="Semua"
               size="small"
@@ -147,6 +174,7 @@ export default function ProductBrowser({
               color={!activeCategory ? 'primary' : 'default'}
               onClick={() => handleCategoryClick(null)}
             />
+
             {categories.map((cat) => (
               <Chip
                 key={cat}
@@ -161,53 +189,79 @@ export default function ProductBrowser({
         )}
       </Box>
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box sx={{ flexGrow: 1, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
         {filtered.length === 0 ? (
           <Typography variant="body2" color="text.secondary">
             Tidak ada produk ditemukan.
           </Typography>
         ) : (
-          <List dense ref={listRef} onKeyDown={handleKeyDown}>
-            {filtered.map((product, index) => (
-              <ListItemButton
-                key={product.id}
-                selected={index === selectedIndex}
-                onClick={() => onAdd(product)}
-                divider
+          <>
+            <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+              <List dense ref={listRef} onKeyDown={handleKeyDown}>
+                {displayedProducts.map((product, index) => (
+                  <ListItemButton
+                    key={product.id}
+                    selected={index === selectedIndex}
+                    onClick={() => onAdd(product)}
+                    divider
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <ListItemText
+                      primary={product.name}
+                      secondary={`${product.sku} • ${product.category}`}
+                    />
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2" fontWeight="bold">
+                        {product.price.toLocaleString('id-ID', {
+                          style: 'currency',
+                          currency: 'IDR',
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0
+                        })}
+                      </Typography>
+                      <IconButton
+                        edge="end"
+                        color="primary"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onAdd(product)
+                        }}
+                        size="small"
+                      >
+                        <AddShoppingCartIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  </ListItemButton>
+                ))}
+              </List>
+            </Box>
+
+            {pageCount > 1 && (
+              <Box
                 sx={{
                   display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
+                  justifyContent: 'center',
+                  p: 2,
+                  borderTop: 1,
+                  borderColor: 'divider'
                 }}
               >
-                <ListItemText
-                  primary={product.name}
-                  secondary={`${product.sku} • ${product.category}`}
+                <Pagination
+                  count={pageCount}
+                  page={page}
+                  onChange={(_, p) => setPage(p)}
+                  color="primary"
+                  size="small"
+                  showFirstButton
+                  showLastButton
                 />
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" fontWeight="bold">
-                    {product.price.toLocaleString('id-ID', {
-                      style: 'currency',
-                      currency: 'IDR',
-                      minimumFractionDigits: 0,
-                      maximumFractionDigits: 0
-                    })}
-                  </Typography>
-                  <IconButton
-                    edge="end"
-                    color="primary"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onAdd(product)
-                    }}
-                    size="small"
-                  >
-                    <AddShoppingCartIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
-              </ListItemButton>
-            ))}
-          </List>
+              </Box>
+            )}
+          </>
         )}
       </Box>
     </Box>

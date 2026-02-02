@@ -234,7 +234,17 @@ export default function ProductSelectModal({
       }
 
       if (availablePrices.length > 0) {
-        const categories: PriceCategory[] = availablePrices.map((ap) => ({
+        // Filter out zero prices (except we handle MANUAL later explicitly)
+        const validPrices = availablePrices.filter((ap) => Number(ap.price) > 0)
+
+        // Sort: RETAIL first, then alphabetical
+        const sortedPrices = [...validPrices].sort((a, b) => {
+          if (a.priceCategoryId === 'RETAIL') return -1
+          if (b.priceCategoryId === 'RETAIL') return 1
+          return a.priceCategoryName.localeCompare(b.priceCategoryName)
+        })
+
+        const categories: PriceCategory[] = sortedPrices.map((ap) => ({
           id: ap.priceCategoryId,
           name: ap.priceCategoryName,
           price: Number(ap.price) || 0,
@@ -293,6 +303,11 @@ export default function ProductSelectModal({
     }
 
     const totalPrice = unitPrice * quantity
+
+    if (totalPrice <= 0) {
+      manualPriceInputRef.current?.focus()
+      return
+    }
 
     // Create a copy of selectedPrice with the actual price for MANUAL
     const finalPrice =
@@ -444,7 +459,7 @@ export default function ProductSelectModal({
             Kategori Harga
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {priceCategories.map((cat, index) => (
+            {priceCategories.filter(i=> i.price > 0 || i.id === 'MANUAL').map((cat, index) => (
               <Chip
                 key={cat.id}
                 label={
@@ -613,7 +628,7 @@ export default function ProductSelectModal({
         <Button
           variant="contained"
           onClick={handleConfirm}
-          disabled={!selectedUom || !selectedPrice || quantity < 1}
+          disabled={!selectedUom || !selectedPrice || quantity < 1 }
         >
           Tambah ke Keranjang
         </Button>

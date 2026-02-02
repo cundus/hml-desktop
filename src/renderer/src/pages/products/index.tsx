@@ -133,7 +133,7 @@ export default function ProductManagementPage(): React.JSX.Element {
       <Dialog
         open={!!selectedProductId}
         onClose={() => handleSelectProduct(null)}
-        maxWidth="lg"
+        maxWidth="xl"
         fullWidth
         PaperProps={{
           sx: {

@@ -224,6 +224,32 @@ export default function SalesPage(): React.JSX.Element {
     void fetchCustomerPoints()
   }, [selectedCustomerId])
 
+  // Fetch store name for current shift
+  const [currentStoreName, setCurrentStoreName] = useState<string>('')
+  useEffect(() => {
+    const fetchStoreName = async (): Promise<void> => {
+      if (currentShift?.storeId) {
+        try {
+          // If interface says storeName exists but runtime doesn't, we fetch it
+          if (currentShift.storeName) {
+            setCurrentStoreName(currentShift.storeName)
+            return
+          }
+          
+          const res = await window.api.db.stores.getById(currentShift.storeId)
+          if (res.success && res.data) {
+            setCurrentStoreName(res.data.name)
+          }
+        } catch (err) {
+          console.error('Failed to fetch store name:', err)
+        }
+      } else {
+        setCurrentStoreName('')
+      }
+    }
+    void fetchStoreName()
+  }, [currentShift?.storeId, currentShift?.storeName])
+
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [cartItems]
@@ -652,6 +678,14 @@ export default function SalesPage(): React.JSX.Element {
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {currentStoreName && (
+              <Chip
+                label={currentStoreName}
+                color="info"
+                size="small"
+                variant="outlined"
+              />
+            )}
             <Chip
               label={`Shift: ${currentShift?.userName ?? 'Kasir'}`}
               color="success"
@@ -824,10 +858,10 @@ export default function SalesPage(): React.JSX.Element {
           open={productDialogOpen}
           onClose={() => setProductDialogOpen(false)}
           fullWidth
-          maxWidth="md"
+          maxWidth="lg"
         >
           <DialogTitle>Cari produk</DialogTitle>
-          <DialogContent dividers sx={{ height: 420 }}>
+          <DialogContent dividers sx={{ height: 650 }}>
             <ProductBrowser products={products} onAdd={handleAddToCart} />
           </DialogContent>
           <DialogActions>

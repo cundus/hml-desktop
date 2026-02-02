@@ -22,10 +22,13 @@ import {
   Refresh as RefreshIcon
 } from '@mui/icons-material'
 import { StockOverviewItem, StockTransaction, StockAdjustment } from 'src/preload/api/inventory'
+import { ProductUom } from 'src/preload/api/pricing'
+
 import StockOverviewTab from './components/StockOverviewTab'
 import StockTransactionsTab from './components/StockTransactionsTab'
 import StockAdjustmentsTab from './components/StockAdjustmentsTab'
 import StockAdjustmentDialog from './components/StockAdjustmentDialog'
+import BatchesPage from './Batches'
 import useBranchConfig from '@renderer/hooks/useBranchConfig'
 
 interface TabPanelProps {
@@ -70,6 +73,9 @@ export default function InventoryPage(): React.ReactElement {
   >([])
   const [lowStockCount, setLowStockCount] = useState(0)
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false)
+  const [quickAdjustProduct, setQuickAdjustProduct] = useState<{ productId: string; storeId: string } | null>(null)
+  const [uoms, setUoms] = useState<ProductUom[]>([])
+
   const { storeId: branchStoreId } = useBranchConfig()
   const [selectedStoreId, setSelectedStoreId] = useState<string>('')
   const [stores, setStores] = useState<{ id: string; name: string }[]>([])
@@ -111,6 +117,12 @@ export default function InventoryPage(): React.ReactElement {
         setError(overviewResult.error || 'Failed to load stock overview')
       }
 
+      // Load UOMs for smart display
+      const uomResult = await window.api.db.pricing.getAllProductUoms()
+      if (uomResult.success) {
+        setUoms(uomResult.data)
+      }
+
       // Load transactions
       const transactionsResult = await window.api.db.inventory.getStockTransactions({
         storeId,
@@ -145,6 +157,16 @@ export default function InventoryPage(): React.ReactElement {
     loadData()
     // Switch to adjustments tab to see the new entry
     setTabValue(2)
+  }
+
+  const handleQuickAdjust = (productId: string, storeId: string): void => {
+    setQuickAdjustProduct({ productId, storeId })
+    setAdjustmentDialogOpen(true)
+  }
+
+  const handleAdjustmentClose = (): void => {
+    setAdjustmentDialogOpen(false)
+    setQuickAdjustProduct(null)
   }
 
   const handleStoreChange = (event: any): void => {
@@ -235,10 +257,16 @@ export default function InventoryPage(): React.ReactElement {
           <Tab label="Ringkasan Stok" {...a11yProps(0)} />
           <Tab label="Transaksi" {...a11yProps(1)} />
           <Tab label="Penyesuaian" {...a11yProps(2)} />
+          <Tab label="Batch" {...a11yProps(3)} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
-          <StockOverviewTab data={stockOverview} onRefresh={loadData} />
+          <StockOverviewTab 
+            data={stockOverview}
+            uoms={uoms}
+            onRefresh={loadData}
+            onQuickAdjust={handleQuickAdjust}
+          />
         </TabPanel>
 
         <TabPanel value={tabValue} index={1}>
@@ -248,12 +276,18 @@ export default function InventoryPage(): React.ReactElement {
         <TabPanel value={tabValue} index={2}>
           <StockAdjustmentsTab data={adjustments} onRefresh={loadData} />
         </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <BatchesPage />
+        </TabPanel>
       </Paper>
 
       <StockAdjustmentDialog
         open={adjustmentDialogOpen}
-        onClose={() => setAdjustmentDialogOpen(false)}
+        onClose={handleAdjustmentClose}
         onSuccess={handleAdjustmentCreated}
+        initialProductId={quickAdjustProduct?.productId}
+        initialStoreId={quickAdjustProduct?.storeId || branchStoreId || selectedStoreId}
       />
     </Box>
   )

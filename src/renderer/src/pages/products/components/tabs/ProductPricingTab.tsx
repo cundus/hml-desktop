@@ -1,6 +1,14 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
+import CopyAllIcon from '@mui/icons-material/CopyAll'
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText
+} from '@mui/material'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -70,6 +78,8 @@ export default function ProductPricingTab({
   const [selectedStoreId, setSelectedStoreId] = useState<string>('')
   const [storeCost, setStoreCost] = useState<string>('0')
   const [hasStoreCost, setHasStoreCost] = useState(false)
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false)
+  const [sourceCopyStoreId, setSourceCopyStoreId] = useState('')
 
   // Add UOM state
   const [uomMasters, setUomMasters] = useState<{ id: string; code: string; name: string }[]>([])
@@ -414,6 +424,31 @@ export default function ProductPricingTab({
     }
   }
 
+  const handleCopyConfirm = async (): Promise<void> => {
+    if (!sourceCopyStoreId || !selectedStoreId) return
+
+    try {
+      setLoading(true)
+      const res = await window.api.db.pricing.copyProductPricesFromStore({
+        productId,
+        sourceStoreId: sourceCopyStoreId,
+        targetStoreId: selectedStoreId
+      })
+      if (res.success) {
+        globalAlert.success(`Berhasil menyalin ${res.data.count} harga`)
+        setCopyDialogOpen(false)
+        await loadStorePrices()
+      } else {
+        globalAlert.error(res.error || 'Gagal menyalin harga')
+      }
+    } catch (error) {
+      console.error('Failed to copy prices', error)
+      globalAlert.error(error instanceof Error ? error.message : 'Gagal menyalin harga')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" py={4}>
@@ -469,9 +504,18 @@ export default function ProductPricingTab({
           variant="text"
           startIcon={<CategoryIcon />}
           onClick={() => navigate('/pricing/categories')}
-          sx={{ mr: 'auto' }}
+          sx={{ mr: 2 }}
         >
           Atur Kategori
+        </Button>
+        <Button
+            variant="outlined"
+            startIcon={<CopyAllIcon />}
+            onClick={() => setCopyDialogOpen(true)}
+            disabled={!selectedStoreId || stores.length < 2}
+            sx={{ mr: 'auto' }}
+        >
+            Salin Harga
         </Button>
         <Button
           variant="outlined"
@@ -630,6 +674,39 @@ export default function ProductPricingTab({
           </TableBody>
         </Table>
       </TableContainer>
+
+      <Dialog open={copyDialogOpen} onClose={() => setCopyDialogOpen(false)}>
+        <DialogTitle>Salin Harga dari Toko Lain</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ mb: 2 }}>
+            Pilih toko sumber untuk menyalin harga ke toko{' '}
+            <strong>{stores.find((s) => s.id === selectedStoreId)?.name}</strong>. Harga yang sudah
+            ada akan ditimpa.
+          </DialogContentText>
+          <FormControl fullWidth size="small" sx={{ mt: 1 }}>
+            <InputLabel>Toko Sumber</InputLabel>
+            <Select
+              value={sourceCopyStoreId}
+              label="Toko Sumber"
+              onChange={(e) => setSourceCopyStoreId(e.target.value)}
+            >
+              {stores
+                .filter((s) => s.id !== selectedStoreId)
+                .map((store) => (
+                  <MenuItem key={store.id} value={store.id}>
+                    {store.name}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCopyDialogOpen(false)}>Batal</Button>
+          <Button onClick={handleCopyConfirm} variant="contained" disabled={!sourceCopyStoreId}>
+            Salin Harga
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }

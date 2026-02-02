@@ -16,29 +16,36 @@ import CircularProgress from '@mui/material/CircularProgress'
 import IconButton from '@mui/material/IconButton'
 import { Close as CloseIcon } from '@mui/icons-material'
 import { Product, Store } from 'src/preload/api'
+import { ProductUom } from 'src/preload/api/pricing'
 import useAuth from '@renderer/hooks/useAuth'
 
 interface StockAdjustmentDialogProps {
   open: boolean
   onClose: () => void
   onSuccess: () => void
+  initialProductId?: string
+  initialStoreId?: string
 }
 
 export default function StockAdjustmentDialog({
   open,
   onClose,
-  onSuccess
+  onSuccess,
+  initialProductId,
+  initialStoreId
 }: StockAdjustmentDialogProps): React.JSX.Element {
   const { userName } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
+  const [uoms, setUoms] = useState<ProductUom[]>([])
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState({
-    productId: '',
-    storeId: '',
+    productId: initialProductId || '',
+    storeId: initialStoreId || '',
+    uomId: '', // Selected UOM ID
     difference: '',
     note: ''
   })
@@ -48,8 +55,41 @@ export default function StockAdjustmentDialog({
   useEffect(() => {
     if (open) {
       loadData()
+      setFormData((prev) => ({
+        ...prev,
+        productId: initialProductId || prev.productId,
+        storeId: initialStoreId || prev.storeId
+      }))
     }
-  }, [open])
+  }, [open, initialProductId, initialStoreId])
+
+  // Load UOMs when product changes
+  useEffect(() => {
+    if (formData.productId) {
+      loadUoms(formData.productId)
+    } else {
+      setUoms([])
+      setFormData((prev) => ({ ...prev, uomId: '' }))
+    }
+  }, [formData.productId])
+
+  const loadUoms = async (productId: string): Promise<void> => {
+    try {
+      const res = await window.api.db.pricing.getProductUomsByProduct(productId)
+      if (res.success && res.data) {
+        setUoms(res.data)
+        // Auto-select base unit or first available
+        const base = res.data.find((u) => u.isBaseUnit)
+        if (base) {
+          setFormData((prev) => ({ ...prev, uomId: base.uomId }))
+        } else if (res.data.length > 0) {
+          setFormData((prev) => ({ ...prev, uomId: res.data[0].uomId }))
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load UOMs', err)
+    }
+  }
 
   const loadData = async (): Promise<void> => {
     setLoading(true)
@@ -86,10 +126,14 @@ export default function StockAdjustmentDialog({
       errors.storeId = 'Store is required'
     }
 
+    if (!formData.uomId) {
+      errors.uomId = 'Unit is required'
+    }
+
     if (!formData.difference) {
       errors.difference = 'Adjustment amount is required'
     } else {
-      const diff = parseInt(formData.difference)
+      const diff = parseFloat(formData.difference) // Allow decimals for input
       if (isNaN(diff) || diff === 0) {
         errors.difference = 'Please enter a valid non-zero number'
       }
@@ -115,11 +159,21 @@ export default function StockAdjustmentDialog({
         return
       }
 
+      // Calculate total difference in base unit
+      const selectedUom = uoms.find((u) => u.uomId === formData.uomId)
+      if (!selectedUom) {
+        setError('Invalid unit selected')
+        return
+      }
+
+      const inputDiff = parseFloat(formData.difference)
+      const totalDifference = inputDiff * selectedUom.conversionFactor
+
       const result = await window.api.db.inventory.createStockAdjustment({
         productId: formData.productId,
         storeId: formData.storeId,
-        difference: parseInt(formData.difference),
-        note: formData.note || undefined,
+        difference: totalDifference,
+        note: formData.note ? `${formData.note} (${inputDiff} ${selectedUom.uomCode})` : `Adjusted ${inputDiff} ${selectedUom.uomCode}`,
         performedBy: userName
       })
 
@@ -138,8 +192,9 @@ export default function StockAdjustmentDialog({
 
   const handleClose = (): void => {
     setFormData({
-      productId: '',
-      storeId: '',
+      productId: initialProductId || '',
+      storeId: initialStoreId || '',
+      uomId: '',
       difference: '',
       note: ''
     })
@@ -149,6 +204,7 @@ export default function StockAdjustmentDialog({
   }
 
   const selectedProduct = products.find((p) => p.id === formData.productId)
+  const selectedUom = uoms.find((u) => u.uomId === formData.uomId)
 
   if (loading) {
     return (
@@ -181,26 +237,6 @@ export default function StockAdjustmentDialog({
             </Alert>
           )}
 
-          <FormControl fullWidth margin="normal" error={!!fieldErrors.productId}>
-            <InputLabel>Produk</InputLabel>
-            <Select
-              value={formData.productId}
-              label="Product"
-              onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-            >
-              {products.map((product) => (
-                <MenuItem key={product.id} value={product.id}>
-                  {product.name} ({product.sku})
-                </MenuItem>
-              ))}
-            </Select>
-            {fieldErrors.productId && (
-              <Typography variant="caption" color="error">
-                {fieldErrors.productId}
-              </Typography>
-            )}
-          </FormControl>
-
           <FormControl fullWidth margin="normal" error={!!fieldErrors.storeId}>
             <InputLabel>Toko</InputLabel>
             <Select
@@ -221,6 +257,48 @@ export default function StockAdjustmentDialog({
             )}
           </FormControl>
 
+          <FormControl fullWidth margin="normal" error={!!fieldErrors.productId}>
+            <InputLabel>Produk</InputLabel>
+            <Select
+              value={formData.productId}
+              label="Product"
+              onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+            >
+              {products.map((product) => (
+                <MenuItem key={product.id} value={product.id}>
+                  {product.name} ({product.sku})
+                </MenuItem>
+              ))}
+            </Select>
+            {fieldErrors.productId && (
+              <Typography variant="caption" color="error">
+                {fieldErrors.productId}
+              </Typography>
+            )}
+          </FormControl>
+
+          {formData.productId && (
+             <FormControl fullWidth margin="normal" error={!!fieldErrors.uomId}>
+             <InputLabel>Satuan (UOM)</InputLabel>
+             <Select
+               value={formData.uomId}
+               label="Satuan (UOM)"
+               onChange={(e) => setFormData({ ...formData, uomId: e.target.value })}
+             >
+               {uoms.map((uom) => (
+                 <MenuItem key={uom.uomId} value={uom.uomId}>
+                   {uom.uomCode} {uom.isBaseUnit ? '(Base)' : `(x${uom.conversionFactor})`}
+                 </MenuItem>
+               ))}
+             </Select>
+             {fieldErrors.uomId && (
+               <Typography variant="caption" color="error">
+                 {fieldErrors.uomId}
+               </Typography>
+             )}
+           </FormControl>
+          )}
+
           <TextField
             fullWidth
             margin="normal"
@@ -234,11 +312,11 @@ export default function StockAdjustmentDialog({
               'Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok'
             }
           />
-
-          {selectedProduct && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Satuan: {selectedProduct.unit}
-            </Typography>
+          
+          {selectedUom && selectedUom.conversionFactor > 1 && formData.difference && (
+             <Typography variant="body2" color="primary" sx={{ mt: 1, mb: 1, fontWeight: 'medium' }}>
+               Total perubahan stok base unit: {parseFloat(formData.difference) * selectedUom.conversionFactor} {selectedProduct?.unit}
+             </Typography>
           )}
 
           <TextField

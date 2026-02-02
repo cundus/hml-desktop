@@ -267,6 +267,60 @@ export class PricingCloudService {
     return results
   }
 
+  async getAllProductUoms(): Promise<ProductUom[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          `SELECT pu.id, pu.product_id, pu.uom_id, pu.conversion_factor, pu.is_base_unit,
+                  pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
+             FROM product_uom pu
+             JOIN uom u ON u.id = pu.uom_id
+            WHERE pu.deleted_at IS NULL`
+        )
+        return result.rows.map((row) => ({
+          id: row.id,
+          productId: row.product_id,
+          uomId: row.uom_id,
+          uomCode: row.uom_code,
+          uomName: row.uom_name,
+          conversionFactor: Number(row.conversion_factor),
+          isBaseUnit: row.is_base_unit === 1 || row.is_base_unit === true,
+          cost: row.cost,
+          costOverride: row.cost_override === 1 || row.cost_override === true
+        }))
+      } catch (error) {
+        console.error('[PricingCloud] getAllProductUoms error:', error)
+        return []
+      }
+    }
+
+    const stmt = this.localDb.prepare(
+      `SELECT pu.id, pu.product_id, pu.uom_id, pu.conversion_factor, pu.is_base_unit,
+              pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
+         FROM product_uom pu
+         JOIN uom u ON u.id = pu.uom_id
+        WHERE pu.deleted_at IS NULL`
+    )
+    const results: ProductUom[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      results.push({
+        id: row.id as string,
+        productId: row.product_id as string,
+        uomId: row.uom_id as string,
+        uomCode: row.uom_code as string,
+        uomName: row.uom_name as string,
+        conversionFactor: Number(row.conversion_factor),
+        isBaseUnit: (row.is_base_unit as number) === 1,
+        cost: row.cost as string,
+        costOverride: (row.cost_override as number) === 1
+      })
+    }
+    stmt.free()
+    return results
+  }
+
   async getProductUomsByProduct(productId: string): Promise<ProductUom[]> {
     if (this.isOnline()) {
       try {
@@ -335,27 +389,23 @@ export class PricingCloudService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        const checkRes = await pool.query(
-          `SELECT id FROM store_product_uom_price
-           WHERE product_id = $1 AND uom_id = $2 AND price_category_id = $3 AND store_id = $4
-           AND deleted_at IS NULL LIMIT 1`,
-          [productId, uomId, priceCategoryId, storeId]
-        )
-
-        if (checkRes.rows.length > 0) {
-          const existingId = checkRes.rows[0].id
-          await pool.query(
-            'UPDATE store_product_uom_price SET price = $1, updated_at = $2 WHERE id = $3',
-            [price, now, existingId]
-          )
-          return { id: existingId, productId, uomId, priceCategoryId, storeId, price }
-        }
-
-        await pool.query(
-          'INSERT INTO store_product_uom_price (id, product_id, uom_id, price_category_id, store_id, price, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+        
+        // Use atomic UPSERT to prevent race conditions and duplicate key errors
+        const upsertRes = await pool.query(
+          `INSERT INTO store_product_uom_price 
+            (id, product_id, uom_id, price_category_id, store_id, price, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           ON CONFLICT (product_id, uom_id, price_category_id, store_id) 
+           DO UPDATE SET 
+             price = EXCLUDED.price, 
+             updated_at = EXCLUDED.updated_at,
+             deleted_at = NULL
+           RETURNING id`,
           [id, productId, uomId, priceCategoryId, storeId, price, now, now]
         )
-        return { id, productId, uomId, priceCategoryId, storeId, price }
+        
+        const resultId = upsertRes.rows[0]?.id || id
+        return { id: resultId, productId, uomId, priceCategoryId, storeId, price }
       } catch (error) {
         console.error('[PricingCloud] upsertStorePrice error, queuing:', error)
       }
@@ -469,25 +519,29 @@ export class PricingCloudService {
     const now = new Date()
 
     if (this.isOnline()) {
-      const pool = getCloudDb().getPool()
-      const checkRes = await pool.query(
-        `SELECT id FROM product_uom_category_price
-         WHERE product_id = $1 AND uom_id = $2 AND price_category_id = $3 AND deleted_at IS NULL LIMIT 1`,
-        [productId, uomId, priceCategoryId]
-      )
-      if (checkRes.rows.length > 0) {
-        const existingId = checkRes.rows[0].id
-        await pool.query(
-          'UPDATE product_uom_category_price SET price = $1, updated_at = $2 WHERE id = $3',
-          [price, now, existingId]
+      try {
+        const pool = getCloudDb().getPool()
+        
+        // Use atomic UPSERT to prevent race conditions and duplicate key errors
+        const upsertRes = await pool.query(
+          `INSERT INTO product_uom_category_price 
+            (id, product_id, uom_id, price_category_id, price, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (product_id, uom_id, price_category_id) 
+           DO UPDATE SET 
+             price = EXCLUDED.price, 
+             updated_at = EXCLUDED.updated_at,
+             deleted_at = NULL
+           RETURNING id`,
+          [id, productId, uomId, priceCategoryId, price, now, now]
         )
-        return { id: existingId, productId, uomId, priceCategoryId, price }
+        
+        const resultId = upsertRes.rows[0]?.id || id
+        return { id: resultId, productId, uomId, priceCategoryId, price }
+      } catch (error) {
+        console.error('[PricingCloud] upsertCategoryPrice error:', error)
+        throw error
       }
-      await pool.query(
-        'INSERT INTO product_uom_category_price (id, product_id, uom_id, price_category_id, price, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [id, productId, uomId, priceCategoryId, price, now, now]
-      )
-      return { id, productId, uomId, priceCategoryId, price }
     }
 
     const checkStmt = this.localDb.prepare(
@@ -774,5 +828,68 @@ export class PricingCloudService {
       // For now, I'll skip deep implementation of recalculation in Cloud phase to save time/complexity, unless crucial.
       // But user complained about Prices, not Cost.
     }
+  }
+
+  async copyProductPricesFromStore(
+    productId: string,
+    sourceStoreId: string,
+    targetStoreId: string
+  ): Promise<number> {
+    let count = 0
+
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const res = await pool.query(
+          'SELECT uom_id, price_category_id, price FROM store_product_uom_price WHERE product_id = $1 AND store_id = $2 AND deleted_at IS NULL',
+          [productId, sourceStoreId]
+        )
+        
+        for (const row of res.rows) {
+          await this.upsertStorePrice(
+            productId,
+            row.uom_id,
+            row.price_category_id,
+            targetStoreId,
+            row.price
+          )
+          count++
+        }
+      } catch (error) {
+        console.error('[PricingCloud] copyProductPricesFromStore online error:', error)
+        throw error
+      }
+      return count
+    }
+
+    // Offline / Local
+    try {
+      const stmt = this.localDb.prepare(
+        'SELECT uom_id, price_category_id, price FROM store_product_uom_price WHERE product_id = ? AND store_id = ? AND deleted_at IS NULL'
+      )
+      stmt.bind([productId, sourceStoreId])
+      
+      const rows: any[] = []
+      while (stmt.step()) {
+        rows.push(stmt.getAsObject())
+      }
+      stmt.free()
+      
+      for (const row of rows) {
+        await this.upsertStorePrice(
+          productId,
+          row.uom_id as string,
+          row.price_category_id as string,
+          targetStoreId,
+          row.price as string
+        )
+        count++
+      }
+    } catch (error) {
+      console.error('[PricingCloud] copyProductPricesFromStore local error:', error)
+      throw error
+    }
+
+    return count
   }
 }

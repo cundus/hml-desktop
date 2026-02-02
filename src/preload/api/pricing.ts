@@ -73,6 +73,9 @@ export const pricingApi = {
     ipcRenderer.invoke('db:pricing:getPriceCategories') as Promise<ApiResponse<PriceCategory[]>>,
 
   // Admin endpoints
+  getAllProductUoms: () =>
+     ipcRenderer.invoke('db:pricing:getAllProductUoms') as Promise<ApiResponse<ProductUom[]>>,
+
   getProductUomsByProduct: (productId: string) =>
     ipcRenderer.invoke('db:pricing:getProductUomsByProduct', productId) as Promise<
       ApiResponse<ProductUom[]>
@@ -130,5 +133,14 @@ export const pricingApi = {
     cost: number
     costOverride: boolean
     recalculateOthers?: boolean
-  }) => ipcRenderer.invoke('db:pricing:updateProductUomCost', args) as Promise<ApiResponse<void>>
+  }) => ipcRenderer.invoke('db:pricing:updateProductUomCost', args) as Promise<ApiResponse<void>>,
+
+  copyProductPricesFromStore: (args: {
+    productId: string
+    sourceStoreId: string
+    targetStoreId: string
+  }) =>
+    ipcRenderer.invoke('db:pricing:copyProductPricesFromStore', args) as Promise<
+      ApiResponse<{ count: number }>
+    >
 }

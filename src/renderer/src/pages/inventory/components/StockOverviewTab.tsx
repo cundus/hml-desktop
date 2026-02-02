@@ -17,13 +17,21 @@ import {
   InfoOutlined as InfoIcon
 } from '@mui/icons-material'
 import { StockOverviewItem } from 'src/preload/api/inventory'
+import { ProductUom } from 'src/preload/api/pricing'
+
 
 interface StockOverviewTabProps {
   data: StockOverviewItem[]
+  uoms: ProductUom[]
   onRefresh: () => void
+  onQuickAdjust: (productId: string, storeId: string) => void
 }
 
-export default function StockOverviewTab({ data }: StockOverviewTabProps): React.ReactElement {
+export default function StockOverviewTab({
+  data,
+  uoms,
+  onQuickAdjust
+}: StockOverviewTabProps): React.ReactElement {
   const [searchText, setSearchText] = useState('')
   const [loading] = useState(false)
   const navigate = useNavigate()
@@ -49,8 +57,35 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
   }
 
   const handleQuickAdjust = async (item: StockOverviewItem): Promise<void> => {
-    // TODO: Implement quick adjustment dialog
-    console.log('Quick adjust for:', item)
+    onQuickAdjust(item.productId, item.storeId)
+  }
+
+  const formatSmartStock = (qty: number, productId: string, baseUnit: string): string => {
+    if (qty === 0) return `0 ${baseUnit}`
+    
+    // Get UOMs for this product, sorted by conversion factor descending (biggest first)
+    const productUoms = uoms
+      .filter((u) => u.productId === productId && u.conversionFactor > 1)
+      .sort((a, b) => b.conversionFactor - a.conversionFactor)
+      
+    if (productUoms.length === 0) return `${qty} ${baseUnit}`
+    
+    let remainingQty = qty
+    const parts: string[] = []
+    
+    for (const uom of productUoms) {
+      if (remainingQty >= uom.conversionFactor) {
+        const count = Math.floor(remainingQty / uom.conversionFactor)
+        remainingQty = remainingQty % uom.conversionFactor
+        parts.push(`${count} ${uom.uomCode}`)
+      }
+    }
+    
+    if (remainingQty > 0 || parts.length === 0) {
+      parts.push(`${remainingQty} ${baseUnit}`)
+    }
+    
+    return parts.join(' ')
   }
 
   const columns: GridColDef[] = [
@@ -68,12 +103,14 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
     {
       field: 'quantity',
       headerName: 'Total Stok',
-      width: 120,
+      width: 150,
       type: 'number',
       renderCell: (params: GridRenderCellParams<StockOverviewItem>) => (
-        <Typography variant="body2">
-          {params.value} {params.row.unit}
-        </Typography>
+        <Tooltip title={`${params.value} ${params.row.unit}`}>
+          <Typography variant="body2" noWrap>
+             {formatSmartStock(params.value as number, params.row.productId, params.row.unit)}
+          </Typography>
+        </Tooltip>
       )
     },
     {
@@ -90,20 +127,23 @@ export default function StockOverviewTab({ data }: StockOverviewTabProps): React
     {
       field: 'availableQuantity',
       headerName: 'Tersedia',
-      width: 120,
+      width: 150,
       type: 'number',
       renderCell: (params: GridRenderCellParams<StockOverviewItem>) => {
         const value = params.value as number
         const isLow = value < params.row.lowStockThreshold
 
         return (
-          <Typography
-            variant="body2"
-            color={isLow ? 'error' : 'success.main'}
-            sx={{ fontWeight: isLow ? 'bold' : 'normal' }}
-          >
-            {value} {params.row.unit}
-          </Typography>
+          <Tooltip title={`${value} ${params.row.unit}`}>
+            <Typography
+              variant="body2"
+              color={isLow ? 'error' : 'success.main'}
+              sx={{ fontWeight: isLow ? 'bold' : 'normal' }}
+              noWrap
+            >
+              {formatSmartStock(value, params.row.productId, params.row.unit)}
+            </Typography>
+          </Tooltip>
         )
       }
     },

@@ -75,6 +75,21 @@ export class PricingController {
       }
     })
 
+    // Get ALL Product UOMs (for Inventory Overview Smart Display)
+    ipcMain.handle('db:pricing:getAllProductUoms', async () => {
+      try {
+        const result = await this.pricingService.getAllProductUoms()
+        return { success: true, data: result }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
+
+
+
     // Admin: list HQ category prices for product+UOM
     ipcMain.handle(
       'db:pricing:getCategoryPrices',
@@ -238,6 +253,33 @@ export class PricingController {
             args.recalculateOthers ?? false
           )
           return { success: true }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
+
+    // Copy prices from one store to another for a product
+    ipcMain.handle(
+      'db:pricing:copyProductPricesFromStore',
+      async (
+        _,
+        args: {
+          productId: string
+          sourceStoreId: string
+          targetStoreId: string
+        }
+      ) => {
+        try {
+          const result = await this.pricingService.copyProductPricesFromStore(
+            args.productId,
+            args.sourceStoreId,
+            args.targetStoreId
+          )
+          return { success: true, data: { count: result } }
         } catch (error) {
           return {
             success: false,

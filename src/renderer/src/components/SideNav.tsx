@@ -112,6 +112,12 @@ const menus: MenuItem[] = [
         label: 'Riwayat Shift',
         path: '/operations/shifts',
         permissions: ['operations.shift_history']
+      },
+      {
+        key: 'operations-damaged-goods',
+        label: 'Barang Rusak',
+        path: '/operations/damaged-goods',
+        permissions: ['operations.damaged_goods']
       }
     ]
   },

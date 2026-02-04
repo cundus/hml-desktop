@@ -44,6 +44,7 @@ import WarehousePurchasingPage from './pages/warehouse/Purchasing'
 import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
 import ExpensesPage from './pages/operations/expenses'
+import DamagedGoodsPage from './pages/operations/damaged-goods'
 import ShiftHistoryPage from './pages/operations/shifts'
 import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
 import { CashFlowPage, ProfitLossPage } from './pages/finance'
@@ -184,6 +185,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['operations.expenses']} />,
             children: [{ path: 'operations/expenses', element: <ExpensesPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['operations.damaged_goods']} />,
+            children: [{ path: 'operations/damaged-goods', element: <DamagedGoodsPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['operations.shift_history']} />,

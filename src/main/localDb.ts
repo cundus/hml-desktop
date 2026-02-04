@@ -639,6 +639,30 @@ async function createTables(database: Database): Promise<void> {
     // Column already exists
   }
 
+  // Damaged Goods table - tracks damaged/lost inventory
+  database.run(`
+    CREATE TABLE IF NOT EXISTS damaged_goods (
+      id TEXT PRIMARY KEY,
+      product_id TEXT NOT NULL,
+      store_id TEXT NOT NULL,
+      uom_id TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      cost TEXT NOT NULL DEFAULT '0',
+      total_loss TEXT NOT NULL DEFAULT '0',
+      reason TEXT NOT NULL,
+      notes TEXT,
+      performed_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT,
+      FOREIGN KEY (product_id) REFERENCES product (id),
+      FOREIGN KEY (store_id) REFERENCES store (id),
+      FOREIGN KEY (uom_id) REFERENCES uom (id)
+    )
+  `)
+
   // Sync metadata table - tracks sync state per entity
   database.run(`
     CREATE TABLE IF NOT EXISTS sync_metadata (

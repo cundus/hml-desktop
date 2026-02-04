@@ -1,6 +1,6 @@
-import { pgTable, text, integer, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, timestamp, doublePrecision } from 'drizzle-orm/pg-core'
 
-// INVENTORY: ProductLocation, StockTransaction, StockAdjustment
+// INVENTORY: ProductLocation, StockTransaction, StockAdjustment, DamagedGoods
 
 export const productLocations = pgTable('product_location', {
   id: text('id').primaryKey(),
@@ -58,3 +58,23 @@ export const stockAdjustments = pgTable('stock_adjustment', {
   updatedAt: timestamp('updated_at', { withTimezone: false }),
   deviceId: text('device_id')
 })
+
+export const damagedGoods = pgTable('damaged_goods', {
+  id: text('id').primaryKey(),
+  productId: text('product_id').notNull(),
+  storeId: text('store_id').notNull(),
+  uomId: text('uom_id').notNull(),
+  quantity: doublePrecision('quantity').notNull(),
+  cost: text('cost').notNull().default('0'),
+  totalLoss: text('total_loss').notNull().default('0'),
+  reason: text('reason').notNull(),
+  notes: text('notes'),
+  performedBy: text('performed_by').notNull(),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+

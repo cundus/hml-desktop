@@ -28,6 +28,8 @@ export class InventoryController {
     ipcMain.handle('inventory:low-stock', this.getLowStock.bind(this))
     ipcMain.handle('inventory:bulk-create-adjustments', this.bulkCreateAdjustments.bind(this))
     ipcMain.handle('inventory:product-details', this.getProductStockDetails.bind(this))
+    ipcMain.handle('inventory:reserve-stock', this.reserveStock.bind(this))
+    ipcMain.handle('inventory:release-stock', this.releaseStock.bind(this))
   }
 
   private async getStockOverview(
@@ -310,6 +312,46 @@ export class InventoryController {
       return { success: true, data: results }
     } catch (error) {
       console.error('Error creating bulk stock adjustments:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  /**
+   * Reserve stock when adding to cart
+   */
+  private async reserveStock(
+    _event: IpcMainInvokeEvent,
+    data: { productId: string; storeId: string; quantity: number }
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.productLocationService.reserveQuantity(
+        data.productId,
+        data.storeId,
+        data.quantity
+      )
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('Error reserving stock:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  /**
+   * Release reserved stock when removing from cart
+   */
+  private async releaseStock(
+    _event: IpcMainInvokeEvent,
+    data: { productId: string; storeId: string; quantity: number }
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.productLocationService.releaseReservedQuantity(
+        data.productId,
+        data.storeId,
+        data.quantity
+      )
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('Error releasing stock:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }

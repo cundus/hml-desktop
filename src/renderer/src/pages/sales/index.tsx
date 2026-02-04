@@ -273,13 +273,23 @@ export default function SalesPage(): React.JSX.Element {
   }
 
   // Handle confirmed selection from modal
-  const handleProductSelectConfirm = (result: ProductSelectResult): void => {
+  const handleProductSelectConfirm = async (result: ProductSelectResult): Promise<void> => {
     const { product, selectedUom, selectedPrice, quantity, unitPrice } = result
 
     // Create a unique cart line ID based on product + UOM + price category
     const cartItemId = `${product.id}-${selectedUom.code}-${selectedPrice.id}`
     const conversionFactor = selectedUom.conversionFactor || 1
     const baseQuantity = quantity * conversionFactor
+
+    // Reserve stock for this quantity
+    const storeId = currentShift?.storeId ?? defaultStoreId
+    if (storeId) {
+      try {
+        await window.api.db.inventory.reserveStock(product.id, storeId, baseQuantity)
+      } catch (error) {
+        console.error('Failed to reserve stock:', error)
+      }
+    }
 
     setCartItems((prev) => {
       const existing = prev.find((item) => item.id === cartItemId)
@@ -329,24 +339,57 @@ export default function SalesPage(): React.JSX.Element {
     handleProductClick(product)
   }
 
-  const handleQuantityChange = (id: string, quantity: number): void => {
+  const handleQuantityChange = async (id: string, quantity: number): Promise<void> => {
+    const item = cartItems.find((i) => i.id === id)
+    if (!item) return
+
+    const conv = item.conversionFactor ?? 1
+    const oldBaseQuantity = item.baseQuantity ?? item.quantity * conv
+    const newBaseQuantity = quantity * conv
+    const delta = newBaseQuantity - oldBaseQuantity
+
+    // Adjust stock reservation based on quantity delta
+    const storeId = currentShift?.storeId ?? defaultStoreId
+    if (storeId && item.productId && delta !== 0) {
+      try {
+        if (delta > 0) {
+          await window.api.db.inventory.reserveStock(item.productId, storeId, delta)
+        } else {
+          await window.api.db.inventory.releaseStock(item.productId, storeId, Math.abs(delta))
+        }
+      } catch (error) {
+        console.error('Failed to adjust stock reservation:', error)
+      }
+    }
+
     setCartItems((prev) =>
-      prev.map((item) => {
-        if (item.id !== id) return item
-        const conv = item.conversionFactor ?? 1
-        const baseQuantity = quantity * conv
+      prev.map((cartItem) => {
+        if (cartItem.id !== id) return cartItem
         return {
-          ...item,
+          ...cartItem,
           quantity,
-          baseQuantity,
-          total: item.price * quantity
+          baseQuantity: newBaseQuantity,
+          total: cartItem.price * quantity
         }
       })
     )
   }
 
-  const handleRemoveItem = (id: string): void => {
-    setCartItems((prev) => prev.filter((item) => item.id !== id))
+  const handleRemoveItem = async (id: string): Promise<void> => {
+    const item = cartItems.find((i) => i.id === id)
+    if (!item) return
+
+    // Release reserved stock for this item
+    const storeId = currentShift?.storeId ?? defaultStoreId
+    if (storeId && item.productId && item.baseQuantity) {
+      try {
+        await window.api.db.inventory.releaseStock(item.productId, storeId, item.baseQuantity)
+      } catch (error) {
+        console.error('Failed to release stock:', error)
+      }
+    }
+
+    setCartItems((prev) => prev.filter((cartItem) => cartItem.id !== id))
   }
 
   const handleChangeDiscount = (value: number): void => {
@@ -354,7 +397,25 @@ export default function SalesPage(): React.JSX.Element {
     setDiscount(Math.max(0, Math.min(subtotal, value)))
   }
 
-  const handleCheckout = useCallback((): void => {
+  const releaseAllReservedItems = async (): Promise<void> => {
+    const storeId = currentShift?.storeId ?? defaultStoreId
+    if (!storeId) return
+
+    // Release all items in cart
+    await Promise.all(
+      cartItems.map(async (item) => {
+        if (item.productId && item.baseQuantity) {
+          try {
+            await window.api.db.inventory.releaseStock(item.productId, storeId, item.baseQuantity)
+          } catch (error) {
+            console.error('Failed to release stock for item:', item.productId, error)
+          }
+        }
+      })
+    )
+  }
+
+  const handleCheckout = useCallback(async (): Promise<void> => {
     if (cartItems.length === 0) return
     const targetStoreId = currentShift?.storeId ?? defaultStoreId
     if (!targetStoreId) {
@@ -503,6 +564,17 @@ export default function SalesPage(): React.JSX.Element {
           }
 
           // Clear cart and reset form (after printing attempt)
+          // Clear cart and reset form (after printing attempt)
+          // Note: Reservations are automatically cleared when stock is deducted during transaction creation
+          // But if we want to be extra safe or if deduction doesn't auto-clear reservation (depending on backend logic),
+          // we might want to release here.
+          // However, standard flow: Reservation -> Sale (deduct total) -> Result: Available = Qty - Sold.
+          // If we allow reservation to persist, it leads to double counting.
+          // Current backend logic: Sales deduct quantity. Reservation logic is separate.
+          // To calculate available correctly: Available = Qty - Reserved.
+          // Upon sale, Qty decreases. We MUST release reservation for sold items.
+          await releaseAllReservedItems()
+
           setCartItems([])
           setDiscount(0)
           setPointsToRedeem(0)
@@ -904,7 +976,10 @@ export default function SalesPage(): React.JSX.Element {
         <CloseShiftDialog
           open={closeShiftDialogOpen}
           onClose={() => setCloseShiftDialogOpen(false)}
-          onConfirm={closeShift}
+          onConfirm={async (data) => {
+            await releaseAllReservedItems()
+            await closeShift(data)
+          }}
           initialCash={currentShift?.initialCash ?? '0'}
         />
 

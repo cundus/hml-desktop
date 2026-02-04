@@ -276,7 +276,7 @@ export class PricingCloudService {
                   pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
              FROM product_uom pu
              JOIN uom u ON u.id = pu.uom_id
-            WHERE pu.deleted_at IS NULL`
+            `
         )
         return result.rows.map((row) => ({
           id: row.id,
@@ -300,7 +300,7 @@ export class PricingCloudService {
               pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
          FROM product_uom pu
          JOIN uom u ON u.id = pu.uom_id
-        WHERE pu.deleted_at IS NULL`
+        `
     )
     const results: ProductUom[] = []
     while (stmt.step()) {
@@ -330,7 +330,7 @@ export class PricingCloudService {
                   pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
              FROM product_uom pu
              JOIN uom u ON u.id = pu.uom_id
-            WHERE pu.product_id = $1 AND pu.deleted_at IS NULL`,
+            WHERE pu.product_id = $1`,
           [productId]
         )
         return result.rows.map((row) => ({
@@ -354,7 +354,7 @@ export class PricingCloudService {
               pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
          FROM product_uom pu
          JOIN uom u ON u.id = pu.uom_id
-        WHERE pu.product_id = ? AND pu.deleted_at IS NULL`
+        WHERE pu.product_id = ?`
     )
     stmt.bind([productId])
     const results: ProductUom[] = []
@@ -660,7 +660,7 @@ export class PricingCloudService {
   }
 
   async deleteProductUom(id: string): Promise<void> {
-    const now = new Date()
+    // const now = new Date()
     if (this.isOnline()) {
       const pool = getCloudDb().getPool()
       const check = await pool.query('SELECT product_id, uom_id FROM product_uom WHERE id = $1', [
@@ -670,18 +670,14 @@ export class PricingCloudService {
       const { product_id, uom_id } = check.rows[0]
 
       await pool.query(
-        'UPDATE product_uom_category_price SET deleted_at = $1, updated_at = $2 WHERE product_id = $3 AND uom_id = $4',
-        [now, now, product_id, uom_id]
+        'DELETE FROM product_uom_category_price WHERE product_id = $1 AND uom_id = $2',
+        [product_id, uom_id]
       )
       await pool.query(
-        'UPDATE store_product_uom_price SET deleted_at = $1, updated_at = $2 WHERE product_id = $3 AND uom_id = $4',
-        [now, now, product_id, uom_id]
+        'DELETE FROM store_product_uom_price WHERE product_id = $1 AND uom_id = $2',
+        [product_id, uom_id]
       )
-      await pool.query('UPDATE product_uom SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
-        now,
-        now,
-        id
-      ])
+      await pool.query('DELETE FROM product_uom WHERE id = $1', [id])
       return
     }
 
@@ -697,24 +693,16 @@ export class PricingCloudService {
     checkStmt.free()
 
     this.localDb.run(
-      'UPDATE product_uom_category_price SET deleted_at = ?, updated_at = ? WHERE product_id = ? AND uom_id = ?',
-      [now.getTime(), now.getTime(), product_id, uom_id]
+      'DELETE FROM product_uom_category_price WHERE product_id = ? AND uom_id = ?',
+      [product_id, uom_id]
     )
     this.localDb.run(
-      'UPDATE store_product_uom_price SET deleted_at = ?, updated_at = ? WHERE product_id = ? AND uom_id = ?',
-      [now.getTime(), now.getTime(), product_id, uom_id]
+      'DELETE FROM store_product_uom_price WHERE product_id = ? AND uom_id = ?',
+      [product_id, uom_id]
     )
-    this.localDb.run('UPDATE product_uom SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      now.getTime(),
-      id
-    ])
+    this.localDb.run('DELETE FROM product_uom WHERE id = ?', [id])
     saveDb(this.localDb)
-    this.queueService.add('DELETE', 'product_uom', { id }) // And prices... (Queue Logic might need Cascade DELETE support or explicit delete calls? Assuming manual queue add needed for children if not cascading. But usually Soft Delete is singular Update. Here we update multiple.)
-    // Note: Queueing "UPDATE product_uom_category_price WHERE..." is hard with single Row/ID based Queue.
-    // Ideally we iterate and queue individual updates.
-    // For simplicity/time, we just queue the product_uom delete. Prices might be inconsistent in cloud until sync?
-    // Cloud side should handle cascade?
+    this.queueService.add('DELETE', 'product_uom', { id }) 
   }
 
   async getAllBaseRetailPrices(): Promise<{ productId: string; price: string }[]> {

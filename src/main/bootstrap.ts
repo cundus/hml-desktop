@@ -82,6 +82,8 @@ import { ReturnController } from './controllers/return.controller'
 import { PurchaseOrderCloudService } from './services/purchase-order-cloud.service'
 import { AuditLogService } from './services/audit-log.service'
 import { AuditLogController } from './controllers/audit-log.controller'
+import { DamagedGoodsService } from './services/damaged-goods.service'
+import { DamagedGoodsController } from './controllers/damaged-goods.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -158,6 +160,9 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize expense service
   const expenseService = new ExpenseCloudService(db, queueService)
+
+  // Initialize damaged goods service
+  const damagedGoodsService = new DamagedGoodsService(db)
 
   // Initialize shift service
   const shiftService = new ShiftService(db, expenseService)
@@ -263,6 +268,9 @@ export async function bootstrap(): Promise<void> {
   new PaymentMethodController(paymentMethodService)
   const salesPersonController = new SalesPersonController(salesPersonService)
 
+  // Initialize damaged goods controller
+  const damagedGoodsController = new DamagedGoodsController(damagedGoodsService)
+
   // Register IPC handlers
   categoryController.registerHandlers()
   supplierController.registerHandlers()
@@ -292,6 +300,7 @@ export async function bootstrap(): Promise<void> {
   registerPrinterConfigController(printerConfigService)
   registerDeliveryOrderController(deliveryOrderService)
   salesPersonController.registerHandlers()
+  damagedGoodsController.registerHandlers()
 
   // Register point controller
   const pointController = new PointController(pointService)

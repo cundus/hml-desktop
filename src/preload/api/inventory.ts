@@ -363,5 +363,17 @@ export const inventoryApi = {
   getProductStockDetails: (productId: string, storeId: string) =>
     ipcRenderer.invoke('inventory:product-details', productId, storeId) as Promise<
       ApiResponse<ProductStockDetail>
+    >,
+
+  // Reserve stock when adding to cart
+  reserveStock: (productId: string, storeId: string, quantity: number) =>
+    ipcRenderer.invoke('inventory:reserve-stock', { productId, storeId, quantity }) as Promise<
+      ApiResponse<ProductLocation>
+    >,
+
+  // Release reserved stock when removing from cart
+  releaseStock: (productId: string, storeId: string, quantity: number) =>
+    ipcRenderer.invoke('inventory:release-stock', { productId, storeId, quantity }) as Promise<
+      ApiResponse<ProductLocation>
     >
 }

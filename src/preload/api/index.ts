@@ -82,6 +82,7 @@ import { salesPersonApi } from './sales-person'
 import { queueApi } from './queue'
 import { pointsApi } from './points'
 import { returns as returnsApi } from './returns'
+import { damagedGoodsApi } from './damaged-goods'
 
 // Receipt printing API
 const receiptApi = {
@@ -194,5 +195,8 @@ export const db = {
   returns: returnsApi,
 
   // Audit Log (audit trail)
-  audit: auditApi
+  audit: auditApi,
+
+  // Damaged Goods (barang rusak)
+  damagedGoods: damagedGoodsApi
 }

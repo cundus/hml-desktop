@@ -70,12 +70,18 @@ interface Product {
   cost: string
 }
 
+interface Store {
+  id: string
+  name: string
+}
+
 interface ProductUom {
   id: string
   productId: string
   uomId: string
   uomCode: string
   uomName: string
+  priceCategoryName?: string
   conversionFactor: number
   isBaseUnit: boolean
   cost: string | null
@@ -98,6 +104,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
 
   const [items, setItems] = useState<DamagedGood[]>([])
   const [products, setProducts] = useState<Product[]>([])
+  const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -111,6 +118,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productUoms, setProductUoms] = useState<ProductUom[]>([])
   const [selectedUom, setSelectedUom] = useState<ProductUom | null>(null)
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(storeId || '')
   const [quantity, setQuantity] = useState<number>(1)
   const [reason, setReason] = useState<string>('Rusak')
   const [notes, setNotes] = useState<string>('')
@@ -145,15 +153,28 @@ export default function DamagedGoodsPage(): React.JSX.Element {
     }
   }, [])
 
+  // Load stores for dropdown
+  const loadStores = useCallback(async (): Promise<void> => {
+    try {
+      const response = await window.api.db.stores.getAll()
+      if (response.success) {
+        setStores(response.data || [])
+      }
+    } catch {
+      // Silent fail for stores list
+    }
+  }, [])
+
   useEffect(() => {
     loadItems()
     loadProducts()
-  }, [loadItems, loadProducts])
+    loadStores()
+  }, [loadItems, loadProducts, loadStores])
 
-  // Load product UOMs when product is selected
+  // Load product UOMs when product or store is selected
   useEffect(() => {
     const loadProductUoms = async (): Promise<void> => {
-      if (!selectedProduct) {
+      if (!selectedProduct || !selectedStoreId) {
         setProductUoms([])
         setSelectedUom(null)
         setCost('0')
@@ -161,7 +182,12 @@ export default function DamagedGoodsPage(): React.JSX.Element {
       }
 
       try {
-        const response = await window.api.db.pricing.getProductUoms(selectedProduct.id)
+        const response = await window.api.db.pricing.getProductUomsForStore({
+          productId: selectedProduct.id,
+          storeId: selectedStoreId
+        })
+        console.log("Product UOM", response)
+        
         if (response.success && response.data) {
           setProductUoms(response.data)
           // Auto-select base unit
@@ -177,7 +203,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
     }
 
     loadProductUoms()
-  }, [selectedProduct])
+  }, [selectedProduct, selectedStoreId])
 
   // Update cost when UOM changes
   useEffect(() => {
@@ -231,6 +257,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
     setSelectedProduct(null)
     setProductUoms([])
     setSelectedUom(null)
+    setSelectedStoreId(storeId || '')
     setQuantity(1)
     setReason('Rusak')
     setNotes('')
@@ -243,7 +270,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
   }
 
   const handleSubmit = async (): Promise<void> => {
-    if (!selectedProduct || !selectedUom || !storeId || !userId) {
+    if (!selectedProduct || !selectedUom || !selectedStoreId || !userId) {
       showSnackbar('Lengkapi semua field yang diperlukan', 'error')
       return
     }
@@ -252,7 +279,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
       setLoading(true)
       const data = {
         productId: selectedProduct.id,
-        storeId: storeId,
+        storeId: selectedStoreId,
         uomId: selectedUom.uomId,
         quantity: quantity,
         cost: cost,
@@ -578,22 +605,38 @@ export default function DamagedGoodsPage(): React.JSX.Element {
               )}
             />
 
+            {/* Store Select */}
+            <TextField
+              select
+              label="Pilih Toko"
+              value={selectedStoreId}
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+              required
+            >
+              {stores.map((store) => (
+                <MenuItem key={store.id} value={store.id}>
+                  {store.name}
+                </MenuItem>
+              ))}
+            </TextField>
+
             {/* UOM Select */}
             {productUoms.length > 0 && (
               <TextField
                 select
                 label="Satuan"
-                value={selectedUom?.uomId || ''}
+                value={selectedUom?.id || ''}
                 onChange={(e) => {
-                  const uom = productUoms.find((u) => u.uomId === e.target.value)
+                  const uom = productUoms.find((u) => u.id === e.target.value)
                   setSelectedUom(uom || null)
                 }}
                 required
               >
                 {productUoms.map((uom) => (
-                  <MenuItem key={uom.uomId} value={uom.uomId}>
+                  <MenuItem key={uom.id} value={uom.id}>
                     {uom.uomCode} - {uom.uomName}
-                    {uom.isBaseUnit && ' (Base)'}
+                    {uom.priceCategoryName && ` (${uom.priceCategoryName})`}
+                    {uom.isBaseUnit && ' [Base]'}
                   </MenuItem>
                 ))}
               </TextField>

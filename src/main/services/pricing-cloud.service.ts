@@ -32,6 +32,7 @@ export interface ProductUom {
   uomId: string
   uomCode: string
   uomName: string
+  priceCategoryName?: string
   conversionFactor: number
   isBaseUnit: boolean
   cost: string | null
@@ -369,6 +370,70 @@ export class PricingCloudService {
         conversionFactor: Number(row.conversion_factor),
         isBaseUnit: (row.is_base_unit as number) === 1,
         cost: row.cost as string,
+        costOverride: (row.cost_override as number) === 1
+      })
+    }
+    stmt.free()
+    return results
+  }
+
+  /**
+   * Get product UOMs for a specific store with cost calculated from product_price * conversion_factor.
+   */
+  async getProductUomsForStore(productId: string, storeId: string): Promise<ProductUom[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          `SELECT DISTINCT pu.id, pu.product_id, pu.uom_id, pu.conversion_factor, pu.is_base_unit,
+                  (COALESCE(pp.cost, '0')::numeric * pu.conversion_factor)::text AS cost, 
+                  pu.cost_override, u.code AS uom_code, u.name AS uom_name
+             FROM product_uom pu
+             JOIN uom u ON u.id = pu.uom_id
+             LEFT JOIN product_price pp ON pp.product_id = pu.product_id 
+                AND pp.store_id = $2 AND pp.deleted_at IS NULL
+            WHERE pu.product_id = $1 AND pu.deleted_at IS NULL`,
+          [productId, storeId]
+        )
+        return result.rows.map((row) => ({
+          id: row.id,
+          productId: row.product_id,
+          uomId: row.uom_id,
+          uomCode: row.uom_code,
+          uomName: row.uom_name,
+          conversionFactor: Number(row.conversion_factor),
+          isBaseUnit: row.is_base_unit === 1 || row.is_base_unit === true,
+          cost: row.cost,
+          costOverride: row.cost_override === 1 || row.cost_override === true
+        }))
+      } catch (error) {
+        console.error('[PricingCloud] getProductUomsForStore error:', error)
+      }
+    }
+
+    const stmt = this.localDb.prepare(
+      `SELECT DISTINCT pu.id, pu.product_id, pu.uom_id, pu.conversion_factor, pu.is_base_unit,
+              (COALESCE(pp.cost, '0') * pu.conversion_factor) AS cost,
+              pu.cost_override, u.code AS uom_code, u.name AS uom_name
+         FROM product_uom pu
+         JOIN uom u ON u.id = pu.uom_id
+         LEFT JOIN product_price pp ON pp.product_id = pu.product_id 
+            AND pp.store_id = ? AND pp.deleted_at IS NULL
+        WHERE pu.product_id = ? AND pu.deleted_at IS NULL`
+    )
+    stmt.bind([storeId, productId])
+    const results: ProductUom[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      results.push({
+        id: row.id as string,
+        productId: row.product_id as string,
+        uomId: row.uom_id as string,
+        uomCode: row.uom_code as string,
+        uomName: row.uom_name as string,
+        conversionFactor: Number(row.conversion_factor),
+        isBaseUnit: (row.is_base_unit as number) === 1,
+        cost: String(row.cost ?? '0'),
         costOverride: (row.cost_override as number) === 1
       })
     }

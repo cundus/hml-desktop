@@ -75,6 +75,25 @@ export class PricingController {
       }
     })
 
+    // Get product UOMs with store-specific cost
+    ipcMain.handle(
+      'db:pricing:getProductUomsForStore',
+      async (_, args: { productId: string; storeId: string }) => {
+        try {
+          const result = await this.pricingService.getProductUomsForStore(
+            args.productId,
+            args.storeId
+          )
+          return { success: true, data: result }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
+
     // Get ALL Product UOMs (for Inventory Overview Smart Display)
     ipcMain.handle('db:pricing:getAllProductUoms', async () => {
       try {

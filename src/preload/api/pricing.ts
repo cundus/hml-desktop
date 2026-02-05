@@ -81,6 +81,11 @@ export const pricingApi = {
       ApiResponse<ProductUom[]>
     >,
 
+  getProductUomsForStore: (args: { productId: string; storeId: string }) =>
+    ipcRenderer.invoke('db:pricing:getProductUomsForStore', args) as Promise<
+      ApiResponse<ProductUom[]>
+    >,
+
   getCategoryPrices: (args: { productId: string; uomId: string }) =>
     ipcRenderer.invoke('db:pricing:getCategoryPrices', args) as Promise<
       ApiResponse<ProductUomCategoryPrice[]>

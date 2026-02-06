@@ -34,6 +34,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'purchasing.manage', name: 'Manage purchasing' },
   { id: 'operations.manage', name: 'Manage operations' },
   { id: 'operations.expenses', name: 'Manage expenses' },
+  { id: 'operations.operational_expenses', name: 'Manage operational expenses', description: 'Access to manage monthly/operational expenses (non-shift)' },
   { id: 'operations.shift_history', name: 'View shift history' },
   { id: 'operations.supplies', name: 'Manage supplies purchasing' },
   { id: 'operations.damaged_goods', name: 'Manage damaged goods' },
@@ -54,6 +55,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'master.store.manage', name: 'Manage stores' },
   { id: 'master.customer-category.manage', name: 'Manage customer categories' },
   { id: 'master.uom.manage', name: 'Manage units of measure' },
+  { id: 'master.expense-category.manage', name: 'Manage expense categories', description: 'Access to manage expense categories master data' },
   { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
   { id: 'settings.app-config.manage', name: 'Manage app configuration' },
   { id: 'settings.printer.manage', name: 'Manage printer settings' },
@@ -433,4 +435,73 @@ export async function seedReturnTables(db: Database): Promise<void> {
 
   saveDb(db)
   console.log('✓ Return tables seeded')
+}
+
+interface SeedExpenseCategory {
+  code: string
+  name: string
+  type: 'shift' | 'operational'
+}
+
+const expenseCategorySeed: SeedExpenseCategory[] = [
+  { code: 'KASIR', name: 'Pengeluaran Kasir', type: 'shift' },
+  { code: 'GAJI', name: 'Gaji Karyawan', type: 'operational' },
+  { code: 'LISTRIK', name: 'Listrik & Air', type: 'operational' },
+  { code: 'SEWA', name: 'Sewa Tempat', type: 'operational' },
+  { code: 'TRANSPORT', name: 'Transportasi', type: 'operational' },
+  { code: 'LAINNYA', name: 'Lain-lain', type: 'operational' }
+]
+
+/**
+ * Seed default expense categories
+ */
+export async function seedExpenseCategories(db: Database): Promise<void> {
+  // Create table if not exists
+  db.run(`
+    CREATE TABLE IF NOT EXISTS expense_category (
+      id TEXT PRIMARY KEY,
+      code TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'operational',
+      is_active INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
+      device_id TEXT
+    )
+  `)
+
+  const now = Date.now()
+
+  for (const cat of expenseCategorySeed) {
+    const existing = db.exec(`SELECT id FROM expense_category WHERE code = '${cat.code}'`)
+    if (existing.length === 0 || existing[0].values.length === 0) {
+      const id = randomUUID()
+      db.run(
+        'INSERT INTO expense_category (id, code, name, type, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)',
+        [id, cat.code, cat.name, cat.type, now, now]
+      )
+    }
+  }
+
+  // Migration: Add columns to expenses table if missing
+  try {
+    db.run(`ALTER TABLE expenses ADD COLUMN category_id TEXT`)
+  } catch {
+    /* ignore */
+  }
+  try {
+    db.run(`ALTER TABLE expenses ADD COLUMN store_id TEXT`)
+  } catch {
+    /* ignore */
+  }
+  try {
+    db.run(`ALTER TABLE expenses ADD COLUMN device_id TEXT`)
+  } catch {
+    /* ignore */
+  }
+
+  saveDb(db)
+  console.log('✓ Expense categories seeded')
 }

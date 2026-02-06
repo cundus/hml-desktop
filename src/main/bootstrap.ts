@@ -35,7 +35,8 @@ import {
   backfillProductUomsAndStorePrices,
   seedPermissions,
   seedPointSettings,
-  seedReturnTables
+  seedReturnTables,
+  seedExpenseCategories
 } from './seed'
 import { ReceiptService, TransactionService } from './services'
 import { AppConfigService } from './services/app-config.service'
@@ -84,6 +85,7 @@ import { AuditLogService } from './services/audit-log.service'
 import { AuditLogController } from './controllers/audit-log.controller'
 import { DamagedGoodsService } from './services/damaged-goods.service'
 import { DamagedGoodsController } from './controllers/damaged-goods.controller'
+import { ExpenseCategoryController } from './controllers/expense-category.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -101,6 +103,7 @@ export async function bootstrap(): Promise<void> {
   await backfillProductUomsAndStorePrices(db)
   await seedPointSettings(db)
   await seedReturnTables(db)
+  await seedExpenseCategories(db)
 
   // Initialize cloud-first infrastructure
   const queueService = new QueueService(db)
@@ -339,5 +342,8 @@ export async function bootstrap(): Promise<void> {
   const auditLogController = new AuditLogController(auditLogService)
   auditLogController.registerHandlers()
 
-  console.log('✓ All 26 services and controllers initialized (sql.js local + cloud sync ready)')
+  // Initialize and register Expense Category Controller
+  new ExpenseCategoryController(db, queueService)
+
+  console.log('✓ All 27 services and controllers initialized (sql.js local + cloud sync ready)')
 }

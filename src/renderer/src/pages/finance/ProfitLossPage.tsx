@@ -53,11 +53,12 @@ interface Product {
 
 interface Expense {
   id: string
-  description: string
+  item: string
+  description: string | null
   total: string
   createdAt: Date
   storeId: string
-  categoryName?: string
+  categoryId: string | null
 }
 
 interface Store {
@@ -93,6 +94,7 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
 
   // ... existing dateRange state ...
@@ -112,7 +114,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       setLoading(true)
 
       // Parallel fetch: Existing Data (for breakdown) + New Report (for accuracy)
-      const [transactionsRes, productsRes, expensesRes, categoriesRes, storesRes, reportRes] =
+      const [transactionsRes, productsRes, expensesRes, categoriesRes, storesRes, reportRes, expCategoriesRes] =
         await Promise.all([
           window.api.db.transactions.getAll(),
           window.api.db.products.getAll(),
@@ -123,16 +125,25 @@ export default function ProfitLossPage(): React.JSX.Element {
             dateRange.start.toISOString(),
             dateRange.end.toISOString(),
             branchStoreId
-          )
+          ),
+          window.api.db.expenseCategories.getAll()
         ])
 
       if (storesRes.success) {
+        const storeData = storesRes.data ?? []
         // For branch users, only show their store
-        setStores(
-          branchStoreId
-            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
-            : (storesRes.data ?? [])
-        )
+        const availableStores = branchStoreId
+          ? storeData.filter((s) => s.id === branchStoreId)
+          : storeData
+
+        setStores(availableStores)
+
+        // Auto-select if branch user or only 1 store available
+        if (branchStoreId) {
+          setSelectedStore(branchStoreId)
+        } else if (availableStores.length === 1) {
+          setSelectedStore(availableStores[0].id)
+        }
       }
 
       if (transactionsRes.success) {
@@ -159,6 +170,12 @@ export default function ProfitLossPage(): React.JSX.Element {
         )
       }
 
+      if (expCategoriesRes.success && expCategoriesRes.data) {
+        const map = new Map<string, string>()
+        expCategoriesRes.data.forEach((c) => map.set(c.id, c.name))
+        setExpenseCategories(map)
+      }
+
       // Handle Report Data
       if (reportRes.success && reportRes.data) {
         // Map API response to Summary format
@@ -177,7 +194,7 @@ export default function ProfitLossPage(): React.JSX.Element {
             return (
               d >= dateRange.start &&
               d <= dateRange.end &&
-              (!branchStoreId || e.storeId === branchStoreId)
+              (!branchStoreId || e.storeId === branchStoreId || !e.storeId)
             )
           })
           opsExpenses = filteredExp.reduce((sum, e) => sum + parseFloat(e.total), 0)
@@ -222,7 +239,7 @@ export default function ProfitLossPage(): React.JSX.Element {
     // Apply store filter if selected
     if (selectedStore) {
       filteredTxns = filteredTxns.filter((t) => t.storeId === selectedStore)
-      filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore)
+      filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore || !e.storeId)
     }
 
     return { transactions: filteredTxns, expenses: filteredExpenses }
@@ -312,6 +329,23 @@ export default function ProfitLossPage(): React.JSX.Element {
       }))
       .sort((a, b) => b.profit - a.profit)
   }, [filteredData, productMap])
+
+  // Calculate Expense Breakdown by Category
+  const expenseBreakdown = useMemo(() => {
+    const breakdown = new Map<string, number>()
+
+    filteredData.expenses.forEach((e) => {
+      const categoryName = e.categoryId
+        ? (expenseCategories.get(e.categoryId) ?? 'Lainnya')
+        : 'Lainnya'
+      const amount = parseFloat(e.total)
+      breakdown.set(categoryName, (breakdown.get(categoryName) ?? 0) + amount)
+    })
+
+    return Array.from(breakdown.entries())
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount)
+  }, [filteredData.expenses, expenseCategories])
 
   const handlePrint = (): void => {
     window.print()
@@ -546,11 +580,19 @@ export default function ProfitLossPage(): React.JSX.Element {
                 BEBAN OPERASIONAL
               </TableCell>
             </TableRow>
-            <TableRow>
-              <TableCell sx={{ pl: 4 }}>
-                Pengeluaran Operasional ({filteredData.expenses.length} item)
-              </TableCell>
-              <TableCell align="right" sx={{ color: 'error.main' }}>
+            
+            {expenseBreakdown.map((cat) => (
+              <TableRow key={cat.name}>
+                <TableCell sx={{ pl: 4 }}>{cat.name}</TableCell>
+                <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                  ({formatCurrency(cat.amount)})
+                </TableCell>
+              </TableRow>
+            ))}
+
+            <TableRow sx={{ bgcolor: 'action.hover' }}>
+              <TableCell sx={{ fontWeight: 600 }}>Total Beban Operasional</TableCell>
+              <TableCell align="right" sx={{ color: 'error.main', fontWeight: 600 }}>
                 ({formatCurrency(summary.operatingExpenses)})
               </TableCell>
             </TableRow>

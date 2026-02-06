@@ -3,17 +3,23 @@ import { ApiResponse, BaseEntity } from './types'
 
 // Types
 export interface Expense extends BaseEntity {
-  shiftId: string
+  shiftId: string | null
+  categoryId: string | null
+  storeId: string | null
   item: string
   quantity: number
   price: string
   total: string
   description: string | null
   createdBy: string | null
+  categoryName?: string
+  storeName?: string
 }
 
 export interface CreateExpenseDto {
-  shiftId: string
+  shiftId?: string
+  categoryId?: string
+  storeId?: string
   item: string
   quantity?: number
   price: string

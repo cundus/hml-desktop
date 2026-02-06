@@ -22,6 +22,7 @@ import ProductSelectModal, {
   type ProductSelectResult,
   type ProductForSelection
 } from './components/ProductSelectModal'
+import { ExpenseForm, type ExpenseFormData } from './components/ExpenseForm'
 import CartPanel, { type CartItem } from './components/CartPanel'
 import CustomerSelector, { type Customer } from './components/CustomerSelector'
 import PaymentMethodDialog from './components/PaymentMethodDialog'
@@ -608,6 +609,47 @@ export default function SalesPage(): React.JSX.Element {
     ]
   )
 
+  // Expense handling
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false)
+  const [expenseLoading, setExpenseLoading] = useState(false)
+
+  const handleExpenseSubmit = async (data: ExpenseFormData): Promise<void> => {
+    if (!currentShift?.id) {
+      setSnackbar({ open: true, message: 'Shift belum dibuka', severity: 'error' })
+      return
+    }
+
+    try {
+      setExpenseLoading(true)
+      const total = data.quantity * data.price
+      
+      const response = await window.api.db.expenses.create({
+        shiftId: currentShift.id,
+        categoryId: data.categoryId || undefined,
+        storeId: currentShift.storeId || defaultStoreId || '',
+        item: data.item,
+        quantity: data.quantity,
+        price: data.price.toString(),
+        total: total.toString(),
+        description: data.description,
+        createdBy: userName ?? undefined
+      })
+
+      if (response.success) {
+        setSnackbar({ open: true, message: 'Pengeluaran berhasil dicatat', severity: 'success' })
+        setExpenseDialogOpen(false)
+      } else {
+        setSnackbar({ open: true, message: response.error ?? 'Gagal mencatat pengeluaran', severity: 'error' })
+      }
+    } catch (error) {
+      console.error('Failed to create expense:', error)
+      setSnackbar({ open: true, message: 'Terjadi kesalahan saat mencatat pengeluaran', severity: 'error' })
+    } finally {
+      setExpenseLoading(false)
+    }
+  }
+
+  // Keyboard shortcut for Expense (F6 of Ctrl+E)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       const target = event.target as HTMLElement | null
@@ -616,7 +658,17 @@ export default function SalesPage(): React.JSX.Element {
         tagName === 'INPUT' || tagName === 'TEXTAREA' || target?.getAttribute('role') === 'textbox'
 
       // Allow Ctrl+Enter / F9 to work even when typing, but avoid intercepting other keys
-      if (isInputLike && !(event.ctrlKey && event.key === 'Enter') && event.key !== 'F9') {
+      if (isInputLike && 
+          !(event.ctrlKey && event.key === 'Enter') && 
+          event.key !== 'F9' && 
+          event.key !== 'F6' // Allow F6 from input
+         ) {
+        return
+      }
+
+      if (event.key === 'F6' || (event.ctrlKey && event.key.toLowerCase() === 'e')) {
+        event.preventDefault()
+        setExpenseDialogOpen(true)
         return
       }
 
@@ -764,6 +816,9 @@ export default function SalesPage(): React.JSX.Element {
               size="small"
               variant="outlined"
             />
+            <Button variant="outlined" size="small" color="error" onClick={() => setExpenseDialogOpen(true)}>
+              Pengeluaran
+            </Button>
             <Button variant="outlined" size="small" onClick={() => setSettlementDialogOpen(true)}>
               Ringkasan
             </Button>
@@ -991,6 +1046,13 @@ export default function SalesPage(): React.JSX.Element {
             setSettlementDialogOpen(false)
             setCloseShiftDialogOpen(true)
           }}
+        />
+
+        <ExpenseForm
+          open={expenseDialogOpen}
+          onClose={() => setExpenseDialogOpen(false)}
+          onSubmit={handleExpenseSubmit}
+          loading={expenseLoading}
         />
       </Box>
     </Box>

@@ -38,11 +38,12 @@ interface Store {
 
 interface Expense {
   id: string
-  description: string
+  item: string
+  description: string | null
   total: string
   createdAt: Date
   storeId: string
-  categoryName?: string
+  categoryId: string | null
 }
 
 interface CashFlowItem {
@@ -68,12 +69,16 @@ export default function CashFlowPage(): React.JSX.Element {
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [dateRange, setDateRange] = useState<DateRange>(() => {
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(today)
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    startOfMonth.setHours(0, 0, 0, 0)
+    
+    const endOfDay = new Date(now)
     endOfDay.setHours(23, 59, 59, 999)
-    return { start: today, end: endOfDay }
+    
+    return { start: startOfMonth, end: endOfDay }
   })
 
   useEffect(() => {
@@ -84,19 +89,28 @@ export default function CashFlowPage(): React.JSX.Element {
     try {
       setLoading(true)
 
-      const [transactionsRes, expensesRes, storesRes] = await Promise.all([
+      const [transactionsRes, expensesRes, storesRes, categoriesRes] = await Promise.all([
         window.api.db.transactions.getAll(),
         window.api.db.expenses.getAll(),
-        window.api.db.stores.getAll()
+        window.api.db.stores.getAll(),
+        window.api.db.expenseCategories.getAll()
       ])
 
       if (storesRes.success) {
+        const storeData = storesRes.data ?? []
         // For branch users, only show their store
-        setStores(
-          branchStoreId
-            ? (storesRes.data ?? []).filter((s) => s.id === branchStoreId)
-            : (storesRes.data ?? [])
-        )
+        const availableStores = branchStoreId
+          ? storeData.filter((s) => s.id === branchStoreId)
+          : storeData
+
+        setStores(availableStores)
+
+        // Auto-select if branch user or only 1 store available
+        if (branchStoreId) {
+          setSelectedStore(branchStoreId)
+        } else if (availableStores.length === 1) {
+          setSelectedStore(availableStores[0].id)
+        }
       }
 
       if (transactionsRes.success) {
@@ -112,6 +126,12 @@ export default function CashFlowPage(): React.JSX.Element {
         setExpenses(
           branchStoreId ? allExpenses.filter((e) => e.storeId === branchStoreId) : allExpenses
         )
+      }
+
+      if (categoriesRes.success && categoriesRes.data) {
+        const map = new Map<string, string>()
+        categoriesRes.data.forEach((c) => map.set(c.id, c.name))
+        setExpenseCategories(map)
       }
     } catch (error) {
       console.error('Failed to load cash flow data:', error)
@@ -197,14 +217,14 @@ export default function CashFlowPage(): React.JSX.Element {
     const expenseItems: CashFlowItem[] = filteredData.expenses.map((e) => ({
       id: e.id,
       date: new Date(e.createdAt),
-      description: e.description,
+      description: e.item + (e.description ? ` (${e.description})` : ''),
       type: 'expense' as const,
-      category: e.categoryName ?? 'Pengeluaran',
+      category: e.categoryId ? (expenseCategories.get(e.categoryId) ?? 'Pengeluaran') : 'Pengeluaran',
       amount: parseFloat(e.total)
     }))
 
-    return [...incomeItems, ...expenseItems]
-  }, [filteredData])
+    return [...incomeItems, ...expenseItems].sort((a, b) => b.date.getTime() - a.date.getTime())
+  }, [filteredData, expenseCategories])
 
   const handlePrint = (): void => {
     window.print()

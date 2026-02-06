@@ -108,6 +108,12 @@ const menus: MenuItem[] = [
         permissions: ['operations.expenses']
       },
       {
+        key: 'operations-operational-expenses',
+        label: 'Pengeluaran Operasional',
+        path: '/operations/operational-expenses',
+        permissions: ['operations.operational_expenses']
+      },
+      {
         key: 'operations-shifts',
         label: 'Riwayat Shift',
         path: '/operations/shifts',
@@ -243,6 +249,12 @@ const menus: MenuItem[] = [
             label: 'Sales Person',
             path: '/master-sales-person',
             permissions: ['settings.view']
+          },
+          {
+            key: 'master-expense-category',
+            label: 'Kategori Pengeluaran',
+            path: '/master-expense-category',
+            permissions: ['master.expense-category.manage']
           }
         ]
       },

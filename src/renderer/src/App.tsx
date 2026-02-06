@@ -37,6 +37,7 @@ import UomPage from './pages/settings/master/Uom'
 import PriceCategoryPage from './pages/settings/master/PriceCategory'
 import PaymentMethodPage from './pages/settings/master/PaymentMethod'
 import SalesPersonPage from './pages/settings/master/SalesPerson'
+import ExpenseCategoryPage from './pages/settings/master/ExpenseCategory'
 import PointSettingsPage from './pages/settings/PointSettings'
 import WarehousePricingListPage from './pages/warehouse/PricingList'
 import ProductPricingPage from './pages/warehouse/ProductPricing'
@@ -45,6 +46,7 @@ import WarehouseStockOpnamePage from './pages/warehouse/StockOpname'
 import WarehouseStocksPage from './pages/warehouse/Stocks'
 import ExpensesPage from './pages/operations/expenses'
 import DamagedGoodsPage from './pages/operations/damaged-goods'
+import OperationalExpensesPage from './pages/operations/operational-expenses'
 import ShiftHistoryPage from './pages/operations/shifts'
 import ShiftDetailPage from './pages/operations/shifts/ShiftDetail'
 import { CashFlowPage, ProfitLossPage } from './pages/finance'
@@ -125,6 +127,10 @@ const router = createHashRouter([
             children: [{ path: 'master-sales-person', element: <SalesPersonPage /> }]
           },
           {
+            element: <RoleGuard requiredPermissions={['master.expense-category.manage']} />,
+            children: [{ path: 'master-expense-category', element: <ExpenseCategoryPage /> }]
+          },
+          {
             element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
             children: [{ path: 'access-control', element: <AccessControlPage /> }]
           },
@@ -185,6 +191,10 @@ const router = createHashRouter([
           {
             element: <RoleGuard requiredPermissions={['operations.expenses']} />,
             children: [{ path: 'operations/expenses', element: <ExpensesPage /> }]
+          },
+          {
+            element: <RoleGuard requiredPermissions={['operations.operational_expenses']} />,
+            children: [{ path: 'operations/operational-expenses', element: <OperationalExpensesPage /> }]
           },
           {
             element: <RoleGuard requiredPermissions={['operations.damaged_goods']} />,

@@ -83,6 +83,7 @@ import { queueApi } from './queue'
 import { pointsApi } from './points'
 import { returns as returnsApi } from './returns'
 import { damagedGoodsApi } from './damaged-goods'
+import { expenseCategoriesApi } from './expense-categories'
 
 // Receipt printing API
 const receiptApi = {
@@ -198,5 +199,8 @@ export const db = {
   audit: auditApi,
 
   // Damaged Goods (barang rusak)
-  damagedGoods: damagedGoodsApi
+  damagedGoods: damagedGoodsApi,
+
+  // Expense Categories (kategori pengeluaran)
+  expenseCategories: expenseCategoriesApi
 }

@@ -457,7 +457,9 @@ async function createTables(database: Database): Promise<void> {
   database.run(`
     CREATE TABLE IF NOT EXISTS expenses (
       id TEXT PRIMARY KEY,
-      shift_id TEXT NOT NULL,
+      shift_id TEXT,
+      category_id TEXT,
+      store_id TEXT,
       item TEXT NOT NULL,
       quantity INTEGER NOT NULL DEFAULT 1,
       price TEXT NOT NULL,
@@ -466,6 +468,8 @@ async function createTables(database: Database): Promise<void> {
       created_by TEXT,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
+      synced_at INTEGER,
+      deleted_at INTEGER,
       FOREIGN KEY (shift_id) REFERENCES shifts (id)
     )
   `)
@@ -922,6 +926,86 @@ async function runMigrations(database: Database): Promise<void> {
     console.log('✓ Added sales_name column to transactions table')
   } catch {
     // Column already exists, ignore
+  }
+
+  // Migration: Fix expenses schema (make shift_id nullable, add category_id/store_id)
+  try {
+    // Check if we need to migrate by checking if shift_id is PK or NOT NULL
+    // Or simply check if expenses table exists and category_id is missing
+    const tableInfo = database.prepare("PRAGMA table_info(expenses)")
+    let needsMigration = false
+    let hasCategoryId = false
+    
+    while (tableInfo.step()) {
+      const row = tableInfo.getAsObject()
+      if (row.name === 'shift_id' && row.notnull === 1) {
+        needsMigration = true
+      }
+      if (row.name === 'category_id') {
+        hasCategoryId = true
+      }
+    }
+    tableInfo.free()
+
+    if (!hasCategoryId) needsMigration = true
+
+    if (needsMigration) {
+      console.log('Migrating expenses table to update schema...')
+      
+      database.run("ALTER TABLE expenses RENAME TO expenses_old")
+
+      database.run(`
+        CREATE TABLE expenses (
+          id TEXT PRIMARY KEY,
+          shift_id TEXT,
+          category_id TEXT,
+          store_id TEXT,
+          item TEXT NOT NULL,
+          quantity INTEGER NOT NULL DEFAULT 1,
+          price TEXT NOT NULL,
+          total TEXT NOT NULL,
+          description TEXT,
+          created_by TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          synced_at INTEGER,
+          deleted_at INTEGER
+        )
+      `)
+
+      // Attempt to copy data. 
+      // We handle potential missing columns in source by not selecting them if they don't exist?
+      // Actually, standard columns should be there. 
+      // We know expenses_old has: id, shift_id, item, quantity, price, total, created_at, updated_at
+      // And potentially: description, created_by, synced_at, deleted_at
+      // Use logic to robustly copy.
+      
+      const columns = ['id', 'shift_id', 'item', 'quantity', 'price', 'total', 'description', 'created_by', 'created_at', 'updated_at', 'synced_at', 'deleted_at']
+      const oldColumns: string[] = []
+      
+      const oldTableInfo = database.prepare("PRAGMA table_info(expenses_old)")
+      while(oldTableInfo.step()) {
+        const row = oldTableInfo.getAsObject()
+        if (columns.includes(row.name as string)) {
+          oldColumns.push(row.name as string)
+        }
+      }
+      oldTableInfo.free()
+      
+      const colString = oldColumns.join(', ')
+      
+      if (oldColumns.length > 0) {
+        database.run(`
+          INSERT INTO expenses (${colString})
+          SELECT ${colString} FROM expenses_old
+        `)
+      }
+
+      database.run("DROP TABLE expenses_old")
+      console.log('✓ Expenses table migration completed')
+    }
+  } catch (error) {
+    console.error('Failed to migrate expenses table:', error)
   }
 
   console.log('✓ Database migrations completed')

@@ -132,5 +132,13 @@ export const transactionApi = {
   updateReceiptPrinted: (transactionId: string, printed: boolean) =>
     ipcRenderer.invoke('db:transactions:updateReceiptPrinted', transactionId, printed) as Promise<
       ApiResponse<Transaction>
-    >
+    >,
+  
+  getProfitLossReport: (startDate: string, endDate: string, storeId?: string) =>
+    ipcRenderer.invoke(
+      'db:transactions:getProfitLossReport',
+      startDate,
+      endDate,
+      storeId
+    ) as Promise<ApiResponse<any>>
 }

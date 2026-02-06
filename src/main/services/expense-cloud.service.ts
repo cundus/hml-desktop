@@ -8,7 +8,9 @@ import { saveDb } from '../localDb'
 
 export interface Expense {
   id: string
-  shiftId: string
+  shiftId: string | null
+  categoryId: string | null
+  storeId: string | null
   item: string
   quantity: number
   price: string
@@ -20,7 +22,9 @@ export interface Expense {
 }
 
 export interface CreateExpenseDto {
-  shiftId: string
+  shiftId?: string
+  categoryId?: string
+  storeId?: string
   item: string
   quantity?: number
   price: string
@@ -54,7 +58,9 @@ export class ExpenseCloudService {
 
     const expense: Expense = {
       id,
-      shiftId: data.shiftId,
+      shiftId: data.shiftId ?? null,
+      categoryId: data.categoryId ?? null,
+      storeId: data.storeId ?? null,
       item: data.item,
       quantity,
       price: data.price,
@@ -69,10 +75,12 @@ export class ExpenseCloudService {
       try {
         const pool = getCloudDb().getPool()
         await pool.query(
-          'INSERT INTO expenses (id, shift_id, item, quantity, price, total, description, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
+          'INSERT INTO expenses (id, shift_id, category_id, store_id, item, quantity, price, total, description, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
           [
             id,
-            data.shiftId,
+            data.shiftId ?? null,
+            data.categoryId ?? null,
+            data.storeId ?? null,
             data.item,
             quantity,
             data.price,
@@ -90,10 +98,12 @@ export class ExpenseCloudService {
     }
 
     this.localDb.run(
-      'INSERT INTO expenses (id, shift_id, item, quantity, price, total, description, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO expenses (id, shift_id, category_id, store_id, item, quantity, price, total, description, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         id,
-        data.shiftId,
+        data.shiftId ?? null,
+        data.categoryId ?? null,
+        data.storeId ?? null,
         data.item,
         quantity,
         data.price,
@@ -107,7 +117,9 @@ export class ExpenseCloudService {
     saveDb(this.localDb)
     await this.queueService.add('INSERT', 'expenses', {
       id,
-      shift_id: data.shiftId,
+      shift_id: data.shiftId ?? null,
+      category_id: data.categoryId ?? null,
+      store_id: data.storeId ?? null,
       item: data.item,
       quantity,
       price: data.price,
@@ -280,6 +292,8 @@ export class ExpenseCloudService {
 
     const updated: Expense = {
       ...existing,
+      categoryId: data.categoryId ?? existing.categoryId,
+      storeId: data.storeId ?? existing.storeId,
       item: data.item ?? existing.item,
       quantity,
       price,
@@ -292,8 +306,10 @@ export class ExpenseCloudService {
       try {
         const pool = getCloudDb().getPool()
         await pool.query(
-          'UPDATE expenses SET item = $1, quantity = $2, price = $3, total = $4, description = $5, updated_at = $6 WHERE id = $7',
+          'UPDATE expenses SET category_id = $1, store_id = $2, item = $3, quantity = $4, price = $5, total = $6, description = $7, updated_at = $8 WHERE id = $9',
           [
+            updated.categoryId,
+            updated.storeId,
             updated.item,
             updated.quantity,
             updated.price,
@@ -310,8 +326,10 @@ export class ExpenseCloudService {
     }
 
     this.localDb.run(
-      'UPDATE expenses SET item = ?, quantity = ?, price = ?, total = ?, description = ?, updated_at = ? WHERE id = ?',
+      'UPDATE expenses SET category_id = ?, store_id = ?, item = ?, quantity = ?, price = ?, total = ?, description = ?, updated_at = ? WHERE id = ?',
       [
+        updated.categoryId,
+        updated.storeId,
         updated.item,
         updated.quantity,
         updated.price,
@@ -324,6 +342,8 @@ export class ExpenseCloudService {
     saveDb(this.localDb)
     await this.queueService.add('UPDATE', 'expenses', {
       id,
+      category_id: updated.categoryId,
+      store_id: updated.storeId,
       item: updated.item,
       quantity: updated.quantity,
       price: updated.price,
@@ -350,7 +370,9 @@ export class ExpenseCloudService {
   private mapCloudRow(row: Record<string, unknown>): Expense {
     return {
       id: row.id as string,
-      shiftId: row.shift_id as string,
+      shiftId: (row.shift_id as string) || null,
+      categoryId: (row.category_id as string) || null,
+      storeId: (row.store_id as string) || null,
       item: row.item as string,
       quantity: parseFloat(row.quantity as string) || 0,
       price: row.price as string,
@@ -365,7 +387,9 @@ export class ExpenseCloudService {
   private mapLocalRow(row: Record<string, unknown>): Expense {
     return {
       id: row.id as string,
-      shiftId: row.shift_id as string,
+      shiftId: (row.shift_id as string) || null,
+      categoryId: (row.category_id as string) || null,
+      storeId: (row.store_id as string) || null,
       item: row.item as string,
       quantity: row.quantity as number,
       price: row.price as string,

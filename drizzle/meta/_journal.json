@@ -43,6 +43,13 @@
       "when": 1770214939007,
       "tag": "0005_unusual_thunderbolt_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1770309811806,
+      "tag": "0006_wandering_purifiers",
+      "breakpoints": true
     }
   ]
 }

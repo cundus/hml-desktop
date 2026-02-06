@@ -54,9 +54,26 @@ export const transactionItems = pgTable('transaction_items', {
   deletedAt: timestamp('deleted_at', { withTimezone: false })
 })
 
+// Expense Categories (Kategori Pengeluaran)
+export const expenseCategories = pgTable('expense_category', {
+  id: text('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  name: text('name').notNull(),
+  type: text('type').notNull().default('operational'), // 'shift' or 'operational'
+  isActive: boolean('is_active').notNull().default(true),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  syncedAt: timestamp('synced_at', { withTimezone: false }),
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
+})
+
 export const expenses = pgTable('expenses', {
   id: text('id').primaryKey(),
-  shiftId: text('shift_id').notNull(),
+  categoryId: text('category_id'), // FK to expense_category
+  shiftId: text('shift_id'), // nullable for operational expenses
+  storeId: text('store_id'), // required for operational expenses
   item: text('item').notNull(),
   quantity: integer('quantity').notNull().default(1),
   price: numeric('price').notNull(),
@@ -67,7 +84,8 @@ export const expenses = pgTable('expenses', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
   syncedAt: timestamp('synced_at', { withTimezone: false }),
-  deletedAt: timestamp('deleted_at', { withTimezone: false })
+  deletedAt: timestamp('deleted_at', { withTimezone: false }),
+  deviceId: text('device_id')
 })
 
 export const cashierShifts = pgTable('cashier_shift', {

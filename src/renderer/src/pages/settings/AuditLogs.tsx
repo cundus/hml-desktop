@@ -51,7 +51,10 @@ interface User {
 }
 
 // Action labels for display
-const actionLabels: Record<string, { label: string; color: 'success' | 'warning' | 'error' | 'info' | 'default' }> = {
+const actionLabels: Record<
+  string,
+  { label: string; color: 'success' | 'warning' | 'error' | 'info' | 'default' }
+> = {
   CREATE: { label: 'Buat', color: 'success' },
   UPDATE: { label: 'Ubah', color: 'warning' },
   DELETE: { label: 'Hapus', color: 'error' },
@@ -76,7 +79,7 @@ const entityLabels: Record<string, string> = {
   supplier: 'Supplier',
   customer: 'Pelanggan',
   transaction: 'Transaksi',
-  expense: 'Pengeluaran', 
+  expense: 'Pengeluaran',
   user: 'User',
   role: 'Role',
   store: 'Toko',
@@ -119,16 +122,28 @@ export default function AuditLogs(): React.JSX.Element {
   const canView = hasPermission('audit.view')
 
   // Build filters object
-  const filters = useMemo(() => ({
-    action: filterAction || undefined,
-    entityType: filterEntityType || undefined,
-    userId: filterUserId || undefined,
-    storeId: filterStoreId || undefined,
-    startDate: filterStartDate || undefined,
-    endDate: filterEndDate || undefined,
-    limit: rowsPerPage,
-    offset: page * rowsPerPage
-  }), [filterAction, filterEntityType, filterUserId, filterStoreId, filterStartDate, filterEndDate, page, rowsPerPage])
+  const filters = useMemo(
+    () => ({
+      action: filterAction || undefined,
+      entityType: filterEntityType || undefined,
+      userId: filterUserId || undefined,
+      storeId: filterStoreId || undefined,
+      startDate: filterStartDate || undefined,
+      endDate: filterEndDate || undefined,
+      limit: rowsPerPage,
+      offset: page * rowsPerPage
+    }),
+    [
+      filterAction,
+      filterEntityType,
+      filterUserId,
+      filterStoreId,
+      filterStartDate,
+      filterEndDate,
+      page,
+      rowsPerPage
+    ]
+  )
 
   useEffect(() => {
     if (canView) {
@@ -157,6 +172,8 @@ export default function AuditLogs(): React.JSX.Element {
     if (storesRes.success) setStores(storesRes.data ?? [])
     if (usersRes.success) setUsers(usersRes.data ?? [])
   }
+
+
 
   const loadLogs = async (): Promise<void> => {
     const [logsRes, countRes] = await Promise.all([
@@ -200,9 +217,16 @@ export default function AuditLogs(): React.JSX.Element {
     })
   }
 
-  const renderJsonDiff = (oldValues: object | null, newValues: object | null): React.JSX.Element => {
+  const renderJsonDiff = (
+    oldValues: object | null,
+    newValues: object | null
+  ): React.JSX.Element => {
     if (!oldValues && !newValues) {
-      return <Typography color="text.secondary" fontSize="small">Tidak ada detail</Typography>
+      return (
+        <Typography color="text.secondary" fontSize="small">
+          Tidak ada detail
+        </Typography>
+      )
     }
 
     return (
@@ -293,7 +317,9 @@ export default function AuditLogs(): React.JSX.Element {
               >
                 <MenuItem value="">Semua</MenuItem>
                 {Object.entries(actionLabels).map(([key, { label }]) => (
-                  <MenuItem key={key} value={key}>{label}</MenuItem>
+                  <MenuItem key={key} value={key}>
+                    {label}
+                  </MenuItem>
                 ))}
               </TextField>
 
@@ -307,7 +333,9 @@ export default function AuditLogs(): React.JSX.Element {
               >
                 <MenuItem value="">Semua</MenuItem>
                 {Object.entries(entityLabels).map(([key, label]) => (
-                  <MenuItem key={key} value={key}>{label}</MenuItem>
+                  <MenuItem key={key} value={key}>
+                    {label}
+                  </MenuItem>
                 ))}
               </TextField>
 
@@ -321,7 +349,9 @@ export default function AuditLogs(): React.JSX.Element {
               >
                 <MenuItem value="">Semua User</MenuItem>
                 {users.map((u) => (
-                  <MenuItem key={u.id} value={u.id}>{u.name}</MenuItem>
+                  <MenuItem key={u.id} value={u.id}>
+                    {u.name}
+                  </MenuItem>
                 ))}
               </TextField>
 
@@ -335,7 +365,9 @@ export default function AuditLogs(): React.JSX.Element {
               >
                 <MenuItem value="">Semua Toko</MenuItem>
                 {stores.map((s) => (
-                  <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.name}
+                  </MenuItem>
                 ))}
               </TextField>
 
@@ -424,7 +456,7 @@ export default function AuditLogs(): React.JSX.Element {
                     </TableCell>
                     <TableCell>{entityLabels[log.entityType] || log.entityType}</TableCell>
                     <TableCell>{log.userName || log.userId}</TableCell>
-                    <TableCell>{log.storeName || log.storeId || '-'}</TableCell>
+                    <TableCell>{stores.find((s) => s.id === log.storeId)?.name || '-'}</TableCell>
                     <TableCell>
                       <Typography fontSize="small" fontFamily="monospace">
                         {log.entityId?.substring(0, 8) || '-'}
@@ -432,18 +464,22 @@ export default function AuditLogs(): React.JSX.Element {
                     </TableCell>
                   </TableRow>
                   <TableRow key={`${log.id}-details`}>
-                    <TableCell colSpan={7} sx={{ py: 0, bgcolor: 'grey.50' }}>
+                    <TableCell colSpan={7} sx={{ py: 0 }}>
                       <Collapse in={expandedRow === log.id}>
                         <Box sx={{ p: 2 }}>
                           <Stack direction="row" spacing={4} mb={2}>
                             <Box>
-                              <Typography variant="caption" color="text.secondary">Device ID</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Device ID
+                              </Typography>
                               <Typography fontSize="small" fontFamily="monospace">
                                 {log.deviceId || '-'}
                               </Typography>
                             </Box>
                             <Box>
-                              <Typography variant="caption" color="text.secondary">Entity ID (Full)</Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                Entity ID (Full)
+                              </Typography>
                               <Typography fontSize="small" fontFamily="monospace">
                                 {log.entityId || '-'}
                               </Typography>

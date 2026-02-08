@@ -4,6 +4,7 @@ import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
+import { AuditLogService } from './audit-log.service'
 
 export interface ResolvedPrice {
   productId: string
@@ -59,10 +60,12 @@ export interface StoreProductUomPrice {
 export class PricingCloudService {
   private localDb: Database
   private queueService: QueueService
+  private auditLogService?: AuditLogService
 
-  constructor(localDb: Database, queueService: QueueService) {
+  constructor(localDb: Database, queueService: QueueService, auditLogService?: AuditLogService) {
     this.localDb = localDb
     this.queueService = queueService
+    this.auditLogService = auditLogService
   }
 
   private isOnline(): boolean {
@@ -469,7 +472,21 @@ export class PricingCloudService {
           [id, productId, uomId, priceCategoryId, storeId, price, now, now]
         )
         
+        
         const resultId = upsertRes.rows[0]?.id || id
+
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'UPDATE',
+            entityType: 'price',
+            entityId: resultId,
+            userId: 'SYSTEM',
+            storeId,
+            newValues: { price, productId, uomId, priceCategoryId },
+            metadata: { type: 'store_price' }
+          })
+        }
+
         return { id: resultId, productId, uomId, priceCategoryId, storeId, price }
       } catch (error) {
         console.error('[PricingCloud] upsertStorePrice error, queuing:', error)
@@ -497,6 +514,19 @@ export class PricingCloudService {
         price,
         updated_at: now.toISOString()
       })
+
+      if (this.auditLogService) {
+        void this.auditLogService.log({
+          action: 'UPDATE',
+          entityType: 'price',
+          entityId: existingId,
+          userId: 'SYSTEM',
+          storeId,
+          newValues: { price, productId, uomId, priceCategoryId },
+          metadata: { type: 'store_price' }
+        })
+      }
+
       return { id: existingId, productId, uomId, priceCategoryId, storeId, price }
     }
 
@@ -515,6 +545,19 @@ export class PricingCloudService {
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'price',
+        entityId: id,
+        userId: 'SYSTEM',
+        storeId,
+        newValues: { price, productId, uomId, priceCategoryId },
+        metadata: { type: 'store_price' }
+      })
+    }
+
     return { id, productId, uomId, priceCategoryId, storeId, price }
   }
 
@@ -602,6 +645,18 @@ export class PricingCloudService {
         )
         
         const resultId = upsertRes.rows[0]?.id || id
+
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'UPDATE',
+            entityType: 'price',
+            entityId: resultId,
+            userId: 'SYSTEM',
+            newValues: { price, productId, uomId, priceCategoryId },
+            metadata: { type: 'category_price' }
+          })
+        }
+
         return { id: resultId, productId, uomId, priceCategoryId, price }
       } catch (error) {
         console.error('[PricingCloud] upsertCategoryPrice error:', error)

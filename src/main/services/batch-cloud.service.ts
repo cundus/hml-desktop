@@ -4,6 +4,7 @@ import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
+import { AuditLogService } from './audit-log.service'
 
 export interface Batch {
   id: string
@@ -33,10 +34,12 @@ export class BatchCloudService {
   private localDb: Database
   private queueService: QueueService
   private readonly tableName = 'batch'
+  private auditLogService?: AuditLogService
 
-  constructor(localDb: Database, queueService: QueueService) {
+  constructor(localDb: Database, queueService: QueueService, auditLogService?: AuditLogService) {
     this.localDb = localDb
     this.queueService = queueService
+    this.auditLogService = auditLogService
   }
 
   private isOnline(): boolean {
@@ -216,6 +219,18 @@ export class BatchCloudService {
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'batch',
+        entityId: id,
+        userId: 'SYSTEM',
+        storeId: undefined, // Batch is global or store specific? Schema has no store_id.
+        newValues: { code: data.code, productId: data.productId, cost: batch.cost, expiryDate: batch.expiryDate },
+        metadata: { type: 'batch' }
+      })
+    }
     return batch
   }
 
@@ -256,6 +271,19 @@ export class BatchCloudService {
       expiry_date: updated.expiryDate?.toISOString() ?? null,
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'UPDATE',
+        entityType: 'batch',
+        entityId: id,
+        userId: 'SYSTEM',
+        storeId: undefined,
+        newValues: { code: updated.code, expiryDate: updated.expiryDate },
+        oldValues: { code: existing.code, expiryDate: existing.expiryDate },
+        metadata: { type: 'batch' }
+      })
+    }
     return updated
   }
 
@@ -286,6 +314,16 @@ export class BatchCloudService {
     ])
     saveDb(this.localDb)
     await this.queueService.add('DELETE', this.tableName, { id })
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'DELETE',
+        entityType: 'batch',
+        entityId: id,
+        userId: 'SYSTEM',
+        storeId: undefined,
+        metadata: { type: 'batch' }
+      })
+    }
     return deleted
   }
 

@@ -1,6 +1,7 @@
 import { Database } from 'sql.js'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
+import { AuditLogService } from './audit-log.service'
 
 export interface AuthResult {
   token: string
@@ -13,7 +14,7 @@ export interface AuthResult {
 }
 
 export class AuthCloudService {
-  constructor(private db: Database) {}
+  constructor(private db: Database, private auditLogService?: AuditLogService) {}
 
   private isOnline(): boolean {
     return getConnectivity().isOnline()
@@ -75,6 +76,20 @@ export class AuthCloudService {
         }
 
         console.log('[AuthCloud] Login successful via cloud:', userName)
+
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'LOGIN',
+            entityType: 'user',
+            entityId: userId,
+            userId: userId,
+            userName,
+            storeId: storeId || undefined,
+            storeName: storeName || undefined,
+            metadata: { method: 'cloud', email: identifier }
+          })
+        }
+
         return {
           token: userId,
           userName,
@@ -162,6 +177,20 @@ export class AuthCloudService {
     }
 
     console.log('[AuthCloud] Login successful via local:', userName)
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'LOGIN',
+        entityType: 'user',
+        entityId: userId,
+        userId: userId,
+        userName,
+        storeId: storeId || undefined,
+        storeName: storeName || undefined,
+        metadata: { method: 'local', email: identifier }
+      })
+    }
+
     return {
       token: userId,
       userName,
@@ -201,6 +230,18 @@ export class AuthCloudService {
     stmt.free()
 
     if (!userPin) return true
-    return userPin === pin
+    
+    const isValid = userPin === pin
+    if (isValid && this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'LOGIN',
+        entityType: 'user',
+        entityId: userId,
+        userId: userId,
+        metadata: { method: 'pin' }
+      })
+    }
+    
+    return isValid
   }
 }

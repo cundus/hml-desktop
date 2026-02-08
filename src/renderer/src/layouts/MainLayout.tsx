@@ -14,6 +14,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4'
 import Brightness7Icon from '@mui/icons-material/Brightness7'
 import PersonIcon from '@mui/icons-material/Person'
 import StorefrontIcon from '@mui/icons-material/Storefront'
+import SyncIcon from '@mui/icons-material/Sync'
 import SideNav from '../components/SideNav'
 import { QueueStatusIndicator } from '../components/QueueStatusIndicator'
 import useThemeMode from '../hooks/useThemeMode'
@@ -45,6 +46,7 @@ export default function MainLayout(): React.JSX.Element {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [branchName, setBranchName] = useState<string | null>(null)
   const [isHeadBranch, setIsHeadBranch] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
   const { mode, toggleTheme } = useThemeMode()
   const { userName, userRole, storeName } = useAuth()
 
@@ -71,6 +73,21 @@ export default function MainLayout(): React.JSX.Element {
   }, [])
 
   const { date, time, day } = formatDateTime(currentTime)
+
+  const handleManualSync = async (): Promise<void> => {
+    console.log('Manual sync started')
+    console.log(isSyncing);
+    
+    if (isSyncing) return
+    setIsSyncing(true)
+    try {
+      await window.api.db.sync.fullSync()
+    } catch (error) {
+      console.error('Manual sync failed:', error)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
 
   const handleDrawerToggle = (): void => {
     setMobileOpen(!mobileOpen)
@@ -134,6 +151,25 @@ export default function MainLayout(): React.JSX.Element {
             variant="outlined"
             sx={{ mr: 1, fontSize: '0.7rem', height: 22, color: 'inherit', borderColor: 'rgba(255,255,255,0.3)' }}
           />
+          <IconButton
+            color="inherit"
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            sx={{
+              mr: 1,
+              animation: isSyncing ? 'spin 2s linear infinite' : 'none',
+              '@keyframes spin': {
+                '0%': {
+                  transform: 'rotate(0deg)'
+                },
+                '100%': {
+                  transform: 'rotate(360deg)'
+                }
+              }
+            }}
+          >
+            <SyncIcon />
+          </IconButton>
           <QueueStatusIndicator />
           <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}

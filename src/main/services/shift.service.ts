@@ -2,6 +2,7 @@ import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
 import { ExpenseCloudService, Expense } from './expense-cloud.service'
+import { AuditLogService } from './audit-log.service'
 
 export interface CashierShift {
   id: string
@@ -73,7 +74,8 @@ export interface ShiftSummary {
 export class ShiftService {
   constructor(
     private db: Database,
-    private expenseService: ExpenseCloudService
+    private expenseService: ExpenseCloudService,
+    private auditLogService?: AuditLogService
   ) {}
 
   /**
@@ -242,6 +244,17 @@ export class ShiftService {
     if (!shift) {
       throw new Error('Failed to create shift')
     }
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'SHIFT_OPEN',
+        entityType: 'shift',
+        entityId: id,
+        userId: data.userId,
+        storeId: data.storeId,
+        newValues: { initialCash: data.initialCash },
+        metadata: { status: 'OPEN' }
+      })
+    }
     return shift
   }
 
@@ -285,6 +298,19 @@ export class ShiftService {
     const updatedShift = await this.findById(shiftId)
     if (!updatedShift) {
       throw new Error('Failed to update shift')
+    }
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'SHIFT_CLOSE',
+        entityType: 'shift',
+        entityId: shiftId,
+        userId: userId,
+        storeId: shift.storeId,
+        newValues: { closingCash: data.closingCash, expectedCash, difference: difference.toString() },
+        oldValues: { initialCash: shift.initialCash },
+        metadata: { status: 'CLOSED', notes: data.notes }
+      })
     }
     return updatedShift
   }

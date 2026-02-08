@@ -5,6 +5,7 @@ import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
+import { AuditLogService } from './audit-log.service'
 
 export interface User {
   id: string
@@ -23,10 +24,12 @@ export interface User {
 export class UserCloudService {
   private localDb: Database
   private queueService: QueueService
+  private auditLogService?: AuditLogService
 
-  constructor(localDb: Database, queueService: QueueService) {
+  constructor(localDb: Database, queueService: QueueService, auditLogService?: AuditLogService) {
     this.localDb = localDb
     this.queueService = queueService
+    this.auditLogService = auditLogService
   }
 
   private isOnline(): boolean {
@@ -139,6 +142,17 @@ export class UserCloudService {
           [id, data.name, data.email, data.password, data.storeId ?? null, now, now]
         )
         console.log('[UserCloud] Created in cloud:', id)
+
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'CREATE',
+            entityType: 'user',
+            entityId: id,
+            userId: 'SYSTEM', // TODO: Pass current user ID if available
+            newValues: { name: data.name, email: data.email, storeId: data.storeId }
+          })
+        }
+
         return user
       } catch (error) {
         console.error('[UserCloud] create error, queuing:', error)
@@ -155,6 +169,17 @@ export class UserCloudService {
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'user',
+        entityId: id,
+        userId: 'SYSTEM',
+        newValues: { name: data.name, email: data.email, storeId: data.storeId }
+      })
+    }
+
     return user
   }
 
@@ -185,6 +210,17 @@ export class UserCloudService {
           [updated.name, updated.email, updated.password, updated.storeId, now, id]
         )
         console.log('[UserCloud] Updated in cloud:', id)
+
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'UPDATE',
+            entityType: 'user',
+            entityId: id,
+            userId: 'SYSTEM',
+            newValues: { name: updated.name, email: updated.email, storeId: updated.storeId }
+          })
+        }
+
         return updated
       } catch (error) {
         console.error('[UserCloud] update error, queuing:', error)
@@ -200,6 +236,17 @@ export class UserCloudService {
       store_id: updated.storeId,
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'UPDATE',
+        entityType: 'user',
+        entityId: id,
+        userId: 'SYSTEM',
+        newValues: { name: updated.name, email: updated.email, storeId: updated.storeId }
+      })
+    }
+
     return updated
   }
 
@@ -226,6 +273,16 @@ export class UserCloudService {
 
     this.deleteLocal(id, now)
     await this.queueService.add('DELETE', 'user', { id })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'DELETE',
+        entityType: 'user',
+        entityId: id,
+        userId: 'SYSTEM'
+      })
+    }
+
     return deleted
   }
 

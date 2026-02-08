@@ -122,20 +122,32 @@ export async function bootstrap(): Promise<void> {
   const uomService = new UomCloudService(db, queueService)
 
   // Initialize core entity services
-  const userService = new UserCloudService(db, queueService)
-  const productService = new ProductCloudService(db, queueService)
+  // Initialize Audit Log Service FIRST
+  const auditLogService = new AuditLogService()
+  
+  const userService = new UserCloudService(db, queueService, auditLogService)
+  const productService = new ProductCloudService(db, queueService, auditLogService)
   const roleService = new RoleCloudService(db, queueService)
   const userRoleService = new UserRoleCloudService(db, queueService)
   const permissionService = new PermissionCloudService(db)
   const rolePermissionService = new RolePermissionCloudService(db, queueService)
-  const authService = new AuthCloudService(db)
+  const authService = new AuthCloudService(db, auditLogService)
 
   // Initialize inventory services
   const productPriceService = new ProductPriceCloudService(db, queueService)
-  const productLocationService = new ProductLocationCloudService(db, queueService)
-  const batchService = new BatchCloudService(db, queueService)
-  const stockTransactionService = new StockTransactionCloudService(db, queueService, batchService)
-  const pricingService = new PricingCloudService(db, queueService)
+  const productLocationService = new ProductLocationCloudService(
+    db,
+    queueService,
+    auditLogService
+  )
+  const batchService = new BatchCloudService(db, queueService, auditLogService)
+  const stockTransactionService = new StockTransactionCloudService(
+    db,
+    queueService,
+    batchService,
+    auditLogService
+  )
+  const pricingService = new PricingCloudService(db, queueService, auditLogService)
   const priceCategoryService = new PriceCategoryCloudService(db, queueService)
   const stockAdjustmentService = new StockAdjustmentCloudService(db, queueService)
 
@@ -150,7 +162,8 @@ export async function bootstrap(): Promise<void> {
     productLocationService,
     queueService,
     pointService,
-    batchService
+    batchService,
+    auditLogService
   )
 
   // Initialize purchasing service
@@ -168,7 +181,7 @@ export async function bootstrap(): Promise<void> {
   const damagedGoodsService = new DamagedGoodsService(db)
 
   // Initialize shift service
-  const shiftService = new ShiftService(db, expenseService)
+  const shiftService = new ShiftService(db, expenseService, auditLogService)
 
   // Initialize app config service
   const appConfigService = new AppConfigService(db)
@@ -338,7 +351,7 @@ export async function bootstrap(): Promise<void> {
   inventoryController.registerHandlers()
 
   // Initialize and register Audit Log Service/Controller
-  const auditLogService = new AuditLogService()
+  // const auditLogService = new AuditLogService() // Already initialized above
   const auditLogController = new AuditLogController(auditLogService)
   auditLogController.registerHandlers()
 

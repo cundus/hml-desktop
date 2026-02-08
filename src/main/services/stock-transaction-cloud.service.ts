@@ -5,6 +5,7 @@ import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
 import { BatchCloudService } from './batch-cloud.service'
+import { AuditLogService } from './audit-log.service'
 
 export type StockTransactionType =
   | 'INBOUND'
@@ -54,10 +55,18 @@ export class StockTransactionCloudService {
   private queueService: QueueService
   private batchService: BatchCloudService
 
-  constructor(localDb: Database, queueService: QueueService, batchService: BatchCloudService) {
+  private auditLogService?: AuditLogService
+
+  constructor(
+    localDb: Database,
+    queueService: QueueService,
+    batchService: BatchCloudService,
+    auditLogService?: AuditLogService
+  ) {
     this.localDb = localDb
     this.queueService = queueService
     this.batchService = batchService
+    this.auditLogService = auditLogService
   }
   // ... (isOnline, findAll, etc unchanged until create)
 
@@ -325,6 +334,23 @@ export class StockTransactionCloudService {
             now
           ]
         )
+        if (this.auditLogService) {
+          void this.auditLogService.log({
+            action: 'CREATE',
+            entityType: 'stock',
+            entityId: id,
+            userId: st.performedBy || 'SYSTEM',
+            storeId: data.storeId,
+            newValues: {
+              productId: data.productId,
+              type: data.type,
+              quantity: data.quantity,
+              batchId: st.batchId,
+              reference: st.reference
+            },
+            metadata: { type: data.type }
+          })
+        }
         return st
       } catch (error) {
         console.error('[StockTransactionCloud] create error, queuing:', error)
@@ -363,6 +389,23 @@ export class StockTransactionCloudService {
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'stock',
+        entityId: id,
+        userId: st.performedBy || 'SYSTEM',
+        storeId: data.storeId,
+        newValues: {
+          productId: data.productId,
+          type: data.type,
+          quantity: data.quantity,
+          batchId: st.batchId,
+          reference: st.reference
+        },
+        metadata: { type: data.type }
+      })
+    }
     return st
   }
 
@@ -525,6 +568,16 @@ export class StockTransactionCloudService {
     ])
     saveDb(this.localDb)
     await this.queueService.add('DELETE', 'stock_transaction', { id })
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'DELETE',
+        entityType: 'stock',
+        entityId: id,
+        userId: existing.performedBy || 'SYSTEM',
+        storeId: existing.storeId,
+        metadata: { type: existing.type }
+      })
+    }
     return deleted
   }
 

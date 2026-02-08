@@ -5,6 +5,7 @@ import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { saveDb } from '../localDb'
+import { AuditLogService } from './audit-log.service'
 
 export interface Product {
   id: string
@@ -28,10 +29,12 @@ export interface Product {
 export class ProductCloudService {
   private localDb: Database
   private queueService: QueueService
+  private auditLogService?: AuditLogService
 
-  constructor(localDb: Database, queueService: QueueService) {
+  constructor(localDb: Database, queueService: QueueService, auditLogService?: AuditLogService) {
     this.localDb = localDb
     this.queueService = queueService
+    this.auditLogService = auditLogService
   }
   private isOnline(): boolean {
     return getConnectivity().isOnline()
@@ -302,6 +305,17 @@ export class ProductCloudService {
       created_at: now.toISOString(),
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'product',
+        entityId: id,
+        userId: 'SYSTEM',
+        newValues: { name: data.name, sku: data.sku, cost: data.cost }
+      })
+    }
+
     return product
   }
 
@@ -380,6 +394,17 @@ export class ProductCloudService {
       is_active: updated.isActive,
       updated_at: now.toISOString()
     })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'UPDATE',
+        entityType: 'product',
+        entityId: id,
+        userId: 'SYSTEM',
+        newValues: { name: updated.name, cost: updated.cost, unit: updated.unit }
+      })
+    }
+
     return updated
   }
 
@@ -413,6 +438,16 @@ export class ProductCloudService {
     // Local Delete
     this.deleteLocal(id)
     await this.queueService.add('DELETE', 'product', { id })
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'DELETE',
+        entityType: 'product',
+        entityId: id,
+        userId: 'SYSTEM'
+      })
+    }
+
     return existing
   }
 

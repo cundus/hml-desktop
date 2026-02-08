@@ -98,7 +98,7 @@ const DAMAGE_REASONS = [
 
 export default function DamagedGoodsPage(): React.JSX.Element {
   const theme = useTheme()
-  const { userId } = useAuth()
+  const { userId,userName } = useAuth()
   const { storeId } = useBranchConfig()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -270,7 +270,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
   }
 
   const handleSubmit = async (): Promise<void> => {
-    if (!selectedProduct || !selectedUom || !selectedStoreId || !userId) {
+    if (!selectedProduct || !selectedUom || !selectedStoreId || !userName) {
       showSnackbar('Lengkapi semua field yang diperlukan', 'error')
       return
     }
@@ -285,7 +285,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
         cost: cost,
         reason: reason,
         notes: notes || undefined,
-        performedBy: userId
+        performedBy: userName
       }
 
       const response = await window.api.db.damagedGoods.create(data)
@@ -297,6 +297,8 @@ export default function DamagedGoodsPage(): React.JSX.Element {
         showSnackbar('Gagal mencatat barang rusak', 'error')
       }
     } catch (error) {
+      console.log(error);
+      
       showSnackbar('Terjadi kesalahan saat menyimpan data', 'error')
     } finally {
       setLoading(false)

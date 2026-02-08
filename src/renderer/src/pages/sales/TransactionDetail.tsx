@@ -174,6 +174,8 @@ export default function TransactionDetailPage(): React.JSX.Element {
         window.api.db.returns.getByTransactionId(transactionId!)
       ])
 
+      console.log(txnRes)
+
       if (!txnRes.success || !txnRes.data) {
         globalAlert.error('Transaksi tidak ditemukan')
         navigate('/sales/reports')
@@ -585,7 +587,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
                 <Typography variant="body2" color="text.secondary">
                   Kasir
                 </Typography>
-                <Typography variant="body2">{transaction.userName}</Typography>
+                <Typography variant="body2">{transaction.userId}</Typography>
               </Box>
               <Box display="flex" justifyContent="space-between">
                 <Typography variant="body2" color="text.secondary">

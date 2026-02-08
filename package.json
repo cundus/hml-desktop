@@ -1,6 +1,6 @@
 {
   "name": "petshop-management-system",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "An Electron application with React and TypeScript",
   "main": "./out/main/index.js",
   "author": "cundus",

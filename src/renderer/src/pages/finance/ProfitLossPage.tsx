@@ -89,6 +89,7 @@ interface CategoryBreakdown {
 export default function ProfitLossPage(): React.JSX.Element {
   const { storeId: branchStoreId } = useBranchConfig()
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -97,7 +98,6 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
 
-  // ... existing dateRange state ...
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -105,29 +105,30 @@ export default function ProfitLossPage(): React.JSX.Element {
     return { start: firstDay, end: lastDay }
   })
 
+  // Initial data load (stores, products, categories) - only once
   useEffect(() => {
-    void loadData()
-  }, [branchStoreId, dateRange]) // Re-fetch report when date changes
+    void loadInitialData()
+  }, [branchStoreId])
 
-  const loadData = async (): Promise<void> => {
+  // Re-fetch transactions, expenses, and report when date/store changes
+  useEffect(() => {
+    if (!initialLoading) {
+      void loadFilteredData()
+    }
+  }, [dateRange, selectedStore])
+
+  // Load static data (stores, products, categories) - only on mount
+  const loadInitialData = async (): Promise<void> => {
     try {
       setLoading(true)
+      setInitialLoading(true)
 
-      // Parallel fetch: Existing Data (for breakdown) + New Report (for accuracy)
-      const [transactionsRes, productsRes, expensesRes, categoriesRes, storesRes, reportRes, expCategoriesRes] =
-        await Promise.all([
-          window.api.db.transactions.getAll(),
-          window.api.db.products.getAll(),
-          window.api.db.expenses.getAll(),
-          window.api.db.categories.getAll(),
-          window.api.db.stores.getAll(),
-          window.api.db.transactions.getProfitLossReport(
-            dateRange.start.toISOString(),
-            dateRange.end.toISOString(),
-            branchStoreId
-          ),
-          window.api.db.expenseCategories.getAll()
-        ])
+      const [productsRes, categoriesRes, storesRes, expCategoriesRes] = await Promise.all([
+        window.api.db.products.getAll(),
+        window.api.db.categories.getAll(),
+        window.api.db.stores.getAll(),
+        window.api.db.expenseCategories.getAll()
+      ])
 
       if (storesRes.success) {
         const storeData = storesRes.data ?? []
@@ -138,19 +139,13 @@ export default function ProfitLossPage(): React.JSX.Element {
 
         setStores(availableStores)
 
-        // Auto-select if branch user or only 1 store available
+        // Auto-select ONLY on initial load
         if (branchStoreId) {
           setSelectedStore(branchStoreId)
         } else if (availableStores.length === 1) {
           setSelectedStore(availableStores[0].id)
         }
-      }
-
-      if (transactionsRes.success) {
-        const allTxns = transactionsRes.data ?? []
-        setTransactions(
-          branchStoreId ? allTxns.filter((t) => t.storeId === branchStoreId) : allTxns
-        )
+        // If no store selected and multiple stores, leave as '' (all stores)
       }
 
       if (productsRes.success && categoriesRes.success) {
@@ -163,29 +158,59 @@ export default function ProfitLossPage(): React.JSX.Element {
         setProducts(prods)
       }
 
-      if (expensesRes.success) {
-        const allExpenses = expensesRes.data ?? []
-        setExpenses(
-          branchStoreId ? allExpenses.filter((e) => e.storeId === branchStoreId) : allExpenses
-        )
-      }
-
       if (expCategoriesRes.success && expCategoriesRes.data) {
         const map = new Map<string, string>()
         expCategoriesRes.data.forEach((c) => map.set(c.id, c.name))
         setExpenseCategories(map)
       }
+    } catch (error) {
+      console.error('Failed to load initial data:', error)
+    } finally {
+      setInitialLoading(false)
+      // Trigger filtered data load after initial load
+      void loadFilteredData()
+    }
+  }
+
+  // Load filtered data (transactions, expenses, report) - reactive to date/store
+  const loadFilteredData = async (): Promise<void> => {
+    try {
+      setLoading(true)
+
+      // Determine which store to filter by
+      const filterStoreId = selectedStore || branchStoreId || undefined
+
+      const [transactionsRes, expensesRes, reportRes] = await Promise.all([
+        window.api.db.transactions.getAll(),
+        window.api.db.expenses.getAll(),
+        window.api.db.transactions.getProfitLossReport(
+          dateRange.start.toISOString(),
+          dateRange.end.toISOString(),
+          filterStoreId // Use selected store for API call
+        )
+      ])
+
+      if (transactionsRes.success) {
+        const allTxns = transactionsRes.data ?? []
+        // Filter by store if specified
+        setTransactions(
+          filterStoreId ? allTxns.filter((t) => t.storeId === filterStoreId) : allTxns
+        )
+      }
+
+      if (expensesRes.success) {
+        const allExpenses = expensesRes.data ?? []
+        // Filter by store if specified
+        setExpenses(
+          filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
+        )
+      }
 
       // Handle Report Data
       if (reportRes.success && reportRes.data) {
-        // Map API response to Summary format
-        // API returns: revenue, cogs, grossProfit, margin
-        // We map API revenue -> netRevenue (assuming it's net of returns)
         const data = reportRes.data
 
-        // Calculate expenses locally for now (until API supports it) to get Net Profit
-        // We can use the 'expenses' state once set, but here we are in same tick.
-        // Let's filter expenses manually here for the report state
+        // Calculate expenses for the filtered store
         let opsExpenses = 0
         if (expensesRes.success) {
           const allExp = expensesRes.data ?? []
@@ -194,14 +219,14 @@ export default function ProfitLossPage(): React.JSX.Element {
             return (
               d >= dateRange.start &&
               d <= dateRange.end &&
-              (!branchStoreId || e.storeId === branchStoreId || !e.storeId)
+              (!filterStoreId || e.storeId === filterStoreId || !e.storeId)
             )
           })
           opsExpenses = filteredExp.reduce((sum, e) => sum + parseFloat(e.total), 0)
         }
 
         setReport({
-          grossRevenue: data.revenue, // API doesn't split Gross yet
+          grossRevenue: data.revenue,
           discounts: 0,
           netRevenue: data.revenue,
           costOfGoodsSold: data.cogs,
@@ -212,10 +237,10 @@ export default function ProfitLossPage(): React.JSX.Element {
             data.revenue > 0 ? ((data.grossProfit - opsExpenses) / data.revenue) * 100 : 0
         })
       } else {
-        setReport(null) // Fallback to calculation if API fails
+        setReport(null)
       }
     } catch (error) {
-      console.error('Failed to load profit/loss data:', error)
+      console.error('Failed to load filtered data:', error)
     } finally {
       setLoading(false)
     }

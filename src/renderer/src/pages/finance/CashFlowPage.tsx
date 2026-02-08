@@ -65,6 +65,7 @@ interface ChartDataPoint {
 export default function CashFlowPage(): React.JSX.Element {
   const { storeId: branchStoreId } = useBranchConfig()
   const [loading, setLoading] = useState(true)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [stores, setStores] = useState<Store[]>([])
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -81,51 +82,43 @@ export default function CashFlowPage(): React.JSX.Element {
     return { start: startOfMonth, end: endOfDay }
   })
 
+  // Initial data load (stores, categories) - only once
   useEffect(() => {
-    void loadData()
+    void loadInitialData()
   }, [branchStoreId])
 
-  const loadData = async (): Promise<void> => {
+  // Re-fetch transactions and expenses when date/store changes
+  useEffect(() => {
+    if (!initialLoading) {
+      void loadFilteredData()
+    }
+  }, [dateRange, selectedStore])
+
+  // Load static data (stores, categories) - only on mount
+  const loadInitialData = async (): Promise<void> => {
     try {
       setLoading(true)
+      setInitialLoading(true)
 
-      const [transactionsRes, expensesRes, storesRes, categoriesRes] = await Promise.all([
-        window.api.db.transactions.getAll(),
-        window.api.db.expenses.getAll(),
+      const [storesRes, categoriesRes] = await Promise.all([
         window.api.db.stores.getAll(),
         window.api.db.expenseCategories.getAll()
       ])
 
       if (storesRes.success) {
         const storeData = storesRes.data ?? []
-        // For branch users, only show their store
         const availableStores = branchStoreId
           ? storeData.filter((s) => s.id === branchStoreId)
           : storeData
 
         setStores(availableStores)
 
-        // Auto-select if branch user or only 1 store available
+        // Auto-select ONLY on initial load
         if (branchStoreId) {
           setSelectedStore(branchStoreId)
         } else if (availableStores.length === 1) {
           setSelectedStore(availableStores[0].id)
         }
-      }
-
-      if (transactionsRes.success) {
-        const allTxns = transactionsRes.data ?? []
-        // Filter by branch if applicable
-        setTransactions(
-          branchStoreId ? allTxns.filter((t) => t.storeId === branchStoreId) : allTxns
-        )
-      }
-
-      if (expensesRes.success) {
-        const allExpenses = expensesRes.data ?? []
-        setExpenses(
-          branchStoreId ? allExpenses.filter((e) => e.storeId === branchStoreId) : allExpenses
-        )
       }
 
       if (categoriesRes.success && categoriesRes.data) {
@@ -134,7 +127,40 @@ export default function CashFlowPage(): React.JSX.Element {
         setExpenseCategories(map)
       }
     } catch (error) {
-      console.error('Failed to load cash flow data:', error)
+      console.error('Failed to load initial data:', error)
+    } finally {
+      setInitialLoading(false)
+      void loadFilteredData()
+    }
+  }
+
+  // Load filtered data (transactions, expenses) - reactive to date/store
+  const loadFilteredData = async (): Promise<void> => {
+    try {
+      setLoading(true)
+
+      const filterStoreId = selectedStore || branchStoreId || undefined
+
+      const [transactionsRes, expensesRes] = await Promise.all([
+        window.api.db.transactions.getAll(),
+        window.api.db.expenses.getAll()
+      ])
+
+      if (transactionsRes.success) {
+        const allTxns = transactionsRes.data ?? []
+        setTransactions(
+          filterStoreId ? allTxns.filter((t) => t.storeId === filterStoreId) : allTxns
+        )
+      }
+
+      if (expensesRes.success) {
+        const allExpenses = expensesRes.data ?? []
+        setExpenses(
+          filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
+        )
+      }
+    } catch (error) {
+      console.error('Failed to load filtered data:', error)
     } finally {
       setLoading(false)
     }

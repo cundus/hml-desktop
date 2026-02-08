@@ -314,11 +314,7 @@ export default function SalesReportsPage(): React.JSX.Element {
                 field: 'code',
                 headerName: 'Kode Transaksi',
                 width: 140,
-                renderCell: (params: GridRenderCellParams<Transaction>) => (
-                  <Typography variant="body2" fontWeight={500}>
-                    {params.value}
-                  </Typography>
-                )
+                renderCell: (params: GridRenderCellParams<Transaction>) => params.value
               },
               {
                 field: 'storeName',

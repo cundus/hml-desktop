@@ -1,11 +1,14 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
+import { getCloudDb } from './cloud-db.service'
+import { getConnectivity } from './connectivity.service'
 import { StockTransactionCloudService } from './stock-transaction-cloud.service'
 import { BatchCloudService } from './batch-cloud.service'
 import { ProductLocationCloudService } from './product-location-cloud.service'
 import { QueueService } from './queue.service'
 import { PointCloudService } from './point.service'
+import { AuditLogService } from './audit-log.service'
 
 export interface Transaction {
   id: string
@@ -96,13 +99,39 @@ export class TransactionService {
     private productLocationService?: ProductLocationCloudService,
     private queueService?: QueueService,
     private pointService?: PointCloudService,
-    private batchService?: BatchCloudService
+    private batchService?: BatchCloudService,
+    private auditLogService?: AuditLogService
   ) {}
+
+  private isOnline(): boolean {
+    return getConnectivity().isOnline()
+  }
 
   /**
    * Get all transactions
    */
   async findAll(): Promise<Transaction[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC'
+        )
+        const transactions: Transaction[] = []
+        for (const row of result.rows) {
+          const transaction = this.mapCloudRowToTransaction(row)
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          transactions.push(transaction)
+        }
+        return transactions
+      } catch (error) {
+        console.error('[TransactionService] findAll cloud error, falling back to local:', error)
+      }
+    }
+    return this.findAllLocal()
+  }
+
+  private async findAllLocal(): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC'
     )
@@ -111,7 +140,7 @@ export class TransactionService {
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       results.push(transaction)
     }
     stmt.free()
@@ -123,6 +152,24 @@ export class TransactionService {
    * Get transaction by ID
    */
   async findById(id: string): Promise<Transaction | undefined> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query('SELECT * FROM transactions WHERE id = $1', [id])
+        if (result.rows.length > 0) {
+          const transaction = this.mapCloudRowToTransaction(result.rows[0])
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          return transaction
+        }
+        return undefined
+      } catch (error) {
+        console.error('[TransactionService] findById cloud error, falling back to local:', error)
+      }
+    }
+    return this.findByIdLocal(id)
+  }
+
+  private async findByIdLocal(id: string): Promise<Transaction | undefined> {
     const stmt = this.db.prepare('SELECT * FROM transactions WHERE id = ?')
     stmt.bind([id])
 
@@ -130,7 +177,7 @@ export class TransactionService {
       const row = stmt.getAsObject()
       stmt.free()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       return transaction
     }
     stmt.free()
@@ -141,6 +188,27 @@ export class TransactionService {
    * Get transaction by code
    */
   async findByCode(code: string): Promise<Transaction | undefined> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transactions WHERE code = $1 AND deleted_at IS NULL',
+          [code]
+        )
+        if (result.rows.length > 0) {
+          const transaction = this.mapCloudRowToTransaction(result.rows[0])
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          return transaction
+        }
+        return undefined
+      } catch (error) {
+        console.error('[TransactionService] findByCode cloud error, falling back to local:', error)
+      }
+    }
+    return this.findByCodeLocal(code)
+  }
+
+  private async findByCodeLocal(code: string): Promise<Transaction | undefined> {
     const stmt = this.db.prepare('SELECT * FROM transactions WHERE code = ? AND deleted_at IS NULL')
     stmt.bind([code])
 
@@ -148,7 +216,7 @@ export class TransactionService {
       const row = stmt.getAsObject()
       stmt.free()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       return transaction
     }
     stmt.free()
@@ -159,6 +227,28 @@ export class TransactionService {
    * Get transactions by store ID
    */
   async findByStoreId(storeId: string): Promise<Transaction[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transactions WHERE store_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC',
+          [storeId]
+        )
+        const transactions: Transaction[] = []
+        for (const row of result.rows) {
+          const transaction = this.mapCloudRowToTransaction(row)
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          transactions.push(transaction)
+        }
+        return transactions
+      } catch (error) {
+        console.error('[TransactionService] findByStoreId cloud error, falling back to local:', error)
+      }
+    }
+    return this.findByStoreIdLocal(storeId)
+  }
+
+  private async findByStoreIdLocal(storeId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE store_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
@@ -168,7 +258,7 @@ export class TransactionService {
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       results.push(transaction)
     }
     stmt.free()
@@ -180,6 +270,28 @@ export class TransactionService {
    * Get transactions by customer ID
    */
   async findByCustomerId(customerId: string): Promise<Transaction[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transactions WHERE customer_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC',
+          [customerId]
+        )
+        const transactions: Transaction[] = []
+        for (const row of result.rows) {
+          const transaction = this.mapCloudRowToTransaction(row)
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          transactions.push(transaction)
+        }
+        return transactions
+      } catch (error) {
+        console.error('[TransactionService] findByCustomerId cloud error, falling back to local:', error)
+      }
+    }
+    return this.findByCustomerIdLocal(customerId)
+  }
+
+  private async findByCustomerIdLocal(customerId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
@@ -189,7 +301,7 @@ export class TransactionService {
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       results.push(transaction)
     }
     stmt.free()
@@ -201,6 +313,28 @@ export class TransactionService {
    * Get transactions by user ID
    */
   async findByUserId(userId: string): Promise<Transaction[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transactions WHERE user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC',
+          [userId]
+        )
+        const transactions: Transaction[] = []
+        for (const row of result.rows) {
+          const transaction = this.mapCloudRowToTransaction(row)
+          transaction.items = await this.findItemsByTransactionId(transaction.id)
+          transactions.push(transaction)
+        }
+        return transactions
+      } catch (error) {
+        console.error('[TransactionService] findByUserId cloud error, falling back to local:', error)
+      }
+    }
+    return this.findByUserIdLocal(userId)
+  }
+
+  private async findByUserIdLocal(userId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
     )
@@ -210,7 +344,7 @@ export class TransactionService {
     while (stmt.step()) {
       const row = stmt.getAsObject()
       const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionId(transaction.id)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
       results.push(transaction)
     }
     stmt.free()
@@ -222,6 +356,22 @@ export class TransactionService {
    * Get transaction items by transaction ID
    */
   async findItemsByTransactionId(transactionId: string): Promise<TransactionItem[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM transaction_items WHERE transaction_id = $1 ORDER BY created_at ASC',
+          [transactionId]
+        )
+        return result.rows.map((row) => this.mapCloudRowToTransactionItem(row))
+      } catch (error) {
+        console.error('[TransactionService] findItemsByTransactionId cloud error, falling back to local:', error)
+      }
+    }
+    return this.findItemsByTransactionIdLocal(transactionId)
+  }
+
+  private findItemsByTransactionIdLocal(transactionId: string): TransactionItem[] {
     const stmt = this.db.prepare(
       'SELECT * FROM transaction_items WHERE transaction_id = ? ORDER BY created_at ASC'
     )
@@ -429,6 +579,18 @@ export class TransactionService {
       }
     }
 
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'CREATE',
+        entityType: 'transaction',
+        entityId: id,
+        userId: data.userId || 'SYSTEM',
+        storeId: data.storeId,
+        newValues: { code: data.code, total: data.total, paymentMethod: data.paymentMethod },
+        metadata: { customerId: data.customerId }
+      })
+    }
+
     return created
   }
 
@@ -490,6 +652,17 @@ export class TransactionService {
     if (!deleted) {
       throw new Error('Transaction not found after delete')
     }
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'DELETE',
+        entityType: 'transaction',
+        entityId: id,
+        userId: existing.userId || 'SYSTEM',
+        storeId: existing.storeId,
+        metadata: { code: existing.code }
+      })
+    }
+
     return deleted
   }
 
@@ -1029,6 +1202,51 @@ export class TransactionService {
       syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null,
       deviceId: row.device_id as string | null
+    }
+  }
+
+  /**
+   * Map cloud database row to Transaction object
+   */
+  private mapCloudRowToTransaction(row: Record<string, unknown>): Transaction {
+    return {
+      id: row.id as string,
+      code: row.code as string,
+      storeId: row.store_id as string,
+      subtotal: row.subtotal as string,
+      discount: row.discount as string,
+      tax: row.tax as string,
+      total: row.total as string,
+      totalWeight: (row.total_weight as string) ?? '0',
+      paymentMethod: (row.payment_method as string) ?? 'cash',
+      paymentDeadline: row.payment_deadline ? new Date(row.payment_deadline as string) : null,
+      receiptPrinted: row.receipt_printed === true,
+      customerId: row.customer_id as string | null,
+      userId: row.user_id as string | null,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string),
+      syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
+      deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null,
+      deviceId: row.device_id as string | null
+    }
+  }
+
+  /**
+   * Map cloud database row to TransactionItem object
+   */
+  private mapCloudRowToTransactionItem(row: Record<string, unknown>): TransactionItem {
+    return {
+      id: row.id as string,
+      transactionId: row.transaction_id as string,
+      productId: row.product_id as string,
+      quantity: parseFloat(row.quantity as string) || 0,
+      displayQuantity: row.display_quantity ? parseFloat(row.display_quantity as string) : null,
+      uomCode: row.uom_code as string | null,
+      productName: row.product_name as string | null,
+      productSku: row.product_sku as string | null,
+      price: row.price as string,
+      createdAt: new Date(row.created_at as string),
+      updatedAt: new Date(row.updated_at as string)
     }
   }
 

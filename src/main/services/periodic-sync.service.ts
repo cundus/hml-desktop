@@ -1,7 +1,7 @@
 import { getConnectivity } from './connectivity.service'
 import { SyncService, SyncResult } from './sync.service'
 
-const DEFAULT_SYNC_INTERVAL_MS = 5 * 60 * 1000 // 5 minutes
+const DEFAULT_SYNC_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
 
 /**
  * PeriodicSyncService - Runs full bidirectional sync on a schedule

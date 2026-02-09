@@ -202,5 +202,24 @@ export class TransactionController {
         }
       }
     )
+
+
+    // Get Broken Goods Summary
+    ipcMain.handle(
+      'db:transactions:getBrokenGoodsSummary',
+      async (_, startDate: string, endDate: string, storeId?: string) => {
+        try {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          const summary = await this.transactionService.getBrokenGoodsSummary(start, end, storeId)
+          return { success: true, data: summary }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
   }
 }

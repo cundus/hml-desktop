@@ -70,6 +70,7 @@ export default function CashFlowPage(): React.JSX.Element {
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [brokenGoods, setBrokenGoods] = useState<number>(0)
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -141,9 +142,14 @@ export default function CashFlowPage(): React.JSX.Element {
 
       const filterStoreId = selectedStore || branchStoreId || undefined
 
-      const [transactionsRes, expensesRes] = await Promise.all([
+      const [transactionsRes, expensesRes, brokenGoodsRes] = await Promise.all([
         window.api.db.transactions.getAll(),
-        window.api.db.expenses.getAll()
+        window.api.db.expenses.getAll(),
+        window.api.db.transactions.getBrokenGoodsSummary(
+          dateRange.start.toISOString(),
+          dateRange.end.toISOString(),
+          filterStoreId
+        )
       ])
 
       if (transactionsRes.success) {
@@ -159,8 +165,13 @@ export default function CashFlowPage(): React.JSX.Element {
           filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
         )
       }
+      
+      if (brokenGoodsRes.success) {
+        setBrokenGoods(brokenGoodsRes.data ?? 0)
+      }
     } catch (error) {
       console.error('Failed to load filtered data:', error)
+      setBrokenGoods(0)
     } finally {
       setLoading(false)
     }
@@ -196,14 +207,18 @@ export default function CashFlowPage(): React.JSX.Element {
       (sum, t) => sum + parseFloat(t.total),
       0
     )
-    const totalExpense = filteredData.expenses.reduce(
+    let totalExpense = filteredData.expenses.reduce(
       (sum, e) => sum + parseFloat(e.total),
       0
     )
+
+    // Add broken goods to expense
+    totalExpense += brokenGoods || 0
+
     const netCashFlow = totalIncome - totalExpense
 
     return { totalIncome, totalExpense, netCashFlow }
-  }, [filteredData])
+  }, [filteredData, brokenGoods])
 
   // Prepare chart data (group by date)
   const chartData = useMemo((): ChartDataPoint[] => {
@@ -249,8 +264,20 @@ export default function CashFlowPage(): React.JSX.Element {
       amount: parseFloat(e.total)
     }))
 
+    // Add Broken Goods Virtual Item
+    if (brokenGoods > 0) {
+      expenseItems.push({
+        id: 'broken-goods-summary',
+        date: dateRange.end,
+        description: 'Total Barang Rusak / Waste',
+        type: 'expense' as const,
+        category: 'Barang Rusak',
+        amount: brokenGoods
+      })
+    }
+
     return [...incomeItems, ...expenseItems].sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [filteredData, expenseCategories])
+  }, [filteredData, expenseCategories, brokenGoods, dateRange])
 
   const handlePrint = (): void => {
     window.print()

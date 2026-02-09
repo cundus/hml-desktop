@@ -123,7 +123,10 @@ export class TransactionService {
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           transactions.push(transaction)
         }
-        return transactions
+
+        // Merge with local pending changes (updates/deletes)
+        const localPending = await this.findLocalPendingChanges()
+        return this.mergeWithLocalPending(transactions, localPending)
       } catch (error) {
         console.error('[TransactionService] findAll cloud error, falling back to local:', error)
       }
@@ -134,6 +137,55 @@ export class TransactionService {
   private async findAllLocal(): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    )
+    const results: Transaction[] = []
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const transaction = this.mapRowToTransaction(row)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
+      results.push(transaction)
+    }
+    stmt.free()
+
+    return results
+  }
+
+  /*
+   * Helper to merge cloud transactions with local pending changes (updates/deletes)
+   */
+  private mergeWithLocalPending(
+    cloudTransactions: Transaction[],
+    localPending: Transaction[]
+  ): Transaction[] {
+    const transactionMap = new Map<string, Transaction>()
+
+    // Add cloud transactions first
+    for (const t of cloudTransactions) {
+      transactionMap.set(t.id, t)
+    }
+
+    // Apply local pending changes
+    for (const local of localPending) {
+      if (local.deletedAt) {
+        // If deleted locally, remove from list
+        transactionMap.delete(local.id)
+      } else {
+        // If updated/new locally, add/overwrite
+        transactionMap.set(local.id, local)
+      }
+    }
+
+    return Array.from(transactionMap.values()).sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    )
+  }
+
+  private async findLocalPendingChanges(): Promise<Transaction[]> {
+    // Find unsynced (synced_at IS NULL) OR modified since sync (updated_at > synced_at)
+    // AND INCLUDE DELETED items to allow overlaying deletions
+    const stmt = this.db.prepare(
+      'SELECT * FROM transactions WHERE synced_at IS NULL OR updated_at > synced_at ORDER BY created_at DESC'
     )
     const results: Transaction[] = []
 
@@ -161,7 +213,8 @@ export class TransactionService {
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           return transaction
         }
-        return undefined
+        // If not found in cloud, try local (might be unsynced new transaction)
+        return this.findByIdLocal(id)
       } catch (error) {
         console.error('[TransactionService] findById cloud error, falling back to local:', error)
       }
@@ -200,7 +253,8 @@ export class TransactionService {
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           return transaction
         }
-        return undefined
+        // If not found in cloud, try local
+        return this.findByCodeLocal(code)
       } catch (error) {
         console.error('[TransactionService] findByCode cloud error, falling back to local:', error)
       }
@@ -235,12 +289,16 @@ export class TransactionService {
           [storeId]
         )
         const transactions: Transaction[] = []
+
         for (const row of result.rows) {
           const transaction = this.mapCloudRowToTransaction(row)
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           transactions.push(transaction)
         }
-        return transactions
+
+        // Merge with local pending changes for this store
+        const localPending = await this.findLocalPendingChangesByStoreId(storeId)
+        return this.mergeWithLocalPending(transactions, localPending)
       } catch (error) {
         console.error('[TransactionService] findByStoreId cloud error, falling back to local:', error)
       }
@@ -251,6 +309,24 @@ export class TransactionService {
   private async findByStoreIdLocal(storeId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE store_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+    )
+    stmt.bind([storeId])
+
+    const results: Transaction[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const transaction = this.mapRowToTransaction(row)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
+      results.push(transaction)
+    }
+    stmt.free()
+
+    return results
+  }
+
+  private async findLocalPendingChangesByStoreId(storeId: string): Promise<Transaction[]> {
+    const stmt = this.db.prepare(
+      'SELECT * FROM transactions WHERE store_id = ? AND (synced_at IS NULL OR updated_at > synced_at) ORDER BY created_at DESC'
     )
     stmt.bind([storeId])
 
@@ -278,12 +354,16 @@ export class TransactionService {
           [customerId]
         )
         const transactions: Transaction[] = []
+
         for (const row of result.rows) {
           const transaction = this.mapCloudRowToTransaction(row)
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           transactions.push(transaction)
         }
-        return transactions
+
+        // Merge with local pending changes for this customer
+        const localPending = await this.findLocalPendingChangesByCustomerId(customerId)
+        return this.mergeWithLocalPending(transactions, localPending)
       } catch (error) {
         console.error('[TransactionService] findByCustomerId cloud error, falling back to local:', error)
       }
@@ -294,6 +374,24 @@ export class TransactionService {
   private async findByCustomerIdLocal(customerId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE customer_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+    )
+    stmt.bind([customerId])
+
+    const results: Transaction[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const transaction = this.mapRowToTransaction(row)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
+      results.push(transaction)
+    }
+    stmt.free()
+
+    return results
+  }
+
+  private async findLocalPendingChangesByCustomerId(customerId: string): Promise<Transaction[]> {
+    const stmt = this.db.prepare(
+      'SELECT * FROM transactions WHERE customer_id = ? AND (synced_at IS NULL OR updated_at > synced_at) ORDER BY created_at DESC'
     )
     stmt.bind([customerId])
 
@@ -321,12 +419,16 @@ export class TransactionService {
           [userId]
         )
         const transactions: Transaction[] = []
+
         for (const row of result.rows) {
           const transaction = this.mapCloudRowToTransaction(row)
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           transactions.push(transaction)
         }
-        return transactions
+
+        // Merge with local pending changes for this user
+        const localPending = await this.findLocalPendingChangesByUserId(userId)
+        return this.mergeWithLocalPending(transactions, localPending)
       } catch (error) {
         console.error('[TransactionService] findByUserId cloud error, falling back to local:', error)
       }
@@ -337,6 +439,24 @@ export class TransactionService {
   private async findByUserIdLocal(userId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
       'SELECT * FROM transactions WHERE user_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
+    )
+    stmt.bind([userId])
+
+    const results: Transaction[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const transaction = this.mapRowToTransaction(row)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
+      results.push(transaction)
+    }
+    stmt.free()
+
+    return results
+  }
+
+  private async findLocalPendingChangesByUserId(userId: string): Promise<Transaction[]> {
+    const stmt = this.db.prepare(
+      'SELECT * FROM transactions WHERE user_id = ? AND (synced_at IS NULL OR updated_at > synced_at) ORDER BY created_at DESC'
     )
     stmt.bind([userId])
 
@@ -618,18 +738,15 @@ export class TransactionService {
       )
 
       for (const st of salesTxns) {
-        // Reverse each stock transaction
-        await this.stockTransactionService.create({
-          productId: st.productId,
-          storeId: st.storeId,
-          type: 'ADJUSTMENT', // or RETURN? ADJUSTMENT is safer to just add stock back.
-          quantity: st.quantity, // Add back same quantity
-          reference: `DELETED:${existing.code}`, // Link back
-          batchId: st.batchId || undefined, // IMPORTANT: Restore to specific batch (or undefined for general)
-          performedBy: existing.userId ?? undefined
-        })
+        // Reverse each stock transaction by soft deleting it
+        // Note: We do NOT create a new adjustment transaction here because soft-deleting the original
+        // 'SALE' transaction effectively removes the deduction from history calculations.
+        // Creating an adjustment AND deleting the sale would result in double counting (virtual stock gain).
+        
+        await this.stockTransactionService.softDelete(st.id)
 
         // Adjust product location (Total stock)
+        // We MUST adjust the counter validation because ProductLocation is a snapshot.
         await this.productLocationService.adjustQuantity(
           st.productId,
           st.storeId,
@@ -652,6 +769,7 @@ export class TransactionService {
     if (!deleted) {
       throw new Error('Transaction not found after delete')
     }
+    
     if (this.auditLogService) {
       void this.auditLogService.log({
         action: 'DELETE',
@@ -866,6 +984,80 @@ export class TransactionService {
     totalDiscount: string
     totalTax: string
   }> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        let query = `
+          SELECT 
+            COUNT(*) as count, 
+            SUM(total) as revenue, 
+            SUM(discount) as discount, 
+            SUM(tax) as tax 
+          FROM transactions 
+          WHERE store_id = $1 AND deleted_at IS NULL
+        `
+        const params: any[] = [storeId]
+
+        if (startDate) {
+          query += ` AND created_at >= $${params.length + 1}`
+          params.push(startDate.toISOString())
+        }
+
+        if (endDate) {
+          query += ` AND created_at <= $${params.length + 1}`
+          params.push(endDate.toISOString())
+        }
+
+        const result = await pool.query(query, params)
+        const row = result.rows[0]
+
+        // Fetch returns (refunds) from cloud
+        let returnQuery = `
+          SELECT SUM(total_refund) as total_refund 
+          FROM transaction_return 
+          WHERE store_id = $1 AND deleted_at IS NULL
+        `
+        const returnParams: any[] = [storeId]
+
+        if (startDate) {
+          returnQuery += ` AND created_at >= $${returnParams.length + 1}`
+          returnParams.push(startDate.toISOString())
+        }
+
+        if (endDate) {
+          returnQuery += ` AND created_at <= $${returnParams.length + 1}`
+          returnParams.push(endDate.toISOString())
+        }
+
+        const returnResult = await pool.query(returnQuery, returnParams)
+        const totalRefund = parseFloat(returnResult.rows[0].total_refund || '0')
+
+        return {
+          totalTransactions: parseInt(row.count),
+          totalRevenue: String(parseFloat(row.revenue || '0') - totalRefund),
+          totalDiscount: String(row.discount || '0'),
+          totalTax: String(row.tax || '0')
+        }
+
+      } catch (error) {
+        console.error('[TransactionService] getSalesSummary cloud error:', error)
+        throw error // Strict Cloud Only: Do not fallback to local if online
+      }
+    }
+
+    return this.getSalesSummaryLocal(storeId, startDate, endDate)
+  }
+
+  private async getSalesSummaryLocal(
+    storeId: string,
+    startDate?: Date,
+    endDate?: Date
+  ): Promise<{
+    totalTransactions: number
+    totalRevenue: string
+    totalDiscount: string
+    totalTax: string
+  }> {
     let query =
       'SELECT COUNT(*) as count, SUM(CAST(total AS REAL)) as revenue, SUM(CAST(discount AS REAL)) as discount, SUM(CAST(tax AS REAL)) as tax FROM transactions WHERE store_id = ? AND deleted_at IS NULL'
     const params: any[] = [storeId]
@@ -884,7 +1076,12 @@ export class TransactionService {
     const stmt = this.db.prepare(query)
     stmt.bind(params)
 
-    let salesData = { count: 0, revenue: 0, discount: 0, tax: 0 }
+    let salesData: { count: number; revenue: number; discount: number; tax: number } = {
+      count: 0,
+      revenue: 0,
+      discount: 0,
+      tax: 0
+    }
 
     if (stmt.step()) {
       const row = stmt.getAsObject()
@@ -953,6 +1150,61 @@ export class TransactionService {
     monthStart.setDate(1)
     monthStart.setHours(0, 0, 0, 0)
 
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(`
+          SELECT 
+            COALESCE(SUM(CASE WHEN created_at >= $1 THEN total ELSE 0 END), 0) as today_revenue,
+            COUNT(CASE WHEN created_at >= $1 THEN 1 END) as today_transactions,
+            COALESCE(SUM(CASE WHEN created_at >= $2 THEN total ELSE 0 END), 0) as week_revenue,
+            COUNT(CASE WHEN created_at >= $2 THEN 1 END) as week_transactions,
+            COALESCE(SUM(CASE WHEN created_at >= $3 THEN total ELSE 0 END), 0) as month_revenue,
+            COUNT(CASE WHEN created_at >= $3 THEN 1 END) as month_transactions
+          FROM transactions 
+          WHERE deleted_at IS NULL
+        `, [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()])
+        
+        const row = result.rows[0]
+        
+        // Cloud Returns
+        const returnResult = await pool.query(`
+          SELECT 
+            COALESCE(SUM(CASE WHEN created_at >= $1 THEN total_refund ELSE 0 END), 0) as today_refund,
+            COALESCE(SUM(CASE WHEN created_at >= $2 THEN total_refund ELSE 0 END), 0) as week_refund,
+            COALESCE(SUM(CASE WHEN created_at >= $3 THEN total_refund ELSE 0 END), 0) as month_refund
+          FROM transaction_return 
+          WHERE deleted_at IS NULL
+        `, [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()])
+
+        const returnRow = returnResult.rows[0]
+
+        // Cloud Counts
+        const productCount = await pool.query('SELECT COUNT(*) as count FROM product WHERE deleted_at IS NULL AND is_active = true')
+        const customerCount = await pool.query('SELECT COUNT(*) as count FROM customer WHERE deleted_at IS NULL')
+
+        return {
+          todayRevenue: parseFloat(row.today_revenue) - parseFloat(returnRow.today_refund),
+          todayTransactions: parseInt(row.today_transactions),
+          weekRevenue: parseFloat(row.week_revenue) - parseFloat(returnRow.week_refund),
+          weekTransactions: parseInt(row.week_transactions),
+          monthRevenue: parseFloat(row.month_revenue) - parseFloat(returnRow.month_refund),
+          monthTransactions: parseInt(row.month_transactions),
+          totalProducts: parseInt(productCount.rows[0].count),
+          totalCustomers: parseInt(customerCount.rows[0].count),
+          lowStockCount: 0 
+        }
+
+      } catch (error) {
+        console.error('[TransactionService] getDashboardStats cloud error:', error)
+        throw error // Strict Cloud Only: Do not fallback to local if online
+      }
+    }
+
+    return this.getDashboardStatsLocal(todayStart, weekStart, monthStart)
+  }
+
+  private async getDashboardStatsLocal(todayStart: Date, weekStart: Date, monthStart: Date) {
     // Today's stats
     const todayStmt = this.db.prepare(
       'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS REAL)), 0) as revenue FROM transactions WHERE deleted_at IS NULL AND created_at >= ?'
@@ -1077,6 +1329,203 @@ export class TransactionService {
     grossProfit: number
     margin: number
     totalTransactions: number
+    brokenGoods: number
+  }> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const start = startDate.toISOString()
+        const end = endDate.toISOString()
+
+        let revenueQuery = `SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count FROM transactions WHERE deleted_at IS NULL AND created_at >= $1 AND created_at <= $2`
+        const revenueParams: any[] = [start, end]
+        if (storeId) {
+          revenueQuery += ` AND store_id = $3`
+          revenueParams.push(storeId)
+        }
+        
+        const revResult = await pool.query(revenueQuery, revenueParams)
+        const revenue = parseFloat(revResult.rows[0].revenue)
+        const count = parseInt(revResult.rows[0].count)
+
+        // Deduct Returns from Revenue
+        let returnQuery = `SELECT COALESCE(SUM(total_refund), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= $1 AND created_at <= $2`
+        const returnParams: any[] = [start, end]
+        if (storeId) {
+          returnQuery += ` AND store_id = $3`
+          returnParams.push(storeId)
+        }
+        const retResult = await pool.query(returnQuery, returnParams)
+        const totalRefund = parseFloat(retResult.rows[0].refund)
+        
+        const netRevenue = revenue - totalRefund
+
+        // 2. Calculate COGS (HPP) from Stock Transactions (SALE type)
+        // Cloud Query
+        let cogsQuery = `
+          SELECT SUM(
+            st.quantity * COALESCE(
+              b.cost,
+              pp.cost,
+              p.cost,
+              0
+            )
+          ) as total_cogs
+          FROM stock_transaction st
+          LEFT JOIN batch b ON st.batch_id = b.id
+          LEFT JOIN product p ON st.product_id = p.id
+          LEFT JOIN product_price pp ON st.product_id = pp.product_id 
+            AND pp.store_id = st.store_id 
+            AND pp.deleted_at IS NULL
+          WHERE st.type = 'SALE' 
+            AND st.deleted_at IS NULL 
+            AND st.created_at >= $1 
+            AND st.created_at <= $2
+        `
+        const cogsParams: any[] = [start, end]
+        if (storeId) {
+          cogsQuery += ` AND st.store_id = $3`
+          cogsParams.push(storeId)
+        }
+
+        console.log(cogsParams)
+
+        const cogsResult = await pool.query(cogsQuery, cogsParams)
+        const cogs = parseFloat(cogsResult.rows[0].total_cogs || '0')
+
+        // 3. Calculate Broken Goods (Waste) Value
+        // Assuming 'WASTE' type is used for broken goods.
+        // Value = quantity * cost
+        const brokenGoods = await this.getBrokenGoodsSummary(startDate, endDate, storeId)
+        
+        const grossProfit = netRevenue - cogs
+        const totalExpenses = brokenGoods // Add other expenses here if needed
+        const netProfit = grossProfit - totalExpenses
+        const margin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
+
+        return {
+          revenue: netRevenue,
+          cogs,
+          grossProfit,
+          margin,
+          totalTransactions: count,
+          brokenGoods
+        }
+      } catch (error) {
+        console.error('[TransactionService] getProfitLossReport cloud error:', error)
+        throw error // Strict Cloud Only: Do not fallback to local if online
+      }
+    }
+
+    return this.getProfitLossReportLocal(startDate, endDate, storeId)
+  }
+
+  /**
+   * Get summary of broken goods (waste) value
+   * Strict Cloud Only when online
+   */
+  async getBrokenGoodsSummary(startDate: Date, endDate: Date, storeId?: string): Promise<number> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const start = startDate.toISOString()
+        const end = endDate.toISOString()
+
+        let query = `
+          SELECT SUM(
+            st.quantity * COALESCE(
+              b.cost,
+              pp.cost,
+              p.cost,
+              0
+            )
+          ) as total_waste
+          FROM stock_transaction st
+          LEFT JOIN batch b ON st.batch_id = b.id
+          LEFT JOIN product p ON st.product_id = p.id
+          LEFT JOIN product_price pp ON st.product_id = pp.product_id 
+            AND pp.store_id = st.store_id 
+            AND pp.deleted_at IS NULL
+          WHERE st.type = 'WASTE' 
+            AND st.deleted_at IS NULL 
+            AND st.created_at >= $1 
+            AND st.created_at <= $2
+        `
+        const params: any[] = [start, end]
+        if (storeId) {
+          query += ` AND st.store_id = $3`
+          params.push(storeId)
+        }
+
+        const result = await pool.query(query, params)
+        return parseFloat(result.rows[0].total_waste || '0')
+      } catch (error) {
+        console.error('[TransactionService] getBrokenGoodsSummary cloud error:', error)
+        throw error
+      }
+    }
+
+    return this.getBrokenGoodsSummaryLocal(startDate, endDate, storeId)
+  }
+
+  private async getBrokenGoodsSummaryLocal(
+    startDate: Date,
+    endDate: Date,
+    storeId?: string
+  ): Promise<number> {
+    const start = startDate.getTime()
+    const end = endDate.getTime()
+
+    let query = `
+      SELECT SUM(
+        CAST(st.quantity AS REAL) * CAST(
+          COALESCE(
+            b.cost,
+            pp.cost,
+            p.cost,
+            '0'
+          ) AS REAL
+        )
+      ) as total_waste
+      FROM stock_transaction st
+      LEFT JOIN batch b ON st.batch_id = b.id
+      LEFT JOIN product p ON st.product_id = p.id
+      LEFT JOIN product_price pp ON st.product_id = pp.product_id 
+        AND pp.store_id = st.store_id 
+        AND pp.deleted_at IS NULL
+      WHERE st.type = 'WASTE' 
+        AND st.deleted_at IS NULL 
+        AND st.created_at >= ? 
+        AND st.created_at <= ?
+    `
+    const params: any[] = [start, end]
+    if (storeId) {
+      query += ' AND st.store_id = ?'
+      params.push(storeId)
+    }
+
+    const stmt = this.db.prepare(query)
+    stmt.bind(params)
+    let totalWaste = 0
+    if (stmt.step()) {
+      totalWaste = (stmt.getAsObject().total_waste as number) || 0
+    }
+    stmt.free()
+
+    return totalWaste
+  }
+
+  private async getProfitLossReportLocal(
+    startDate: Date,
+    endDate: Date,
+    storeId?: string
+  ): Promise<{
+    revenue: number
+    cogs: number
+    grossProfit: number
+    margin: number
+    totalTransactions: number
+    brokenGoods: number
   }> {
     const start = startDate.getTime()
     const end = endDate.getTime()
@@ -1167,15 +1616,35 @@ export class TransactionService {
     // Assuming for now we just track Sales COGS. Real COGS should net out returns.
     // Let's simplistic for Phase 3: Sales COGS.
 
+    // 3. Calculate Broken Goods (Waste) Value
+    const brokenGoods = await this.getBrokenGoodsSummaryLocal(startDate, endDate, storeId)
+    
     const grossProfit = revenue - cogs
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0
+
+    // Adjust logic to include waste in net profit
+    const totalExpenses = brokenGoods
+    const netProfit = grossProfit - totalExpenses
+    
+    // Note: Margin is Gross Margin usually by definition.
+    // Net Margin = Net Profit / Revenue.
+    // We are returning profitMargin as `margin`? 
+    // Types say `margin`. Let's assume Gross Margin for now, but if P&L UI shows Net Profit, we should clarify.
+    // UI calculates `netProfit` itself from `grossProfit - operatingExpenses`.
+    // We are returning `grossProfit`.
+    // Wait, the UI calculates Net Profit as `grossProfit - operatingExpenses`.
+    // Does the UI expect `brokenGoods` to be pre-subtracted from `grossProfit`? 
+    // NO. It expects `brokenGoods` to be PASSED so it can display it.
+    // But `getProfitLossReportLocal` return type doesn't have `brokenGoods` in my previous thought?
+    // I JUST added it. So I should return it.
 
     return {
       revenue,
       cogs,
       grossProfit,
       margin,
-      totalTransactions: count
+      totalTransactions: count,
+      brokenGoods
     }
   }
 

@@ -140,5 +140,20 @@ export const transactionApi = {
       startDate,
       endDate,
       storeId
-    ) as Promise<ApiResponse<any>>
+    ) as Promise<ApiResponse<{
+      revenue: number
+      cogs: number
+      grossProfit: number
+      margin: number
+      totalTransactions: number
+      brokenGoods: number
+    }>>,
+
+  getBrokenGoodsSummary: (startDate: string, endDate: string, storeId?: string) => 
+    ipcRenderer.invoke(
+      'db:transactions:getBrokenGoodsSummary',
+      startDate,
+      endDate,
+      storeId
+    ) as Promise<ApiResponse<number>>
 }

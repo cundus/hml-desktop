@@ -76,6 +76,7 @@ interface ProfitLossSummary {
   operatingExpenses: number
   netProfit: number
   profitMargin: number
+  brokenGoods: number
 }
 
 interface CategoryBreakdown {
@@ -97,6 +98,7 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
+  const [brokenGoods, setBrokenGoods] = useState<number>(0)
 
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -187,7 +189,13 @@ export default function ProfitLossPage(): React.JSX.Element {
           dateRange.start.toISOString(),
           dateRange.end.toISOString(),
           filterStoreId // Use selected store for API call
-        )
+        ),
+        // Fetch broken goods summary (for client-side calculation if report fails or is null?)
+        // Actually reportRes already contains brokenGoods if it succeeds.
+        // But for client-side fallback we might need it? 
+        // Let's rely on reportRes for now.
+        // Wait, if online, reportRes returns it. If offline, getProfitLossReportLocal returns it.
+        // So reportRes.data should have it.
       ])
 
       if (transactionsRes.success) {
@@ -225,17 +233,18 @@ export default function ProfitLossPage(): React.JSX.Element {
           opsExpenses = filteredExp.reduce((sum, e) => sum + parseFloat(e.total), 0)
         }
 
-        setReport({
-          grossRevenue: data.revenue,
-          discounts: 0,
-          netRevenue: data.revenue,
-          costOfGoodsSold: data.cogs,
-          grossProfit: data.grossProfit,
-          operatingExpenses: opsExpenses,
-          netProfit: data.grossProfit - opsExpenses,
-          profitMargin:
-            data.revenue > 0 ? ((data.grossProfit - opsExpenses) / data.revenue) * 100 : 0
-        })
+          setReport({
+            grossRevenue: data.revenue,
+            discounts: 0,
+            netRevenue: data.revenue,
+            costOfGoodsSold: data.cogs,
+            grossProfit: data.grossProfit,
+            operatingExpenses: opsExpenses,
+            netProfit: data.grossProfit - opsExpenses - (data.brokenGoods || 0),
+            profitMargin:
+              data.revenue > 0 ? ((data.grossProfit - opsExpenses - (data.brokenGoods || 0)) / data.revenue) * 100 : 0,
+            brokenGoods: data.brokenGoods || 0
+          })
       } else {
         setReport(null)
       }
@@ -307,7 +316,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       (sum, e) => sum + (parseFloat(e.total) || 0),
       0
     )
-    const netProfit = grossProfit - operatingExpenses
+    const netProfit = grossProfit - operatingExpenses - brokenGoods
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
 
     return {
@@ -318,9 +327,10 @@ export default function ProfitLossPage(): React.JSX.Element {
       grossProfit,
       operatingExpenses,
       netProfit,
-      profitMargin
+      profitMargin,
+      brokenGoods
     }
-  }, [filteredData, productMap, report])
+  }, [filteredData, productMap, report, brokenGoods])
 
   // Category breakdown
   const categoryBreakdown = useMemo((): CategoryBreakdown[] => {
@@ -621,6 +631,16 @@ export default function ProfitLossPage(): React.JSX.Element {
                 ({formatCurrency(summary.operatingExpenses)})
               </TableCell>
             </TableRow>
+
+            {/* Broken Goods / Loss */}
+            {summary.brokenGoods > 0 && (
+              <TableRow>
+                <TableCell sx={{ pl: 4, color: 'error.main' }}>Barang Rusak (Loss)</TableCell>
+                <TableCell align="right" sx={{ color: 'error.main' }}>
+                  ({formatCurrency(summary.brokenGoods)})
+                </TableCell>
+              </TableRow>
+            )}
 
             {/* Net Profit */}
             <TableRow sx={{ bgcolor: summary.netProfit >= 0 ? 'success.100' : 'error.100' }}>

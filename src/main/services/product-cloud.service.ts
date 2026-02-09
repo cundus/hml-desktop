@@ -103,6 +103,23 @@ export class ProductCloudService {
     return undefined
   }
 
+  async findByIds(ids: string[]): Promise<Product[]> {
+    if (ids.length === 0) return []
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM product WHERE id = ANY($1) AND deleted_at IS NULL',
+          [ids]
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
+      } catch (error) {
+        console.error('[ProductCloud] findByIds error:', error)
+      }
+    }
+    return []
+  }
+
   async findBySku(sku: string): Promise<Product | undefined> {
     if (this.isOnline()) {
       try {

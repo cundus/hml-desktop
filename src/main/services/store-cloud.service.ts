@@ -81,6 +81,23 @@ export class StoreCloudService {
     return this.findByIdLocal(id)
   }
 
+  async findByIds(ids: string[]): Promise<Store[]> {
+    if (ids.length === 0) return []
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const result = await pool.query(
+          'SELECT * FROM store WHERE id = ANY($1) AND deleted_at IS NULL',
+          [ids]
+        )
+        return result.rows.map((row) => this.mapCloudRow(row))
+      } catch (error) {
+        console.error('[StoreCloud] findByIds error:', error)
+      }
+    }
+    return []
+  }
+
   private findByIdLocal(id: string): Store | undefined {
     const stmt = this.localDb.prepare('SELECT * FROM store WHERE id = ?')
     stmt.bind([id])

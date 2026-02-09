@@ -55,8 +55,14 @@ export class InventoryController {
           }
         }
 
+        // Collect all product IDs first
+        const productIds = locations.map(l => l.productId)
+        // Batch fetch products (Cloud optimized)
+        const products = await this.productService.findByIds(productIds)
+        const productMap = new Map(products.map(p => [p.id, p]))
+
         for (const location of locations) {
-          const product = await this.productService.findById(location.productId)
+          const product = productMap.get(location.productId)
           if (product) {
             stockOverview.push({
               id: location.id,
@@ -88,9 +94,20 @@ export class InventoryController {
       const transactions = await this.stockTransactionService.findAll()
       const enrichedTransactions: unknown[] = []
 
+      const productIds = [...new Set(transactions.map(t => t.productId))]
+      const storeIds = [...new Set(transactions.map(t => t.storeId))]
+
+      const [products, stores] = await Promise.all([
+        this.productService.findByIds(productIds),
+        this.storeService.findByIds(storeIds)
+      ])
+
+      const productMap = new Map(products.map(p => [p.id, p]))
+      const storeMap = new Map(stores.map(s => [s.id, s]))
+
       for (const transaction of transactions) {
-        const product = await this.productService.findById(transaction.productId)
-        const store = await this.storeService.findById(transaction.storeId)
+        const product = productMap.get(transaction.productId)
+        const store = storeMap.get(transaction.storeId)
 
         enrichedTransactions.push({
           ...transaction,
@@ -122,9 +139,20 @@ export class InventoryController {
 
       const enrichedAdjustments: unknown[] = []
 
+      const productIds = [...new Set(adjustments.map(a => a.productId))]
+      const storeIds = [...new Set(adjustments.map(a => a.storeId))]
+
+      const [products, stores] = await Promise.all([
+        this.productService.findByIds(productIds),
+        this.storeService.findByIds(storeIds)
+      ])
+
+      const productMap = new Map(products.map(p => [p.id, p]))
+      const storeMap = new Map(stores.map(s => [s.id, s]))
+
       for (const adjustment of adjustments) {
-        const product = await this.productService.findById(adjustment.productId)
-        const store = await this.storeService.findById(adjustment.storeId)
+        const product = productMap.get(adjustment.productId)
+        const store = storeMap.get(adjustment.storeId)
 
         enrichedAdjustments.push({
           ...adjustment,

@@ -2,6 +2,9 @@
 import { Database } from 'sql.js'
 import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
+import { QueueService } from './queue.service'
+import { getCloudDb } from './cloud-db.service'
+import { getConnectivity } from './connectivity.service'
 
 export interface DamagedGood {
   id: string
@@ -38,7 +41,10 @@ export interface CreateDamagedGoodDto {
 }
 
 export class DamagedGoodsService {
-  constructor(private db: Database) {}
+  constructor(
+    private db: Database,
+    private queueService?: QueueService
+  ) {}
 
   /**
    * Create a new damaged goods record
@@ -67,6 +73,46 @@ export class DamagedGoodsService {
         now
       ]
     )
+
+    // Sync to Cloud (Queue & Direct)
+    const cloudPayload = {
+      id,
+      product_id: data.productId,
+      store_id: data.storeId,
+      uom_id: data.uomId,
+      quantity: data.quantity,
+      cost: data.cost,
+      total_loss: totalLoss,
+      reason: data.reason,
+      notes: data.notes ?? null,
+      performed_by: data.performedBy,
+      created_at: new Date(now).toISOString(),
+      updated_at: new Date(now).toISOString()
+    }
+
+    // 1. Queue for background sync
+    if (this.queueService) {
+      await this.queueService.add('INSERT', 'damaged_goods', cloudPayload)
+    }
+
+    // 2. Try direct cloud write if online (for immediate reporting)
+    if (getConnectivity().isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        const columns = Object.keys(cloudPayload)
+        const values = Object.values(cloudPayload)
+        const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ')
+        
+        await pool.query(
+          `INSERT INTO damaged_goods (${columns.join(', ')}) VALUES (${placeholders})
+           ON CONFLICT (id) DO NOTHING`,
+          values
+        )
+      } catch (error) {
+        console.error('[DamagedGoodsService] Cloud direct write failed:', error)
+        // Ignore error, queue will handle it
+      }
+    }
 
     saveDb(this.db)
 
@@ -226,6 +272,20 @@ export class DamagedGoodsService {
     const now = Date.now()
     this.db.run('UPDATE damaged_goods SET deleted_at = ?, updated_at = ? WHERE id = ?', [now, now, id])
     saveDb(this.db)
+
+    // Sync Delete to Cloud
+    if (this.queueService) {
+      await this.queueService.add('DELETE', 'damaged_goods', { id })
+    }
+
+    if (getConnectivity().isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        await pool.query('UPDATE damaged_goods SET deleted_at = NOW() WHERE id = $1', [id])
+      } catch (error) {
+        console.error('[DamagedGoodsService] Cloud direct delete failed:', error)
+      }
+    }
   }
 
   /**

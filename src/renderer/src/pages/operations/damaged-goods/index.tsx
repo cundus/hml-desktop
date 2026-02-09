@@ -8,7 +8,6 @@ import {
 } from '@mui/icons-material'
 import {
   Alert,
-  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -40,9 +39,11 @@ import {
 } from '@mui/material'
 import useAuth from '@renderer/hooks/useAuth'
 import useBranchConfig from '@renderer/hooks/useBranchConfig'
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
-import { formatCurrency } from '../../../utils/currency'
+import { globalAlert } from '@renderer/lib/globalAlert'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import AsyncProductSelect, { Product } from '../../../components/AsyncProductSelect'
 import Kbd from '../../../components/Kbd'
+import { formatCurrency } from '../../../utils/currency'
 
 interface DamagedGood {
   id: string
@@ -63,12 +64,7 @@ interface DamagedGood {
   uomCode?: string
 }
 
-interface Product {
-  id: string
-  name: string
-  sku: string
-  cost: string
-}
+// Product interface imported from AsyncProductSelect
 
 interface Store {
   id: string
@@ -98,12 +94,11 @@ const DAMAGE_REASONS = [
 
 export default function DamagedGoodsPage(): React.JSX.Element {
   const theme = useTheme()
-  const { userId,userName } = useAuth()
+  const { userName } = useAuth()
   const { storeId } = useBranchConfig()
   const searchInputRef = useRef<HTMLInputElement>(null)
 
   const [items, setItems] = useState<DamagedGood[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [stores, setStores] = useState<Store[]>([])
   const [loading, setLoading] = useState(false)
   const [formOpen, setFormOpen] = useState(false)
@@ -141,17 +136,7 @@ export default function DamagedGoodsPage(): React.JSX.Element {
     }
   }, [])
 
-  // Load products for autocomplete
-  const loadProducts = useCallback(async (): Promise<void> => {
-    try {
-      const response = await window.api.db.products.getAll()
-      if (response.success) {
-        setProducts(response.data || [])
-      }
-    } catch {
-      // Silent fail for products list
-    }
-  }, [])
+  // Load products removed - using AsyncProductSelect instead
 
   // Load stores for dropdown
   const loadStores = useCallback(async (): Promise<void> => {
@@ -167,9 +152,8 @@ export default function DamagedGoodsPage(): React.JSX.Element {
 
   useEffect(() => {
     loadItems()
-    loadProducts()
     loadStores()
-  }, [loadItems, loadProducts, loadStores])
+  }, [loadItems, loadStores])
 
   // Load product UOMs when product or store is selected
   useEffect(() => {
@@ -306,7 +290,8 @@ export default function DamagedGoodsPage(): React.JSX.Element {
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    if (!confirm('Apakah Anda yakin ingin menghapus catatan ini?')) return
+    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus catatan ini?', 'Konfirmasi Hapus')
+    if (!confirmed) return
 
     try {
       const response = await window.api.db.damagedGoods.delete(id)
@@ -587,24 +572,11 @@ export default function DamagedGoodsPage(): React.JSX.Element {
         <DialogContent>
           <Stack spacing={3} sx={{ mt: 1 }}>
             {/* Product Autocomplete */}
-            <Autocomplete
-              options={products}
-              getOptionLabel={(option) => `${option.sku} - ${option.name}`}
+            <AsyncProductSelect
+              label="Pilih Produk"
               value={selectedProduct}
-              onChange={(_, newValue) => setSelectedProduct(newValue)}
-              renderInput={(params) => (
-                <TextField {...params} label="Pilih Produk" required />
-              )}
-              renderOption={(props, option) => (
-                <li {...props} key={option.id}>
-                  <Box>
-                    <Typography variant="body2">{option.name}</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {option.sku}
-                    </Typography>
-                  </Box>
-                </li>
-              )}
+              onChange={setSelectedProduct}
+              required
             />
 
             {/* Store Select */}

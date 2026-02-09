@@ -178,7 +178,7 @@ export async function bootstrap(): Promise<void> {
   const expenseService = new ExpenseCloudService(db, queueService)
 
   // Initialize damaged goods service
-  const damagedGoodsService = new DamagedGoodsService(db)
+  const damagedGoodsService = new DamagedGoodsService(db, queueService)
 
   // Initialize shift service
   const shiftService = new ShiftService(db, expenseService, auditLogService)

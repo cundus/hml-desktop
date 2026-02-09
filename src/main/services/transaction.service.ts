@@ -1432,28 +1432,15 @@ export class TransactionService {
         const end = endDate.toISOString()
 
         let query = `
-          SELECT SUM(
-            st.quantity * COALESCE(
-              b.cost,
-              pp.cost,
-              p.cost,
-              0
-            )
-          ) as total_waste
-          FROM stock_transaction st
-          LEFT JOIN batch b ON st.batch_id = b.id
-          LEFT JOIN product p ON st.product_id = p.id
-          LEFT JOIN product_price pp ON st.product_id = pp.product_id 
-            AND pp.store_id = st.store_id 
-            AND pp.deleted_at IS NULL
-          WHERE st.type = 'WASTE' 
-            AND st.deleted_at IS NULL 
-            AND st.created_at >= $1 
-            AND st.created_at <= $2
+          SELECT COALESCE(SUM(CAST(total_loss AS REAL)), 0) as total_waste
+          FROM damaged_goods
+          WHERE deleted_at IS NULL 
+            AND created_at >= $1 
+            AND created_at <= $2
         `
         const params: any[] = [start, end]
         if (storeId) {
-          query += ` AND st.store_id = $3`
+          query += ` AND store_id = $3`
           params.push(storeId)
         }
 
@@ -1477,30 +1464,13 @@ export class TransactionService {
     const end = endDate.getTime()
 
     let query = `
-      SELECT SUM(
-        CAST(st.quantity AS REAL) * CAST(
-          COALESCE(
-            b.cost,
-            pp.cost,
-            p.cost,
-            '0'
-          ) AS REAL
-        )
-      ) as total_waste
-      FROM stock_transaction st
-      LEFT JOIN batch b ON st.batch_id = b.id
-      LEFT JOIN product p ON st.product_id = p.id
-      LEFT JOIN product_price pp ON st.product_id = pp.product_id 
-        AND pp.store_id = st.store_id 
-        AND pp.deleted_at IS NULL
-      WHERE st.type = 'WASTE' 
-        AND st.deleted_at IS NULL 
-        AND st.created_at >= ? 
-        AND st.created_at <= ?
+      SELECT COALESCE(SUM(CAST(total_loss AS REAL)), 0) as total_waste
+        FROM damaged_goods
+       WHERE created_at >= ? AND created_at <= ? AND deleted_at IS NULL
     `
     const params: any[] = [start, end]
     if (storeId) {
-      query += ' AND st.store_id = ?'
+      query += ' AND store_id = ?'
       params.push(storeId)
     }
 
@@ -1617,14 +1587,19 @@ export class TransactionService {
     // Let's simplistic for Phase 3: Sales COGS.
 
     // 3. Calculate Broken Goods (Waste) Value
-    const brokenGoods = await this.getBrokenGoodsSummaryLocal(startDate, endDate, storeId)
+    // User requested to use cloud records if possible
+    const brokenGoods = await this.getBrokenGoodsSummary(startDate, endDate, storeId)
+    
+    // grossProfit is already defined above? No, wait. 
+    // In previous steps I restored grossProfit calculation.
+    // Let's check context.
     
     const grossProfit = revenue - cogs
     const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0
-
-    // Adjust logic to include waste in net profit
-    const totalExpenses = brokenGoods
-    const netProfit = grossProfit - totalExpenses
+    
+    // Remove unused netProfit calculation to fix lint error
+    // const totalExpenses = brokenGoods
+    // const netProfit = grossProfit - totalExpenses
     
     // Note: Margin is Gross Margin usually by definition.
     // Net Margin = Net Profit / Revenue.

@@ -98,7 +98,7 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
-  const [brokenGoods, setBrokenGoods] = useState<number>(0)
+  const [brokenGoods,   setBrokenGoods] = useState<number>(0)
 
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -182,7 +182,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       // Determine which store to filter by
       const filterStoreId = selectedStore || branchStoreId || undefined
 
-      const [transactionsRes, expensesRes, reportRes] = await Promise.all([
+      const [transactionsRes, expensesRes, reportRes, brokenGoodsRes] = await Promise.all([
         window.api.db.transactions.getAll(),
         window.api.db.expenses.getAll(),
         window.api.db.transactions.getProfitLossReport(
@@ -190,13 +190,15 @@ export default function ProfitLossPage(): React.JSX.Element {
           dateRange.end.toISOString(),
           filterStoreId // Use selected store for API call
         ),
-        // Fetch broken goods summary (for client-side calculation if report fails or is null?)
-        // Actually reportRes already contains brokenGoods if it succeeds.
-        // But for client-side fallback we might need it? 
-        // Let's rely on reportRes for now.
-        // Wait, if online, reportRes returns it. If offline, getProfitLossReportLocal returns it.
-        // So reportRes.data should have it.
+        window.api.db.transactions.getBrokenGoodsSummary(
+          dateRange.start.toISOString(),
+          dateRange.end.toISOString(),
+          filterStoreId
+        )
       ])
+
+      console.log("Broken Goods Res", brokenGoodsRes);
+      
 
       if (transactionsRes.success) {
         const allTxns = transactionsRes.data ?? []
@@ -212,6 +214,10 @@ export default function ProfitLossPage(): React.JSX.Element {
         setExpenses(
           filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
         )
+      }
+
+      if (brokenGoodsRes.success) {
+        setBrokenGoods(brokenGoodsRes.data ?? 0)
       }
 
       // Handle Report Data
@@ -239,7 +245,7 @@ export default function ProfitLossPage(): React.JSX.Element {
             netRevenue: data.revenue,
             costOfGoodsSold: data.cogs,
             grossProfit: data.grossProfit,
-            operatingExpenses: opsExpenses,
+            operatingExpenses: opsExpenses + (data.brokenGoods || 0),
             netProfit: data.grossProfit - opsExpenses - (data.brokenGoods || 0),
             profitMargin:
               data.revenue > 0 ? ((data.grossProfit - opsExpenses - (data.brokenGoods || 0)) / data.revenue) * 100 : 0,
@@ -315,8 +321,8 @@ export default function ProfitLossPage(): React.JSX.Element {
     const operatingExpenses = filteredData.expenses.reduce(
       (sum, e) => sum + (parseFloat(e.total) || 0),
       0
-    )
-    const netProfit = grossProfit - operatingExpenses - brokenGoods
+    ) + brokenGoods // Include broken goods in OPEX
+    const netProfit = grossProfit - operatingExpenses
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
 
     return {
@@ -376,6 +382,11 @@ export default function ProfitLossPage(): React.JSX.Element {
       const amount = parseFloat(e.total)
       breakdown.set(categoryName, (breakdown.get(categoryName) ?? 0) + amount)
     })
+
+    // Add Broken Goods as an expense category
+    if (brokenGoods > 0) {
+      breakdown.set('Barang Rusak', (breakdown.get('Barang Rusak') ?? 0) + brokenGoods)
+    }
 
     return Array.from(breakdown.entries())
       .map(([name, amount]) => ({ name, amount }))
@@ -632,7 +643,8 @@ export default function ProfitLossPage(): React.JSX.Element {
               </TableCell>
             </TableRow>
 
-            {/* Broken Goods / Loss */}
+            {/* Broken Goods / Loss - Removed as separate item, now in OPEX */
+            /*
             {summary.brokenGoods > 0 && (
               <TableRow>
                 <TableCell sx={{ pl: 4, color: 'error.main' }}>Barang Rusak (Loss)</TableCell>
@@ -641,6 +653,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 </TableCell>
               </TableRow>
             )}
+            */}
 
             {/* Net Profit */}
             <TableRow sx={{ bgcolor: summary.netProfit >= 0 ? 'success.100' : 'error.100' }}>

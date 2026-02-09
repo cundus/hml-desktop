@@ -30,6 +30,7 @@ We significantly improved the financial reporting capabilities:
 *   **Broken Goods Integration**:
     *   Implemented `getBrokenGoodsSummary` in `TransactionService` to calculate total waste value from stock transactions.
     *   Exposed via IPC for frontend consumption.
+    *   **Improvement**: Updated `getProfitLossReportLocal` to prioritize cloud data for Broken Goods calculation even in local fallback mode (if online), ensuring accuracy.
 
 ## 4. Bug Fixes & Refactoring
 *   **Soft Delete Logic**: Fixed a critical bug where soft-deleting a transaction caused double inventory reversal. Now correctly handles `stock_transaction` adjustments.

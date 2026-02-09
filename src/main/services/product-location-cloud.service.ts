@@ -301,7 +301,7 @@ export class ProductLocationCloudService {
   ): Promise<ProductLocation> {
     const location = await this.findByProductAndStore(productId, storeId)
     if (!location) throw new Error('Product location not found')
-    const available = location.quantity - location.reservedQuantity
+    // const available = location.quantity - location.reservedQuantity
     // if (available < quantity) throw new Error('Insufficient quantity available')
     return await this.update(location.id, {
       quantity: location.quantity,

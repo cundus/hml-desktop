@@ -1,9 +1,8 @@
-import { Database } from 'sql.js'
 import { randomUUID } from 'crypto'
 import { QueueService } from './queue.service'
-import { saveDb } from '../localDb'
 import { ProductLocationCloudService } from './product-location-cloud.service'
 import { StockTransactionCloudService } from './stock-transaction-cloud.service'
+import { getCloudDb } from './cloud-db.service'
 
 export interface ReturnDto {
   transactionId: string
@@ -27,7 +26,6 @@ export interface ReturnItemDto {
 
 export class ReturnService {
   constructor(
-    private db: Database,
     private queueService: QueueService,
     private stockTransactionService: StockTransactionCloudService,
     private productLocationService: ProductLocationCloudService
@@ -41,120 +39,147 @@ export class ReturnService {
     const returnNumber = data.returnNumber || `RET-${now}`
 
     // 1. Queue Return Header INSERT
-    if (this.queueService) {
-      await this.queueService.add('INSERT', 'transaction_return', {
-        id,
-        transaction_id: data.transactionId,
-        return_number: returnNumber,
-        store_id: data.storeId,
-        total_refund: data.totalRefund,
-        reason: data.reason ?? null,
-        created_by: data.createdBy,
-        created_at: nowIso,
-        updated_at: nowIso
-      })
-    }
+    await this.queueService.add('INSERT', 'transaction_return', {
+      id,
+      transaction_id: data.transactionId,
+      return_number: returnNumber,
+      store_id: data.storeId,
+      total_refund: data.totalRefund,
+      reason: data.reason ?? null,
+      created_by: data.createdBy,
+      created_at: nowIso,
+      updated_at: nowIso
+    })
 
-    // 2. Insert Locally
-    this.db.run(
-      'INSERT INTO transaction_return (id, transaction_id, return_number, store_id, total_refund, reason, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        id,
-        data.transactionId,
-        returnNumber,
-        data.storeId,
-        data.totalRefund,
-        data.reason ?? null,
-        data.createdBy,
-        now,
-        now
-      ]
-    )
-
-    // 3. Process Items
+    // 2. Process Items
     for (const item of data.items) {
       const itemId = randomUUID()
 
-      // 3a. Queue Item
-      if (this.queueService) {
-        await this.queueService.add('INSERT', 'transaction_return_item', {
-          id: itemId,
-          return_id: id,
-          transaction_item_id: item.transactionItemId,
-          product_id: item.productId,
-          quantity: item.quantity,
-          refund_price: item.refundPrice,
-          restock: item.restock ? 1 : 0,
-          created_at: nowIso,
-          updated_at: nowIso
-        })
-      }
+      // 2a. Queue Item INSERT
+      await this.queueService.add('INSERT', 'transaction_return_item', {
+        id: itemId,
+        return_id: id,
+        transaction_item_id: item.transactionItemId,
+        product_id: item.productId,
+        quantity: item.quantity,
+        refund_price: item.refundPrice,
+        restock: item.restock ? 1 : 0,
+        created_at: nowIso,
+        updated_at: nowIso
+      })
 
-      // 3b. Insert Item Locally
-      this.db.run(
-        'INSERT INTO transaction_return_item (id, return_id, transaction_item_id, product_id, quantity, refund_price, restock, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [
-          itemId,
-          id,
-          item.transactionItemId,
-          item.productId,
-          item.quantity,
-          item.refundPrice,
-          item.restock ? 1 : 0,
-          now,
-          now
-        ]
-      )
-
-      // 3c. Stock Adjustment (if restock is true)
+      // 2b. Stock Adjustment (if restock is true)
       if (item.restock) {
-        // Create stock transaction
         await this.stockTransactionService.create({
           productId: item.productId,
           storeId: data.storeId,
-          type: 'RETURN', // Need to ensure type exists or is string
+          type: 'RETURN',
           quantity: item.quantity,
           reference: returnNumber,
           performedBy: data.createdBy
         })
 
-        // Add back to product_location
         await this.productLocationService.adjustQuantity(
           item.productId,
           data.storeId,
-          item.quantity // Add (positive)
+          item.quantity
         )
       }
     }
 
-    saveDb(this.db)
+    // 3. Queue transaction item quantity updates
+    try {
+      const pool = getCloudDb().getPool()
+
+      for (const item of data.items) {
+        const result = await pool.query(
+          'SELECT quantity, display_quantity, price FROM transaction_items WHERE id = $1',
+          [item.transactionItemId]
+        )
+
+        if (result.rows.length > 0) {
+          const row = result.rows[0]
+          const currentQty = Number(row.quantity)
+          const currentDisplayQty = Number(row.display_quantity) || currentQty
+          const newQty = currentQty - item.quantity
+          const conversionFactor =
+            currentQty > 0 && currentDisplayQty > 0 ? currentQty / currentDisplayQty : 1
+          const newDisplayQty = newQty / conversionFactor
+
+          await this.queueService.add('UPDATE', 'transaction_items', {
+            id: item.transactionItemId,
+            quantity: newQty,
+            display_quantity: newDisplayQty,
+            updated_at: nowIso
+          })
+        }
+      }
+
+      // 4. Queue transaction totals update
+      const itemsResult = await pool.query(
+        'SELECT id, quantity, price FROM transaction_items WHERE transaction_id = $1',
+        [data.transactionId]
+      )
+
+      let newSubtotal = 0
+      for (const row of itemsResult.rows) {
+        const returnedItem = data.items.find((i) => i.transactionItemId === row.id)
+        const qty = returnedItem
+          ? Number(row.quantity) - returnedItem.quantity
+          : Number(row.quantity)
+        newSubtotal += qty * Number(row.price)
+      }
+
+      const txnResult = await pool.query('SELECT discount FROM transactions WHERE id = $1', [
+        data.transactionId
+      ])
+      const discount = Number(txnResult.rows[0]?.discount) || 0
+      const newTotal = newSubtotal - discount
+
+      await this.queueService.add('UPDATE', 'transactions', {
+        id: data.transactionId,
+        subtotal: newSubtotal.toString(),
+        total: newTotal.toString(),
+        updated_at: nowIso
+      })
+    } catch (error) {
+      console.error('[ReturnService] Failed to queue transaction updates:', error)
+    }
+
     return { id, returnNumber }
   }
 
   async getReturnsByTransactionId(transactionId: string): Promise<any[]> {
-    const stmt = this.db.prepare(
-      'SELECT * FROM transaction_return WHERE transaction_id = ? AND deleted_at IS NULL ORDER BY created_at DESC'
-    )
-    stmt.bind([transactionId])
-    const results: any[] = []
-    while (stmt.step()) {
-      const row = stmt.getAsObject()
-      // Fetch items
-      const items = await this.getReturnItems(row.id as string)
-      results.push({ ...row, items })
+    try {
+      const pool = getCloudDb().getPool()
+      const result = await pool.query(
+        'SELECT * FROM transaction_return WHERE transaction_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC',
+        [transactionId]
+      )
+
+      const returns: any[] = []
+      for (const row of result.rows) {
+        const items = await this.getReturnItems(row.id)
+        returns.push({ ...row, items })
+      }
+      return returns
+    } catch (error) {
+      console.error('[ReturnService] getReturnsByTransactionId error:', error)
+      return []
     }
-    stmt.free()
-    return results
   }
 
   async getReturnItems(returnId: string): Promise<any[]> {
-    const stmt = this.db.prepare('SELECT * FROM transaction_return_item WHERE return_id = ?')
-    stmt.bind([returnId])
-    const results: any[] = []
-    while (stmt.step()) {
-      results.push(stmt.getAsObject())
+    try {
+      const pool = getCloudDb().getPool()
+      const result = await pool.query(
+        'SELECT * FROM transaction_return_item WHERE return_id = $1',
+        [returnId]
+      )
+      return result.rows
+    } catch (error) {
+      console.error('[ReturnService] getReturnItems error:', error)
+      return []
     }
-    stmt.free()
-    return results
   }
 }

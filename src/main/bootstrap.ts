@@ -115,7 +115,7 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize master data services (cloud-first where available)
   const categoryService = new CategoryCloudService(db, queueService)
-  const supplierService = new SupplierCloudService(db, queueService)
+  const supplierService = new SupplierCloudService(queueService)
   const storeService = new StoreCloudService(db, queueService)
   const customerCategoryService = new CustomerCategoryCloudService(db, queueService)
   const customerService = new CustomerCloudService(db, queueService)
@@ -149,7 +149,7 @@ export async function bootstrap(): Promise<void> {
   )
   const pricingService = new PricingCloudService(db, queueService, auditLogService)
   const priceCategoryService = new PriceCategoryCloudService(db, queueService)
-  const stockAdjustmentService = new StockAdjustmentCloudService(db, queueService)
+  const stockAdjustmentService = new StockAdjustmentCloudService()
 
   // Initialize point service (cloud-first) - must be before transactionService
   const pointService = new PointCloudService(db, queueService)
@@ -168,17 +168,16 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize purchasing service
   const purchaseOrderService = new PurchaseOrderCloudService(
-    db,
     queueService,
     stockTransactionService,
     productLocationService
   )
 
   // Initialize expense service
-  const expenseService = new ExpenseCloudService(db, queueService)
+  const expenseService = new ExpenseCloudService()
 
   // Initialize damaged goods service
-  const damagedGoodsService = new DamagedGoodsService(db, queueService)
+  const damagedGoodsService = new DamagedGoodsService()
 
   // Initialize shift service
   const shiftService = new ShiftService(db, expenseService, auditLogService)
@@ -332,7 +331,6 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize and register Return Service/Controller
   const returnService = new ReturnService(
-    db,
     queueService,
     stockTransactionService,
     productLocationService

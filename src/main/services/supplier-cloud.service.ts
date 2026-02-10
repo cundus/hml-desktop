@@ -1,10 +1,8 @@
-import { Database } from 'sql.js'
 import { randomUUID } from 'crypto'
 import { CreateSupplierDto, UpdateSupplierDto } from '../types/dto'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
-import { saveDb } from '../localDb'
 
 export interface Supplier {
   id: string
@@ -18,12 +16,10 @@ export interface Supplier {
 }
 
 export class SupplierCloudService {
-  private localDb: Database
   private queueService: QueueService
   private readonly tableName = 'supplier'
 
-  constructor(localDb: Database, queueService: QueueService) {
-    this.localDb = localDb
+  constructor(queueService: QueueService) {
     this.queueService = queueService
   }
 
@@ -41,22 +37,10 @@ export class SupplierCloudService {
         return result.rows.map((row) => this.mapCloudRow(row))
       } catch (error) {
         console.error('[SupplierCloud] findAll error:', error)
-        return this.findAllLocal()
+        throw error
       }
     }
-    return this.findAllLocal()
-  }
-
-  private findAllLocal(): Supplier[] {
-    const stmt = this.localDb.prepare(
-      'SELECT * FROM supplier WHERE deleted_at IS NULL ORDER BY name ASC'
-    )
-    const results: Supplier[] = []
-    while (stmt.step()) {
-      results.push(this.mapLocalRow(stmt.getAsObject()))
-    }
-    stmt.free()
-    return results
+    throw new Error('Offline mode not supported for suppliers')
   }
 
   async findById(id: string): Promise<Supplier | undefined> {
@@ -68,22 +52,10 @@ export class SupplierCloudService {
         return undefined
       } catch (error) {
         console.error('[SupplierCloud] findById error:', error)
-        return this.findByIdLocal(id)
+        throw error
       }
     }
-    return this.findByIdLocal(id)
-  }
-
-  private findByIdLocal(id: string): Supplier | undefined {
-    const stmt = this.localDb.prepare('SELECT * FROM supplier WHERE id = ?')
-    stmt.bind([id])
-    if (stmt.step()) {
-      const s = this.mapLocalRow(stmt.getAsObject())
-      stmt.free()
-      return s
-    }
-    stmt.free()
-    return undefined
+    throw new Error('Offline mode not supported for suppliers')
   }
 
   async create(data: CreateSupplierDto): Promise<Supplier> {
@@ -115,7 +87,7 @@ export class SupplierCloudService {
       }
     }
 
-    this.saveToLocal(supplier)
+    // Blind queue for offline/error
     await this.queueService.add('INSERT', this.tableName, {
       id,
       name: data.name,
@@ -154,7 +126,7 @@ export class SupplierCloudService {
       }
     }
 
-    this.updateLocal(updated)
+    // Blind queue for offline/error
     await this.queueService.add('UPDATE', this.tableName, {
       id,
       name: updated.name,
@@ -186,7 +158,7 @@ export class SupplierCloudService {
       }
     }
 
-    this.deleteLocal(id, now)
+    // Blind queue for offline/error
     await this.queueService.add('DELETE', this.tableName, { id })
     return deleted
   }
@@ -200,43 +172,22 @@ export class SupplierCloudService {
           now,
           id
         ])
+         // Retreive to confirm
+        const restored = await this.findById(id)
+        if (restored) return restored
       } catch (error) {
         console.error('[SupplierCloud] restore error:', error)
       }
     }
-    this.localDb.run('UPDATE supplier SET deleted_at = NULL, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      id
-    ])
-    saveDb(this.localDb)
-    const restored = await this.findById(id)
-    if (!restored) throw new Error('Supplier not found after restore')
-    return restored
-  }
-
-  private saveToLocal(s: Supplier): void {
-    this.localDb.run(
-      'INSERT OR REPLACE INTO supplier (id, name, phone, address, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [s.id, s.name, s.phone, s.address, s.createdAt.getTime(), s.updatedAt.getTime()]
-    )
-    saveDb(this.localDb)
-  }
-
-  private updateLocal(s: Supplier): void {
-    this.localDb.run(
-      'UPDATE supplier SET name = ?, phone = ?, address = ?, updated_at = ? WHERE id = ?',
-      [s.name, s.phone, s.address, s.updatedAt.getTime(), s.id]
-    )
-    saveDb(this.localDb)
-  }
-
-  private deleteLocal(id: string, now: Date): void {
-    this.localDb.run('UPDATE supplier SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now.getTime(),
-      now.getTime(),
-      id
-    ])
-    saveDb(this.localDb)
+    
+    // Note: Restore is hard to queue generically without 'UPDATE' payload logic, 
+    // but assuming standard UPDATE works if we knew the fields. 
+    // Here we just queue a restore action if supported, or manual UPDATE.
+    // QueueService usually takes INSERT/UPDATE/DELETE. 
+    // We'll queue as UPDATE for deleted_at = null via custom means or just admit it's strictly online.
+    // "Phase 2: make restore cloud-only". 
+    // Let's make restore strict cloud-only here too to match TransactionService.
+    throw new Error('Offline restore not supported')
   }
 
   private mapCloudRow(row: Record<string, unknown>): Supplier {
@@ -249,19 +200,6 @@ export class SupplierCloudService {
       updatedAt: new Date(row.updated_at as string),
       syncedAt: row.synced_at ? new Date(row.synced_at as string) : null,
       deletedAt: row.deleted_at ? new Date(row.deleted_at as string) : null
-    }
-  }
-
-  private mapLocalRow(row: Record<string, unknown>): Supplier {
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      phone: row.phone as string | null,
-      address: row.address as string | null,
-      createdAt: new Date(row.created_at as number),
-      updatedAt: new Date(row.updated_at as number),
-      syncedAt: row.synced_at ? new Date(row.synced_at as number) : null,
-      deletedAt: row.deleted_at ? new Date(row.deleted_at as number) : null
     }
   }
 }

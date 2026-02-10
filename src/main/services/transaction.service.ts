@@ -125,8 +125,8 @@ export class TransactionService {
         }
 
         // Merge with local pending changes (updates/deletes)
-        const localPending = await this.findLocalPendingChanges()
-        return this.mergeWithLocalPending(transactions, localPending)
+        // const localPending = await this.findLocalPendingChanges()
+        return transactions
       } catch (error) {
         console.error('[TransactionService] findAll cloud error, falling back to local:', error)
       }
@@ -181,24 +181,7 @@ export class TransactionService {
     )
   }
 
-  private async findLocalPendingChanges(): Promise<Transaction[]> {
-    // Find unsynced (synced_at IS NULL) OR modified since sync (updated_at > synced_at)
-    // AND INCLUDE DELETED items to allow overlaying deletions
-    const stmt = this.db.prepare(
-      'SELECT * FROM transactions WHERE synced_at IS NULL OR updated_at > synced_at ORDER BY created_at DESC'
-    )
-    const results: Transaction[] = []
 
-    while (stmt.step()) {
-      const row = stmt.getAsObject()
-      const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
-      results.push(transaction)
-    }
-    stmt.free()
-
-    return results
-  }
 
   /**
    * Get transaction by ID
@@ -789,52 +772,70 @@ export class TransactionService {
    * Note: This recalculates inventory if items change
    */
   async update(id: string, data: UpdateTransactionDto): Promise<Transaction> {
+    if (!this.isOnline()) {
+      throw new Error('Offline update not supported')
+    }
+
+    // Ensure we are working with the latest cloud data
+    // findById already checks isOnline() and fetches from cloud
     const existing = await this.findById(id)
     if (!existing) {
       throw new Error('Transaction not found')
     }
 
-    const now = Date.now()
+    const pool = getCloudDb().getPool()
+    const now = new Date()
 
     // Update main transaction fields
     const updates: string[] = []
-    const params: (string | number | null)[] = []
+    const params: (string | number | null | Date)[] = []
+    let paramIndex = 1
 
     if (data.subtotal !== undefined) {
-      updates.push('subtotal = ?')
+      updates.push(`subtotal = $${paramIndex++}`)
       params.push(data.subtotal)
     }
     if (data.discount !== undefined) {
-      updates.push('discount = ?')
+      updates.push(`discount = $${paramIndex++}`)
       params.push(data.discount)
     }
     if (data.tax !== undefined) {
-      updates.push('tax = ?')
+      updates.push(`tax = $${paramIndex++}`)
       params.push(data.tax)
     }
     if (data.total !== undefined) {
-      updates.push('total = ?')
+      updates.push(`total = $${paramIndex++}`)
       params.push(data.total)
     }
     if (data.paymentMethod !== undefined) {
-      updates.push('payment_method = ?')
+      updates.push(`payment_method = $${paramIndex++}`)
       params.push(data.paymentMethod)
     }
     if (data.paymentDeadline !== undefined) {
-      updates.push('payment_deadline = ?')
-      params.push(data.paymentDeadline ? data.paymentDeadline.getTime() : null)
+      updates.push(`payment_deadline = $${paramIndex++}`)
+      params.push(data.paymentDeadline ? data.paymentDeadline : null)
     }
     if (data.customerId !== undefined) {
-      updates.push('customer_id = ?')
+      updates.push(`customer_id = $${paramIndex++}`)
       params.push(data.customerId)
     }
 
-    updates.push('updated_at = ?')
+    updates.push(`updated_at = $${paramIndex++}`)
     params.push(now)
+    
+    // Add ID as last param
     params.push(id)
 
-    if (updates.length > 1) {
-      this.db.run(`UPDATE transactions SET ${updates.join(', ')} WHERE id = ?`, params)
+    if (updates.length > 0) {
+      try {
+        await pool.query(
+          `UPDATE transactions SET ${updates.join(', ')} WHERE id = $${paramIndex}`,
+          params
+        )
+      } catch (error) {
+        console.error('[TransactionService] update cloud error:', error)
+        throw error
+      }
     }
 
     // Update items if provided
@@ -862,7 +863,7 @@ export class TransactionService {
               oldItem.quantity // add back
             )
           }
-          this.db.run('DELETE FROM transaction_items WHERE id = ?', [oldItem.id])
+          await pool.query('DELETE FROM transaction_items WHERE id = $1', [oldItem.id])
         }
       }
 
@@ -891,16 +892,16 @@ export class TransactionService {
               )
             }
 
-            this.db.run(
-              'UPDATE transaction_items SET product_id = ?, quantity = ?, price = ?, updated_at = ? WHERE id = ?',
+            await pool.query(
+              'UPDATE transaction_items SET product_id = $1, quantity = $2, price = $3, updated_at = $4 WHERE id = $5',
               [newItem.productId, newItem.quantity, newItem.price, now, newItem.id]
             )
           }
         } else {
           // Add new item
           const itemId = randomUUID()
-          this.db.run(
-            'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          await pool.query(
+            'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, price, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
             [itemId, id, newItem.productId, newItem.quantity, newItem.price, now, now]
           )
 
@@ -923,8 +924,6 @@ export class TransactionService {
         }
       }
     }
-
-    saveDb(this.db)
 
     const updated = await this.findById(id)
     if (!updated) {
@@ -958,17 +957,23 @@ export class TransactionService {
    * Restore soft-deleted transaction
    */
   async restore(id: string): Promise<Transaction> {
-    const now = Date.now()
-
-    this.db.run('UPDATE transactions SET deleted_at = NULL, updated_at = ? WHERE id = ?', [now, id])
-
-    saveDb(this.db)
-
-    const restored = await this.findById(id)
-    if (!restored) {
-      throw new Error('Transaction not found after restore')
+    if (!this.isOnline()) {
+      throw new Error('Offline restore not supported')
     }
-    return restored
+
+    try {
+      const pool = getCloudDb().getPool()
+      await pool.query('UPDATE transactions SET deleted_at = NULL, updated_at = NOW() WHERE id = $1', [id])
+      
+      const restored = await this.findById(id)
+      if (!restored) {
+        throw new Error('Transaction not found after restore')
+      }
+      return restored
+    } catch (error) {
+       console.error('[TransactionService] restore error:', error)
+       throw error
+    }
   }
 
   /**
@@ -1045,86 +1050,7 @@ export class TransactionService {
       }
     }
 
-    return this.getSalesSummaryLocal(storeId, startDate, endDate)
-  }
-
-  private async getSalesSummaryLocal(
-    storeId: string,
-    startDate?: Date,
-    endDate?: Date
-  ): Promise<{
-    totalTransactions: number
-    totalRevenue: string
-    totalDiscount: string
-    totalTax: string
-  }> {
-    let query =
-      'SELECT COUNT(*) as count, SUM(CAST(total AS REAL)) as revenue, SUM(CAST(discount AS REAL)) as discount, SUM(CAST(tax AS REAL)) as tax FROM transactions WHERE store_id = ? AND deleted_at IS NULL'
-    const params: any[] = [storeId]
-
-    if (startDate) {
-      query += ' AND created_at >= ?'
-      params.push(startDate.getTime())
-    }
-
-    if (endDate) {
-      query += ' AND created_at <= ?'
-      params.push(endDate.getTime())
-    }
-
-    // Fetches sales
-    const stmt = this.db.prepare(query)
-    stmt.bind(params)
-
-    let salesData: { count: number; revenue: number; discount: number; tax: number } = {
-      count: 0,
-      revenue: 0,
-      discount: 0,
-      tax: 0
-    }
-
-    if (stmt.step()) {
-      const row = stmt.getAsObject()
-      salesData = {
-        count: (row.count as number) || 0,
-        revenue: (row.revenue as number) || 0,
-        discount: (row.discount as number) || 0,
-        tax: (row.tax as number) || 0
-      }
-    }
-    stmt.free()
-
-    // Fetch returns (refunds)
-    let returnQuery =
-      'SELECT SUM(CAST(total_refund AS REAL)) as total_refund FROM transaction_return WHERE store_id = ? AND deleted_at IS NULL'
-    const returnParams: any[] = [storeId]
-
-    if (startDate) {
-      returnQuery += ' AND created_at >= ?'
-      returnParams.push(startDate.getTime())
-    }
-
-    if (endDate) {
-      returnQuery += ' AND created_at <= ?'
-      returnParams.push(endDate.getTime())
-    }
-
-    const returnStmt = this.db.prepare(returnQuery)
-    returnStmt.bind(returnParams)
-    let totalRefund = 0
-    if (returnStmt.step()) {
-      const row = returnStmt.getAsObject()
-      totalRefund = (row.total_refund as number) || 0
-    }
-    returnStmt.free()
-
-    // Net Revenue = Gross Sales - Returns
-    return {
-      totalTransactions: salesData.count,
-      totalRevenue: String(salesData.revenue - totalRefund),
-      totalDiscount: String(salesData.discount),
-      totalTax: String(salesData.tax)
-    }
+    throw new Error('Offline mode not supported for sales summary')
   }
 
   /**
@@ -1201,118 +1127,7 @@ export class TransactionService {
       }
     }
 
-    return this.getDashboardStatsLocal(todayStart, weekStart, monthStart)
-  }
-
-  private async getDashboardStatsLocal(todayStart: Date, weekStart: Date, monthStart: Date) {
-    // Today's stats
-    const todayStmt = this.db.prepare(
-      'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS REAL)), 0) as revenue FROM transactions WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    todayStmt.bind([todayStart.getTime()])
-    let todayRevenue = 0
-    let todayTransactions = 0
-    if (todayStmt.step()) {
-      const row = todayStmt.getAsObject()
-      todayRevenue = (row.revenue as number) || 0
-      todayTransactions = (row.count as number) || 0
-    }
-    todayStmt.free()
-
-    // Deduct Today's Returns
-    const todayReturnStmt = this.db.prepare(
-      'SELECT COALESCE(SUM(CAST(total_refund AS REAL)), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    todayReturnStmt.bind([todayStart.getTime()])
-    if (todayReturnStmt.step()) {
-      todayRevenue -= (todayReturnStmt.getAsObject().refund as number) || 0
-    }
-    todayReturnStmt.free()
-
-    // Week's stats
-    const weekStmt = this.db.prepare(
-      'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS REAL)), 0) as revenue FROM transactions WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    weekStmt.bind([weekStart.getTime()])
-    let weekRevenue = 0
-    let weekTransactions = 0
-    if (weekStmt.step()) {
-      const row = weekStmt.getAsObject()
-      weekRevenue = (row.revenue as number) || 0
-      weekTransactions = (row.count as number) || 0
-    }
-    weekStmt.free()
-
-    // Deduct Week's Returns
-    const weekReturnStmt = this.db.prepare(
-      'SELECT COALESCE(SUM(CAST(total_refund AS REAL)), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    weekReturnStmt.bind([weekStart.getTime()])
-    if (weekReturnStmt.step()) {
-      weekRevenue -= (weekReturnStmt.getAsObject().refund as number) || 0
-    }
-    weekReturnStmt.free()
-
-    // Month's stats
-    const monthStmt = this.db.prepare(
-      'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS REAL)), 0) as revenue FROM transactions WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    monthStmt.bind([monthStart.getTime()])
-    let monthRevenue = 0
-    let monthTransactions = 0
-    if (monthStmt.step()) {
-      const row = monthStmt.getAsObject()
-      monthRevenue = (row.revenue as number) || 0
-      monthTransactions = (row.count as number) || 0
-    }
-    monthStmt.free()
-
-    // Deduct Month's Returns
-    const monthReturnStmt = this.db.prepare(
-      'SELECT COALESCE(SUM(CAST(total_refund AS REAL)), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= ?'
-    )
-    monthReturnStmt.bind([monthStart.getTime()])
-    if (monthReturnStmt.step()) {
-      monthRevenue -= (monthReturnStmt.getAsObject().refund as number) || 0
-    }
-    monthReturnStmt.free()
-
-    // Total products
-    const productStmt = this.db.prepare(
-      'SELECT COUNT(*) as count FROM product WHERE deleted_at IS NULL AND is_active = 1'
-    )
-    let totalProducts = 0
-    if (productStmt.step()) {
-      const row = productStmt.getAsObject()
-      totalProducts = (row.count as number) || 0
-    }
-    productStmt.free()
-
-    // Total customers
-    const customerStmt = this.db.prepare(
-      'SELECT COUNT(*) as count FROM customer WHERE deleted_at IS NULL'
-    )
-    let totalCustomers = 0
-    if (customerStmt.step()) {
-      const row = customerStmt.getAsObject()
-      totalCustomers = (row.count as number) || 0
-    }
-    customerStmt.free()
-
-    // Low stock count (using local db roughly)
-    const lowStockCount = 0
-
-    return {
-      todayRevenue,
-      todayTransactions,
-      weekRevenue,
-      weekTransactions,
-      monthRevenue,
-      monthTransactions,
-      totalProducts,
-      totalCustomers,
-      lowStockCount
-    }
+    throw new Error('Offline mode not supported for dashboard stats')
   }
 
   /**
@@ -1417,7 +1232,7 @@ export class TransactionService {
       }
     }
 
-    return this.getProfitLossReportLocal(startDate, endDate, storeId)
+    throw new Error('Offline mode not supported for profit/loss report')
   }
 
   /**
@@ -1452,175 +1267,7 @@ export class TransactionService {
       }
     }
 
-    return this.getBrokenGoodsSummaryLocal(startDate, endDate, storeId)
-  }
-
-  private async getBrokenGoodsSummaryLocal(
-    startDate: Date,
-    endDate: Date,
-    storeId?: string
-  ): Promise<number> {
-    const start = startDate.getTime()
-    const end = endDate.getTime()
-
-    let query = `
-      SELECT COALESCE(SUM(CAST(total_loss AS REAL)), 0) as total_waste
-        FROM damaged_goods
-       WHERE created_at >= ? AND created_at <= ? AND deleted_at IS NULL
-    `
-    const params: any[] = [start, end]
-    if (storeId) {
-      query += ' AND store_id = ?'
-      params.push(storeId)
-    }
-
-    const stmt = this.db.prepare(query)
-    stmt.bind(params)
-    let totalWaste = 0
-    if (stmt.step()) {
-      totalWaste = (stmt.getAsObject().total_waste as number) || 0
-    }
-    stmt.free()
-
-    return totalWaste
-  }
-
-  private async getProfitLossReportLocal(
-    startDate: Date,
-    endDate: Date,
-    storeId?: string
-  ): Promise<{
-    revenue: number
-    cogs: number
-    grossProfit: number
-    margin: number
-    totalTransactions: number
-    brokenGoods: number
-  }> {
-    const start = startDate.getTime()
-    const end = endDate.getTime()
-
-    // 1. Calculate Revenue (Sales - Returns)
-    let revenueQuery =
-      'SELECT COALESCE(SUM(CAST(total AS REAL)), 0) as revenue, COUNT(*) as count FROM transactions WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?'
-    const revenueParams: any[] = [start, end]
-    if (storeId) {
-      revenueQuery += ' AND store_id = ?'
-      revenueParams.push(storeId)
-    }
-
-    const revStmt = this.db.prepare(revenueQuery)
-    revStmt.bind(revenueParams)
-    let revenue = 0
-    let count = 0
-    if (revStmt.step()) {
-      const row = revStmt.getAsObject()
-      revenue = (row.revenue as number) || 0
-      count = (row.count as number) || 0
-    }
-    revStmt.free()
-
-    // Deduct Returns from Revenue
-    let returnQuery =
-      'SELECT COALESCE(SUM(CAST(total_refund AS REAL)), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= ? AND created_at <= ?'
-    const returnParams: any[] = [start, end]
-    if (storeId) {
-      returnQuery += ' AND store_id = ?'
-      returnParams.push(storeId)
-    }
-    const retStmt = this.db.prepare(returnQuery)
-    retStmt.bind(returnParams)
-    if (retStmt.step()) {
-      revenue -= (retStmt.getAsObject().refund as number) || 0
-    }
-    retStmt.free()
-
-    // 2. Calculate COGS (HPP) from Stock Transactions (SALE type)
-    // Priority: batch.cost (FIFO) -> product_price.cost (per store) -> product.cost (default)
-    let cogsQuery = `
-      SELECT SUM(
-        CAST(st.quantity AS REAL) * CAST(
-          COALESCE(
-            b.cost,
-            pp.cost,
-            p.cost,
-            '0'
-          ) AS REAL
-        )
-      ) as total_cogs
-      FROM stock_transaction st
-      LEFT JOIN batch b ON st.batch_id = b.id
-      LEFT JOIN product p ON st.product_id = p.id
-      LEFT JOIN product_price pp ON st.product_id = pp.product_id 
-        AND pp.store_id = st.store_id 
-        AND pp.deleted_at IS NULL
-      WHERE st.type = 'SALE' 
-        AND st.deleted_at IS NULL 
-        AND st.created_at >= ? 
-        AND st.created_at <= ?
-    `
-    const cogsParams: any[] = [start, end]
-    if (storeId) {
-      cogsQuery += ' AND st.store_id = ?'
-      cogsParams.push(storeId)
-    }
-
-    const cogsStmt = this.db.prepare(cogsQuery)
-    cogsStmt.bind(cogsParams)
-    let cogs = 0
-    if (cogsStmt.step()) {
-      cogs = (cogsStmt.getAsObject().total_cogs as number) || 0
-    }
-    cogsStmt.free()
-
-    // Note: We should also DEDUCT COGS for Returns?
-    // If Return puts item back to stock, we regain the asset.
-    // Does Return create a 'RETURN' stock transaction?
-    // See ReturnService. If it creates 'RETURN' type stock txn, we should subtract its cost from COGS?
-    // Or add to Asset?
-    // Usually: COGS = (Beginning Inv + Purchases) - Ending Inv.
-    // Or Perpetual: COGS increases on Sale, decreases on Return.
-    // Let's check 'RETURN' stock transactions.
-
-    // Note: Adjust logic if ReturnService uses specific type.
-    // Assuming for now we just track Sales COGS. Real COGS should net out returns.
-    // Let's simplistic for Phase 3: Sales COGS.
-
-    // 3. Calculate Broken Goods (Waste) Value
-    // User requested to use cloud records if possible
-    const brokenGoods = await this.getBrokenGoodsSummary(startDate, endDate, storeId)
-    
-    // grossProfit is already defined above? No, wait. 
-    // In previous steps I restored grossProfit calculation.
-    // Let's check context.
-    
-    const grossProfit = revenue - cogs
-    const margin = revenue > 0 ? (grossProfit / revenue) * 100 : 0
-    
-    // Remove unused netProfit calculation to fix lint error
-    // const totalExpenses = brokenGoods
-    // const netProfit = grossProfit - totalExpenses
-    
-    // Note: Margin is Gross Margin usually by definition.
-    // Net Margin = Net Profit / Revenue.
-    // We are returning profitMargin as `margin`? 
-    // Types say `margin`. Let's assume Gross Margin for now, but if P&L UI shows Net Profit, we should clarify.
-    // UI calculates `netProfit` itself from `grossProfit - operatingExpenses`.
-    // We are returning `grossProfit`.
-    // Wait, the UI calculates Net Profit as `grossProfit - operatingExpenses`.
-    // Does the UI expect `brokenGoods` to be pre-subtracted from `grossProfit`? 
-    // NO. It expects `brokenGoods` to be PASSED so it can display it.
-    // But `getProfitLossReportLocal` return type doesn't have `brokenGoods` in my previous thought?
-    // I JUST added it. So I should return it.
-
-    return {
-      revenue,
-      cogs,
-      grossProfit,
-      margin,
-      totalTransactions: count,
-      brokenGoods
-    }
+    throw new Error('Offline mode not supported for broken goods summary')
   }
 
   /**

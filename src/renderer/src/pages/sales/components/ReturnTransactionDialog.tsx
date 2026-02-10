@@ -32,10 +32,13 @@ interface ReturnItemState {
   productId: string
   productName: string
   originalQty: number
+  displayQty: number
+  uomCode: string
+  conversionFactor: number
   price: number
-  returnedQty: number // Previously returned
-  currentReturnQty: number // Input
-  effectivePrice: number // Price per base unit
+  returnedQty: number // Previously returned (in display units)
+  currentReturnQty: number // Input (in display units)
+  effectivePrice: number // Price per display unit
   restock: boolean
 }
 
@@ -65,13 +68,13 @@ export default function ReturnTransactionDialog({
       const res = await window.api.db.returns.getByTransactionId(transaction.id)
       const previousReturns = res.success ? res.data : []
 
-      // Calculate returned quantities per item
-      const returnedMap = new Map<string, number>()
+      // Calculate returned quantities per item (in base units)
+      const returnedBaseMap = new Map<string, number>()
       previousReturns.forEach((ret: any) => {
         ret.items.forEach((item: any) => {
           const tid = item.transaction_item_id || item.transactionItemId
           const qty = Number(item.quantity)
-          returnedMap.set(tid, (returnedMap.get(tid) || 0) + qty)
+          returnedBaseMap.set(tid, (returnedBaseMap.get(tid) || 0) + qty)
         })
       })
 
@@ -79,18 +82,26 @@ export default function ReturnTransactionDialog({
       const mappedItems: ReturnItemState[] = (transaction.items || []).map((item: any) => {
         const baseQty = Number(item.quantity)
         const displayQty = Number(item.displayQuantity) || baseQty
-        const conversion = baseQty / displayQty
+        const conversionFactor = displayQty > 0 ? baseQty / displayQty : 1
         const price = Number(item.price)
-        const effectivePrice = displayQty > 0 ? price / conversion : price
+        // price is already per display unit, so effectivePrice = price
+        const effectivePrice = price
+
+        // Convert previously returned base qty to display units
+        const returnedBase = returnedBaseMap.get(item.id) || 0
+        const returnedDisplay = conversionFactor > 0 ? returnedBase / conversionFactor : returnedBase
 
         return {
           transactionItemId: item.id,
           productId: item.productId || item.product_id,
           productName: item.productName || item.product_name,
           originalQty: baseQty,
-          price: price,
+          displayQty,
+          uomCode: item.uomCode || 'PCS',
+          conversionFactor,
+          price,
           effectivePrice,
-          returnedQty: returnedMap.get(item.id) || 0,
+          returnedQty: returnedDisplay,
           currentReturnQty: 0,
           restock: true
         }
@@ -111,10 +122,8 @@ export default function ReturnTransactionDialog({
 
     const newItems = [...items]
     const item = newItems[idx]
-    const max = item.originalQty - item.returnedQty
+    const max = item.displayQty - item.returnedQty
 
-    // Clamp or Allow invalid? Better to clamp or show error.
-    // Let's clamp for UX
     const clamped = Math.max(0, Math.min(num, max))
 
     item.currentReturnQty = clamped
@@ -143,13 +152,15 @@ export default function ReturnTransactionDialog({
       const returnData = {
         transactionId: transaction.id,
         storeId: transaction.storeId || transaction.store_id,
-        returnNumber: '', // Backend generates or we generate? Service generates default.
-        totalRefund: String(toReturn.reduce((sum, i) => sum + i.currentReturnQty * i.effectivePrice, 0)),
+        returnNumber: '',
+        totalRefund: String(
+          toReturn.reduce((sum, i) => sum + i.currentReturnQty * i.effectivePrice, 0)
+        ),
         createdBy: userName,
         items: toReturn.map((i) => ({
           transactionItemId: i.transactionItemId,
           productId: i.productId,
-          quantity: i.currentReturnQty,
+          quantity: i.currentReturnQty * i.conversionFactor, // convert display units back to base units
           refundPrice: String(i.effectivePrice),
           restock: i.restock
         }))
@@ -193,6 +204,7 @@ export default function ReturnTransactionDialog({
                     <TableCell>Produk</TableCell>
                     <TableCell align="right">Harga</TableCell>
                     <TableCell align="right">Qty Beli</TableCell>
+                    <TableCell align="center">Satuan</TableCell>
                     <TableCell align="right">Sudah Retur</TableCell>
                     <TableCell align="right" sx={{ width: 100 }}>
                       Qty Retur
@@ -205,8 +217,11 @@ export default function ReturnTransactionDialog({
                   {items.map((item, idx) => (
                     <TableRow key={item.transactionItemId}>
                       <TableCell>{item.productName}</TableCell>
-                      <TableCell align="right">{item.price.toLocaleString()}</TableCell>
-                      <TableCell align="right">{item.originalQty}</TableCell>
+                      <TableCell align="right">
+                        {item.effectivePrice.toLocaleString()}
+                      </TableCell>
+                      <TableCell align="right">{item.displayQty}</TableCell>
+                      <TableCell align="center">{item.uomCode}</TableCell>
                       <TableCell align="right">{item.returnedQty}</TableCell>
                       <TableCell align="right">
                         <TextField
@@ -214,8 +229,11 @@ export default function ReturnTransactionDialog({
                           size="small"
                           value={item.currentReturnQty}
                           onChange={(e) => handleQtyChange(idx, e.target.value)}
-                          inputProps={{ min: 0, max: item.originalQty - item.returnedQty }}
-                          disabled={item.originalQty - item.returnedQty <= 0}
+                          inputProps={{
+                            min: 0,
+                            max: item.displayQty - item.returnedQty
+                          }}
+                          disabled={item.displayQty - item.returnedQty <= 0}
                         />
                       </TableCell>
                       <TableCell align="center">
@@ -232,7 +250,7 @@ export default function ReturnTransactionDialog({
                     </TableRow>
                   ))}
                   <TableRow>
-                    <TableCell colSpan={6} align="right">
+                    <TableCell colSpan={7} align="right">
                       <b>Total Refund</b>
                     </TableCell>
                     <TableCell align="right">

@@ -71,6 +71,13 @@
       "when": 1769325348353,
       "tag": "0009_supreme_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1770740112959,
+      "tag": "0010_red_deadpool",
+      "breakpoints": true
     }
   ]
 }

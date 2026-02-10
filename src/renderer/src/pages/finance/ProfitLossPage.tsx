@@ -5,12 +5,16 @@ import PaymentsIcon from '@mui/icons-material/Payments'
 import PrintIcon from '@mui/icons-material/Print'
 import SavingsIcon from '@mui/icons-material/Savings'
 import TrendingDownIcon from '@mui/icons-material/TrendingDown'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Card from '@mui/material/Card'
 import CardContent from '@mui/material/CardContent'
 import CircularProgress from '@mui/material/CircularProgress'
+import Collapse from '@mui/material/Collapse'
 import Divider from '@mui/material/Divider'
+import IconButton from '@mui/material/IconButton'
 import MenuItem from '@mui/material/MenuItem'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
@@ -81,12 +85,126 @@ interface ProfitLossSummary {
   brokenGoods: number
 }
 
+interface ProductBreakdown {
+  id: string
+  name: string
+  quantity: number
+  displayQuantity: number
+  uom: string
+  revenue: number
+  cost: number
+  profit: number
+  margin: number
+}
+
 interface CategoryBreakdown {
   category: string
   revenue: number
   cost: number
   profit: number
   margin: number
+  products: ProductBreakdown[]
+}
+
+function CategoryRow(props: { row: CategoryBreakdown }): React.JSX.Element {
+  const { row } = props
+  const [open, setOpen] = useState(false)
+
+  return (
+    <>
+      <TableRow hover sx={{ '& > *': { borderBottom: 'unset' } }}>
+        <TableCell>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <IconButton aria-label="expand row" size="small" onClick={() => setOpen(!open)}>
+              {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+            </IconButton>
+            <Typography variant="body2">{row.category}</Typography>
+          </Stack>
+        </TableCell>
+        <TableCell align="right">{formatCurrency(row.revenue)}</TableCell>
+        <TableCell align="right" sx={{ color: 'text.secondary' }}>
+          {formatCurrency(row.cost)}
+        </TableCell>
+        <TableCell
+          align="right"
+          sx={{ color: row.profit >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}
+        >
+          {formatCurrency(row.profit)}
+        </TableCell>
+        <TableCell align="right">
+          <Box
+            component="span"
+            sx={{
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: '0.75rem',
+              bgcolor:
+                row.margin >= 20
+                  ? 'success.100'
+                  : row.margin >= 0
+                    ? 'warning.100'
+                    : 'error.100',
+              color:
+                row.margin >= 20
+                  ? 'success.dark'
+                  : row.margin >= 0
+                    ? 'warning.dark'
+                    : 'error.dark'
+            }}
+          >
+            {row.margin.toFixed(1)}%
+          </Box>
+        </TableCell>
+      </TableRow>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box sx={{ margin: 1 }}>
+              <Typography variant="subtitle2" gutterBottom component="div">
+                Detail Produk
+              </Typography>
+              <Table size="small" aria-label="purchases">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Nama Produk</TableCell>
+                    <TableCell align="right">Qty</TableCell>
+                    <TableCell align="center">Satuan</TableCell>
+                    <TableCell align="right">Pendapatan</TableCell>
+                    <TableCell align="right">HPP</TableCell>
+                    <TableCell align="right">Laba</TableCell>
+                    <TableCell align="right">Margin</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {row.products.map((product) => (
+                    <TableRow key={`${product.id}-${product.uom}`}>
+                      <TableCell component="th" scope="row">
+                        {product.name}
+                      </TableCell>
+                      <TableCell align="right">{product.displayQuantity}</TableCell>
+                      <TableCell align="center">{product.uom}</TableCell>
+                      <TableCell align="right">{formatCurrency(product.revenue)}</TableCell>
+                      <TableCell align="right">{formatCurrency(product.cost)}</TableCell>
+                      <TableCell
+                        align="right"
+                        sx={{
+                          color: product.profit >= 0 ? 'success.main' : 'error.main'
+                        }}
+                      >
+                        {formatCurrency(product.profit)}
+                      </TableCell>
+                      <TableCell align="right">{product.margin.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
+    </>
+  )
 }
 
 export default function ProfitLossPage(): React.JSX.Element {
@@ -295,31 +413,125 @@ export default function ProfitLossPage(): React.JSX.Element {
     return new Map(products.map((p) => [p.id, p]))
   }, [products])
 
-  // Calculate P&L Summary
-  const summary = useMemo((): ProfitLossSummary => {
-    // If we have accurate report from API, USE IT.
-    if (report) return report
-
-    // Fallback: Client Side Calculation
-    let grossRevenue = 0
-    let discounts = 0
-    let costOfGoodsSold = 0
+  // Category breakdown
+  const categoryBreakdown = useMemo((): CategoryBreakdown[] => {
+    const categoryData = new Map<
+      string,
+      {
+        revenue: number
+        cost: number
+        products: Map<
+          string,
+          {
+            name: string
+            quantity: number
+            displayQuantity: number
+            uom: string
+            revenue: number
+            cost: number
+            id: string
+          }
+        >
+      }
+    >()
 
     filteredData.transactions.forEach((txn) => {
-      grossRevenue += parseFloat(txn.subtotal) || 0
-      discounts += parseFloat(txn.discount) || 0
-
-      // Calculate COGS from transaction items
       if (txn.items) {
         txn.items.forEach((item) => {
           const product = productMap.get(item.productId)
           if (product) {
-            const unitCost = parseFloat(product.cost) || 0
-            costOfGoodsSold += unitCost * item.quantity
+            const category = product.categoryName || 'Lainnya'
+
+            if (!categoryData.has(category)) {
+              categoryData.set(category, { revenue: 0, cost: 0, products: new Map() })
+            }
+            const catData = categoryData.get(category)!
+
+            // Fix: Use displayQuantity if available (for UoM items), otherwise use base quantity
+            // Price is per-unit of the *display* quantity (e.g. per Pack), not per Base Unit (Pcs)
+            const qty = item.displayQuantity || item.quantity
+            const itemRevenue = parseFloat(item.price) * qty
+
+            // Cost is per Base Unit, so use item.quantity
+            const itemCost = (parseFloat(product.cost) || 0) * item.quantity
+
+            // Update category totals
+            catData.revenue += itemRevenue
+            catData.cost += itemCost
+
+            // Update product totals within category
+            // Key needs to be product.id + uom to distinguish packs vs pcs
+            const uom = item.uomCode || 'PCS'
+            const productKey = `${product.id}-${uom}`
+
+            if (!catData.products.has(productKey)) {
+              catData.products.set(productKey, {
+                id: product.id,
+                name: product.name,
+                quantity: 0,
+                displayQuantity: 0,
+                uom: uom,
+                revenue: 0,
+                cost: 0
+              })
+            }
+            const prodData = catData.products.get(productKey)!
+            // accum base quantity for COGS/Inventory logic if needed, but display quantity for UI
+            prodData.quantity += item.quantity
+            prodData.displayQuantity += qty
+            prodData.revenue += itemRevenue
+            prodData.cost += itemCost
           }
         })
       }
     })
+
+    const result = Array.from(categoryData.entries())
+      .map(([category, data]) => {
+        const productList = Array.from(data.products.values())
+          .map((p) => ({
+            ...p,
+            profit: p.revenue - p.cost,
+            margin: p.revenue > 0 ? ((p.revenue - p.cost) / p.revenue) * 100 : 0
+          }))
+          .sort((a, b) => b.profit - a.profit)
+
+        return {
+          category,
+          revenue: data.revenue,
+          cost: data.cost,
+          profit: data.revenue - data.cost,
+          margin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0,
+          products: productList
+        }
+      })
+      .sort((a, b) => b.profit - a.profit)
+
+    console.log('Profit/Loss - Category Breakdown:', result)
+    return result
+  }, [filteredData, productMap])
+
+  // Calculate P&L Summary
+  const summary = useMemo((): ProfitLossSummary => {
+    // Force Client Side Calculation to match breakdown
+    // if (report) {
+    //   console.log('Profit/Loss - Using API Report:', report)
+    //   return report
+    // }
+
+    console.log('Profit/Loss - Using Client Side Calculation (Forced for Consistency)')
+    let grossRevenue = 0
+    let discounts = 0
+
+    // Calculate details from transactions for Revenue
+    filteredData.transactions.forEach((txn) => {
+      grossRevenue += parseFloat(txn.subtotal) || 0
+      discounts += parseFloat(txn.discount) || 0
+    })
+
+    // Calculate COGS from Category Breakdown to ensure consistency
+    const costOfGoodsSold = categoryBreakdown.reduce((sum, cat) => sum + cat.cost, 0)
+    console.log('Profit/Loss - Calculated COGS from Breakdown:', costOfGoodsSold)
 
     const netRevenue = grossRevenue - discounts
     const grossProfit = netRevenue - costOfGoodsSold
@@ -328,7 +540,7 @@ export default function ProfitLossPage(): React.JSX.Element {
     const netProfit = grossProfit - operatingExpenses
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
 
-    return {
+    const summaryResult = {
       grossRevenue,
       discounts,
       netRevenue,
@@ -339,46 +551,11 @@ export default function ProfitLossPage(): React.JSX.Element {
       profitMargin,
       brokenGoods
     }
-  }, [filteredData, productMap, report, brokenGoods])
+    console.log('Profit/Loss - Final Summary:', summaryResult)
+    return summaryResult
+  }, [filteredData, categoryBreakdown, report, brokenGoods])
 
-  // Category breakdown
-  const categoryBreakdown = useMemo((): CategoryBreakdown[] => {
-    const categoryData = new Map<string, { revenue: number; cost: number }>()
 
-    filteredData.transactions.forEach((txn) => {
-      if (txn.items) {
-        txn.items.forEach((item) => {
-          const product = productMap.get(item.productId)
-          if (product) {
-            const category = product.categoryName || 'Lainnya'
-            const existing = categoryData.get(category) || { revenue: 0, cost: 0 }
-
-            // Fix: Use displayQuantity if available (for UoM items), otherwise use base quantity
-            // Price is per-unit of the *display* quantity (e.g. per Pack), not per Base Unit (Pcs)
-            const qty = item.displayQuantity || item.quantity
-            const itemRevenue = parseFloat(item.price) * qty
-
-            // Cost is per Base Unit, so use item.quantity
-            const itemCost = (parseFloat(product.cost) || 0) * item.quantity
-
-            existing.revenue += itemRevenue
-            existing.cost += itemCost
-            categoryData.set(category, existing)
-          }
-        })
-      }
-    })
-
-    return Array.from(categoryData.entries())
-      .map(([category, data]) => ({
-        category,
-        revenue: data.revenue,
-        cost: data.cost,
-        profit: data.revenue - data.cost,
-        margin: data.revenue > 0 ? ((data.revenue - data.cost) / data.revenue) * 100 : 0
-      }))
-      .sort((a, b) => b.profit - a.profit)
-  }, [filteredData, productMap])
 
   // Calculate Expense Breakdown by Category
   const expenseBreakdown = useMemo(() => {
@@ -702,44 +879,7 @@ export default function ProfitLossPage(): React.JSX.Element {
             </TableHead>
             <TableBody>
               {categoryBreakdown.map((cat) => (
-                <TableRow key={cat.category} hover>
-                  <TableCell>{cat.category}</TableCell>
-                  <TableCell align="right">{formatCurrency(cat.revenue)}</TableCell>
-                  <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                    {formatCurrency(cat.cost)}
-                  </TableCell>
-                  <TableCell
-                    align="right"
-                    sx={{ color: cat.profit >= 0 ? 'success.main' : 'error.main', fontWeight: 500 }}
-                  >
-                    {formatCurrency(cat.profit)}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Box
-                      component="span"
-                      sx={{
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 1,
-                        fontSize: '0.75rem',
-                        bgcolor:
-                          cat.margin >= 20
-                            ? 'success.100'
-                            : cat.margin >= 0
-                              ? 'warning.100'
-                              : 'error.100',
-                        color:
-                          cat.margin >= 20
-                            ? 'success.dark'
-                            : cat.margin >= 0
-                              ? 'warning.dark'
-                              : 'error.dark'
-                      }}
-                    >
-                      {cat.margin.toFixed(1)}%
-                    </Box>
-                  </TableCell>
-                </TableRow>
+                <CategoryRow key={cat.category} row={cat} />
               ))}
             </TableBody>
           </Table>

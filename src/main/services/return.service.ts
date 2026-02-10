@@ -51,9 +51,33 @@ export class ReturnService {
       updated_at: nowIso
     })
 
+    // Fetch transaction items for reference
+    const pool = getCloudDb().getPool()
+    const txnItemsRes = await pool.query(
+      'SELECT id, product_name, uom_code, display_quantity, quantity FROM transaction_items WHERE transaction_id = $1',
+      [data.transactionId]
+    )
+    const txnItemMap = new Map<string, any>(txnItemsRes.rows.map((r) => [r.id, r]))
+
     // 2. Process Items
     for (const item of data.items) {
       const itemId = randomUUID()
+
+      // Lookup original item details
+      const txnItem = txnItemMap.get(item.transactionItemId)
+      let productName = ''
+      let uomCode = 'PCS'
+      let conversionFactor = 1
+      let displayQuantity = item.quantity
+
+      if (txnItem) {
+        productName = txnItem.product_name || ''
+        uomCode = txnItem.uomCode || txnItem.uom_code || 'PCS'
+        const baseQty = Number(txnItem.quantity)
+        const dispQty = Number(txnItem.displayQuantity || txnItem.display_quantity) || baseQty
+        conversionFactor = baseQty > 0 && dispQty > 0 ? baseQty / dispQty : 1
+        displayQuantity = conversionFactor > 0 ? item.quantity / conversionFactor : item.quantity
+      }
 
       // 2a. Queue Item INSERT
       await this.queueService.add('INSERT', 'transaction_return_item', {
@@ -64,6 +88,10 @@ export class ReturnService {
         quantity: item.quantity,
         refund_price: item.refundPrice,
         restock: item.restock ? 1 : 0,
+        product_name: productName,
+        uom_code: uomCode,
+        display_quantity: displayQuantity,
+        conversion_factor: conversionFactor,
         created_at: nowIso,
         updated_at: nowIso
       })
@@ -89,18 +117,17 @@ export class ReturnService {
 
     // 3. Queue transaction item quantity updates
     try {
-      const pool = getCloudDb().getPool()
-
       for (const item of data.items) {
-        const result = await pool.query(
-          'SELECT quantity, display_quantity, price FROM transaction_items WHERE id = $1',
-          [item.transactionItemId]
-        )
-
-        if (result.rows.length > 0) {
-          const row = result.rows[0]
-          const currentQty = Number(row.quantity)
-          const currentDisplayQty = Number(row.display_quantity) || currentQty
+        // We already have the transaction item data in txnItemMap, but let's re-query to be safe/consistent with original logic
+        // Or we can reuse txnItemMap since we just fetched it.
+        // However, the original logic re-queries by ID. Let's keep it robust but use pool we already got.
+        // Actually, let's reuse txnItemMap logic or just keep original logic for minimal disturbance.
+        // But we need to use pool.
+        
+        const txnItem = txnItemMap.get(item.transactionItemId)
+        if (txnItem) {
+          const currentQty = Number(txnItem.quantity)
+          const currentDisplayQty = Number(txnItem.displayQuantity || txnItem.display_quantity) || currentQty
           const newQty = currentQty - item.quantity
           const conversionFactor =
             currentQty > 0 && currentDisplayQty > 0 ? currentQty / currentDisplayQty : 1
@@ -116,6 +143,10 @@ export class ReturnService {
       }
 
       // 4. Queue transaction totals update
+      // We can reuse txnItemMap for this calculation too, but we need updated quantities.
+      // The original logic queries DB again. Since we are in a loop, let's stick to original logic structure but clean it up.
+      // Actually, step 4 queries ALL items items again.
+
       const itemsResult = await pool.query(
         'SELECT id, quantity, price FROM transaction_items WHERE transaction_id = $1',
         [data.transactionId]

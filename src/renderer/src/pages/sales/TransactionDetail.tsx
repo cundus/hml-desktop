@@ -449,14 +449,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
     setEditItems((prev) => prev.filter((_, i) => i !== index))
   }
 
-  // Helper to find original item for conversion factor (reserved for future UoM expansions)
-  const getConversionFactor = (itemId: string): number => {
-    const original = transaction?.items?.find((i) => i.id === itemId)
-    if (original && original.displayQuantity && original.quantity) {
-      return original.quantity / original.displayQuantity
-    }
-    return 1
-  }
+
 
   const handleItemChange = (
     index: number,
@@ -934,17 +927,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
         />
       )}
 
-      {transaction && (
-        <ReturnTransactionDialog
-          open={returnDialogOpen}
-          onClose={() => setReturnDialogOpen(false)}
-          transaction={transaction}
-          onSuccess={() => {
-            loadData()
-            globalAlert.success('Retur berhasil disimpan')
-          }}
-        />
-      )}
+      
 
       {returns.length > 0 && (
         <Card sx={{ mt: 3, mb: 3 }}>
@@ -952,32 +935,109 @@ export default function TransactionDetailPage(): React.JSX.Element {
             <Typography variant="h6" gutterBottom>
               Riwayat Retur
             </Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>No. Retur</TableCell>
-                  <TableCell>Tanggal</TableCell>
-                  <TableCell>Item</TableCell>
-                  <TableCell align="right">Total Refund</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {returns.map((ret) => (
-                  <TableRow key={ret.id}>
-                    <TableCell>{ret.return_number || ret.returnNumber}</TableCell>
-                    <TableCell>{formatDate(ret.created_at || ret.createdAt)}</TableCell>
-                    <TableCell>
-                      {(ret.items || [])
-                        .map((i: any) => `${i.productName || 'Item'} (${i.quantity})`)
-                        .join(', ')}
-                    </TableCell>
-                    <TableCell align="right">
-                      {formatCurrency(Number(ret.total_refund || ret.totalRefund))}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            {returns.map((ret) => {
+              // Build a lookup from transaction items for product names and UOM info
+              const txnItemMap = new Map(
+                (transaction.items || []).map((ti: any) => [ti.id, ti])
+              )
+
+              const returnItems = (ret.items || []).map((ri: any) => {
+                const tid = ri.transaction_item_id || ri.transactionItemId
+                const txnItem: any = txnItemMap.get(tid)
+
+                // Prioritize stored values, fallback to transaction item lookup
+                let baseQty = Number(ri.quantity)
+                let displayQty = Number(ri.displayQuantity || ri.display_quantity)
+                let uomCode = ri.uomCode || ri.uom_code
+                let productName = ri.productName || ri.product_name
+
+                // Fallback logic if stored values are missing (backward compatibility)
+                if (!uomCode || isNaN(displayQty)) {
+                  displayQty = baseQty
+                  uomCode = 'PCS'
+                  productName = productName || 'Item'
+
+                  if (txnItem) {
+                    const txnBaseQty = Number(txnItem.quantity)
+                    const txnDisplayQty = Number(txnItem.displayQuantity) || txnBaseQty
+
+                    const conversion =
+                      txnBaseQty > 0 && txnDisplayQty > 0 ? txnBaseQty / txnDisplayQty : 1
+                    displayQty = conversion > 0 ? baseQty / conversion : baseQty
+                    uomCode = txnItem.uomCode || 'PCS'
+                    productName = txnItem.productName || txnItem.product_name || productName
+                  }
+                }
+
+                return {
+                  productName,
+                  displayQty,
+                  uomCode,
+                  restock: ri.restock ?? true,
+                  refundPrice: Number(ri.refund_price || ri.refundPrice || 0)
+                }
+              })
+
+              
+
+              return (
+                <Paper key={ret.id} variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 1,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      bgcolor: 'action.hover'
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle2">
+                        {ret.return_number || ret.returnNumber}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDate(ret.created_at || ret.createdAt)}
+                      </Typography>
+                    </Box>
+                    <Typography variant="subtitle2" color="primary">
+                      Refund: {formatCurrency(Number(ret.total_refund || ret.totalRefund))}
+                    </Typography>
+                  </Box>
+                  <Table size="small">
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Produk</TableCell>
+                        <TableCell align="right">Qty</TableCell>
+                        <TableCell align="center">Satuan</TableCell>
+                        <TableCell align="center">Restock</TableCell>
+                        <TableCell align="right">Refund</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {returnItems.map((ri: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell>{ri.productName}</TableCell>
+                          <TableCell align="right">{ri.displayQty}</TableCell>
+                          <TableCell align="center">{ri.uomCode}</TableCell>
+                          <TableCell align="center">
+                            <Chip
+                              label={ri.restock ? 'Ya' : 'Tidak'}
+                              size="small"
+                              color={ri.restock ? 'success' : 'default'}
+                              variant="outlined"
+                            />
+                          </TableCell>
+                          <TableCell align="right">
+                            {formatCurrency(ri.displayQty * ri.refundPrice)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              )
+            })}
           </CardContent>
         </Card>
       )}

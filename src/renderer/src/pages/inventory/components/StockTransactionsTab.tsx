@@ -173,11 +173,11 @@ export default function StockTransactionsTab({
                     size="small"
                     icon={getTypeIcon(row.type)}
                     label={
-                      transactionTypeColors[row.type as keyof typeof transactionTypeColors].label
+                      transactionTypeColors[row.type as keyof typeof transactionTypeColors]?.label
                     }
                     sx={{
                       backgroundColor:
-                        transactionTypeColors[row.type as keyof typeof transactionTypeColors].color,
+                        transactionTypeColors[row.type as keyof typeof transactionTypeColors]?.color,
                       color: 'white',
                       fontWeight: 'bold'
                     }}

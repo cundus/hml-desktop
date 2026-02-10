@@ -1,28 +1,26 @@
-import { useState } from 'react'
-import type React from 'react'
+import DeleteIcon from '@mui/icons-material/Delete'
+import RedeemIcon from '@mui/icons-material/Redeem'
+import StarIcon from '@mui/icons-material/Star'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Chip from '@mui/material/Chip'
+import Divider from '@mui/material/Divider'
 import IconButton from '@mui/material/IconButton'
-import Typography from '@mui/material/Typography'
+import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import Stack from '@mui/material/Stack'
-import Divider from '@mui/material/Divider'
-import Chip from '@mui/material/Chip'
 import TextField from '@mui/material/TextField'
 import Tooltip from '@mui/material/Tooltip'
-import DeleteIcon from '@mui/icons-material/Delete'
-import AddIcon from '@mui/icons-material/Add'
-import RemoveIcon from '@mui/icons-material/Remove'
-import StarIcon from '@mui/icons-material/Star'
-import RedeemIcon from '@mui/icons-material/Redeem'
+import Typography from '@mui/material/Typography'
+import CurrencyInput, { type CurrencyInputRef } from '@renderer/components/CurrencyInput'
+import Kbd from '@renderer/components/Kbd'
+import type React from 'react'
+import { useState } from 'react'
 import { formatCurrency } from '../../../utils/currency'
 import type { Product } from './ProductBrowser'
-import Kbd from '@renderer/components/Kbd'
-import CurrencyInput, { type CurrencyInputRef } from '@renderer/components/CurrencyInput'
 
 export type CartItem = Product & {
   quantity: number
@@ -41,7 +39,6 @@ export type CartPanelProps = {
   subtotal: number
   discount: number // Now represents nominal amount (Rupiah), not percentage
   total: number
-  onQuantityChange: (id: string, quantity: number) => void
   onRemove: (id: string) => void
   onChangeDiscount: (value: number) => void
   onCheckout: () => void
@@ -60,7 +57,6 @@ export default function CartPanel({
   subtotal,
   discount,
   total,
-  onQuantityChange,
   onRemove,
   onChangeDiscount,
   onCheckout,
@@ -106,6 +102,7 @@ export default function CartPanel({
             <TableRow>
               <TableCell>Produk</TableCell>
               <TableCell align="center">Qty</TableCell>
+              <TableCell align="center">Satuan</TableCell>
               <TableCell align="right">Harga</TableCell>
               <TableCell align="right">Subtotal</TableCell>
               <TableCell align="center" width={50}></TableCell>
@@ -118,32 +115,29 @@ export default function CartPanel({
                   <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
                     {item.name}
                   </Typography>
-                  {item.uomCode && (
-                    <Typography variant="caption" color="text.secondary">
-                      {item.uomCode}
-                      {item.priceCategoryName && ` • ${item.priceCategoryName}`}
-                    </Typography>
-                  )}
                 </TableCell>
                 <TableCell align="center">
                   <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
-                    <IconButton
+                    {/* <IconButton
                       size="small"
                       onClick={() => onQuantityChange(item.id, item.quantity - 1)}
                       disabled={item.quantity <= 1}
                     >
                       <RemoveIcon fontSize="small" />
-                    </IconButton>
+                    </IconButton> */}
                     <Typography variant="body2" sx={{ minWidth: 20, textAlign: 'center' }}>
                       {item.quantity}
                     </Typography>
-                    <IconButton
+                    {/* <IconButton
                       size="small"
                       onClick={() => onQuantityChange(item.id, item.quantity + 1)}
                     >
                       <AddIcon fontSize="small" />
-                    </IconButton>
+                    </IconButton> */}
                   </Stack>
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="body2">{item.uomCode}</Typography>
                 </TableCell>
                 <TableCell align="right">
                   <Typography variant="body2">{formatCurrency(item.price)}</Typography>

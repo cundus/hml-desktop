@@ -94,17 +94,30 @@ export default function SalesPage(): React.JSX.Element {
       try {
         setLoading(true)
 
-        // Load products
-        const productsRes = await window.api.db.products.getAll()
+        // define store promise based on mode
+        const storePromise = branchStoreId
+          ? window.api.db.stores.getById(branchStoreId)
+          : window.api.db.stores.getAll()
+
+        // Fetch all data in parallel
+        const [
+          productsRes,
+          categoriesRes,
+          retailPricesRes,
+          customersRes,
+          storeRes,
+          salesRes
+        ] = await Promise.all([
+          window.api.db.products.getAll(),
+          window.api.db.categories.getAll(),
+          window.api.db.pricing.getAllBaseRetailPrices(),
+          window.api.db.customers.getAll(),
+          storePromise,
+          window.api.db.salesPersons.getActive().catch(() => ({ success: false, data: [] }))
+        ])
+
         const dbProducts = productsRes.data ?? []
-
-        // Load categories for mapping
-        const categoriesRes = await window.api.db.categories.getAll()
         const categoriesMap = new Map((categoriesRes.data ?? []).map((c) => [c.id, c.name]))
-
-        // Load RETAIL prices from new pricing system (base UOM only)
-        // This replaces the legacy productPrices table which may be empty
-        const retailPricesRes = await window.api.db.pricing.getAllBaseRetailPrices()
         const retailPricesMap = new Map(
           (retailPricesRes.data ?? []).map((p) => [p.productId, parseFloat(p.price)])
         )
@@ -121,14 +134,12 @@ export default function SalesPage(): React.JSX.Element {
             cost: p.cost ?? '0',
             weight: p.weight ?? '0',
             // Use RETAIL price from new pricing system, fallback to 0 if not set
-            // DO NOT fallback to cost - that would show wrong price to customer
             price: retailPricesMap.get(p.id) ?? 0
           }))
 
         setProducts(mappedProducts)
 
         // Load customers
-        const customersRes = await window.api.db.customers.getAll()
         const dbCustomers = customersRes.data ?? []
         const mappedCustomers: Customer[] = dbCustomers.map((c) => ({
           id: c.id,
@@ -137,21 +148,20 @@ export default function SalesPage(): React.JSX.Element {
         }))
         setCustomers(mappedCustomers)
 
-        // Use branch store ID if available, otherwise pick first store (HQ mode)
+        // Handle Store & Sales ID
         if (branchStoreId) {
           setDefaultStoreId(branchStoreId)
           // Branch mode - get store info to get default sales
-          const storeRes = await window.api.db.stores.getById(branchStoreId)
-          if (storeRes.success && storeRes.data?.defaultSalesId) {
+          // storeRes is getById result
+          if (storeRes.success && !Array.isArray(storeRes.data) && storeRes.data?.defaultSalesId) {
             setDefaultSalesId(storeRes.data.defaultSalesId)
           }
         } else {
-          // HQ mode - pick first store as default
-          const storesRes = await window.api.db.stores.getAll()
-          const stores = storesRes.data ?? []
+          // HQ mode
+          // storeRes is getAll result
+          const stores = Array.isArray(storeRes.data) ? storeRes.data : []
           if (stores.length > 0) {
             setDefaultStoreId(stores[0].id)
-            // Set default sales from store
             if (stores[0].defaultSalesId) {
               setDefaultSalesId(stores[0].defaultSalesId)
             }
@@ -159,13 +169,8 @@ export default function SalesPage(): React.JSX.Element {
         }
 
         // Load sales persons
-        try {
-          const salesRes = await window.api.db.salesPersons.getActive()
-          if (salesRes.success) {
-            setSalesPersons(salesRes.data ?? [])
-          }
-        } catch {
-          // Sales persons optional
+        if (salesRes.success) {
+          setSalesPersons(salesRes.data ?? [])
         }
       } catch (err) {
         console.error('Failed to load sales data:', err)
@@ -340,41 +345,6 @@ export default function SalesPage(): React.JSX.Element {
     handleProductClick(product)
   }
 
-  const handleQuantityChange = async (id: string, quantity: number): Promise<void> => {
-    const item = cartItems.find((i) => i.id === id)
-    if (!item) return
-
-    const conv = item.conversionFactor ?? 1
-    const oldBaseQuantity = item.baseQuantity ?? item.quantity * conv
-    const newBaseQuantity = quantity * conv
-    const delta = newBaseQuantity - oldBaseQuantity
-
-    // Adjust stock reservation based on quantity delta
-    const storeId = currentShift?.storeId ?? defaultStoreId
-    if (storeId && item.productId && delta !== 0) {
-      try {
-        if (delta > 0) {
-          await window.api.db.inventory.reserveStock(item.productId, storeId, delta)
-        } else {
-          await window.api.db.inventory.releaseStock(item.productId, storeId, Math.abs(delta))
-        }
-      } catch (error) {
-        console.error('Failed to adjust stock reservation:', error)
-      }
-    }
-
-    setCartItems((prev) =>
-      prev.map((cartItem) => {
-        if (cartItem.id !== id) return cartItem
-        return {
-          ...cartItem,
-          quantity,
-          baseQuantity: newBaseQuantity,
-          total: cartItem.price * quantity
-        }
-      })
-    )
-  }
 
   const handleRemoveItem = async (id: string): Promise<void> => {
     const item = cartItems.find((i) => i.id === id)
@@ -968,7 +938,6 @@ export default function SalesPage(): React.JSX.Element {
             subtotal={subtotal}
             discount={discount}
             total={total}
-            onQuantityChange={handleQuantityChange}
             onRemove={handleRemoveItem}
             onChangeDiscount={handleChangeDiscount}
             onCheckout={handleCheckout}

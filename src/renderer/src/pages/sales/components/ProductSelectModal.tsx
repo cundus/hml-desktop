@@ -134,23 +134,51 @@ export default function ProductSelectModal({
 
         if (productUoms.length > 0) {
           // Use real product UOMs from the pricing system
-          // Sort so base unit comes first
-          const sorted = [...productUoms].sort((a, b) => {
+          
+          // Deduplicate by uomCode to prevent showing same unit multiple times
+          // Prioritize:
+          // 1. Base Unit
+          // 2. Non-1 conversion factor (to avoid "fake" units that are actually base aliases)
+          // 3. Normal sorting
+          
+          const uniqueUoms = new Map<string, typeof productUoms[0]>()
+          
+          for (const pu of productUoms) {
+            const key = pu.uomCode.toLowerCase()
+            const existing = uniqueUoms.get(key)
+            
+            if (!existing) {
+              uniqueUoms.set(key, pu)
+              continue
+            }
+            
+            // If existing is base unit, keep it (highest priority)
+            if (existing.isBaseUnit) continue
+            
+            // If new one is base unit, replace existing
+            if (pu.isBaseUnit) {
+               uniqueUoms.set(key, pu)
+               continue
+            }
+            
+            // If existing has conversion 1 but new one has > 1, replace existing
+            // This fixes the "SAK = 1" issue if a valid "SAK = 50" exists
+            if (existing.conversionFactor === 1 && pu.conversionFactor > 1) {
+              uniqueUoms.set(key, pu)
+              continue
+            }
+          }
+          
+          const deduplicated = Array.from(uniqueUoms.values())
+
+          // Sort so base unit comes first, then by conversion factor
+          const sorted = deduplicated.sort((a, b) => {
             if (a.isBaseUnit) return -1
             if (b.isBaseUnit) return 1
             return a.conversionFactor - b.conversionFactor
           })
 
-          // Deduplicate by uomCode to prevent showing same unit multiple times
-          const seen = new Set<string>()
-          const deduplicated = sorted.filter((pu) => {
-            const key = pu.uomCode.toLowerCase()
-            if (seen.has(key)) return false
-            seen.add(key)
-            return true
-          })
-
-          uomOptionsList = deduplicated.map((pu) => ({
+          uomOptionsList = sorted.map((pu) => ({
             code: pu.uomCode,
             name: pu.uomName,
             conversionFactor: pu.conversionFactor,

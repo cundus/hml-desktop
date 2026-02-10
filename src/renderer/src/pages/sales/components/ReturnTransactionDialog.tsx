@@ -18,6 +18,7 @@ import {
   TextField
 } from '@mui/material'
 import React, { useEffect, useState } from 'react'
+import useAuth from '../../../hooks/useAuth'
 
 interface ReturnTransactionDialogProps {
   open: boolean
@@ -34,6 +35,7 @@ interface ReturnItemState {
   price: number
   returnedQty: number // Previously returned
   currentReturnQty: number // Input
+  effectivePrice: number // Price per base unit
   restock: boolean
 }
 
@@ -43,6 +45,7 @@ export default function ReturnTransactionDialog({
   transaction,
   onSuccess
 }: ReturnTransactionDialogProps): React.JSX.Element {
+  const { userName } = useAuth()
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -73,16 +76,25 @@ export default function ReturnTransactionDialog({
       })
 
       // Map transaction items
-      const mappedItems: ReturnItemState[] = (transaction.items || []).map((item: any) => ({
-        transactionItemId: item.id,
-        productId: item.productId || item.product_id,
-        productName: item.productName || item.product_name,
-        originalQty: Number(item.quantity),
-        price: Number(item.price),
-        returnedQty: returnedMap.get(item.id) || 0,
-        currentReturnQty: 0,
-        restock: true
-      }))
+      const mappedItems: ReturnItemState[] = (transaction.items || []).map((item: any) => {
+        const baseQty = Number(item.quantity)
+        const displayQty = Number(item.displayQuantity) || baseQty
+        const conversion = baseQty / displayQty
+        const price = Number(item.price)
+        const effectivePrice = displayQty > 0 ? price / conversion : price
+
+        return {
+          transactionItemId: item.id,
+          productId: item.productId || item.product_id,
+          productName: item.productName || item.product_name,
+          originalQty: baseQty,
+          price: price,
+          effectivePrice,
+          returnedQty: returnedMap.get(item.id) || 0,
+          currentReturnQty: 0,
+          restock: true
+        }
+      })
 
       setItems(mappedItems)
     } catch (err) {
@@ -119,6 +131,11 @@ export default function ReturnTransactionDialog({
     const toReturn = items.filter((i) => i.currentReturnQty > 0)
     if (toReturn.length === 0) return
 
+    if (!userName) {
+      setError('User ID not found. Please relogin.')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
@@ -127,33 +144,18 @@ export default function ReturnTransactionDialog({
         transactionId: transaction.id,
         storeId: transaction.storeId || transaction.store_id,
         returnNumber: '', // Backend generates or we generate? Service generates default.
-        totalRefund: String(toReturn.reduce((sum, i) => sum + i.currentReturnQty * i.price, 0)),
-        createdBy: 'current-user', // Backend might check context or we pass it? App needs userId.
-        // We need userId. Assuming we can get it or backend handles it.
-        // ReturnDto requires createdBy.
-        // We can get from auth context or pass dummy if backend resolves it?
-        // Service expects string.
-        // Let's try to get user form hook or pass empty and handle in backend?
-        // Wait, backend `ReturnController` -> `ReturnService` -> `performBy`.
-        // Let's fetch session? `window.api.db.auth.getSession()`?
-        // Or assume Frontend passes it.
-        // I will import `useAuth`.
+        totalRefund: String(toReturn.reduce((sum, i) => sum + i.currentReturnQty * i.effectivePrice, 0)),
+        createdBy: userName,
         items: toReturn.map((i) => ({
           transactionItemId: i.transactionItemId,
           productId: i.productId,
           quantity: i.currentReturnQty,
-          refundPrice: String(i.price),
+          refundPrice: String(i.effectivePrice),
           restock: i.restock
         }))
       }
 
-      // Need userId.
-      // I'll assume useAuth hook exists.
-
-      const res = await window.api.db.returns.create({
-        ...returnData,
-        createdBy: getCurrentUserId() // Helper or Hook
-      })
+      const res = await window.api.db.returns.create(returnData)
 
       if (res.success) {
         onSuccess()
@@ -168,14 +170,7 @@ export default function ReturnTransactionDialog({
     }
   }
 
-  // Helper for userId (placeholder, really need Context)
-  const getCurrentUserId = () => {
-    // If we are in component, we can use hooks.
-    // I will refactor to use `useAuth` if available.
-    return 'user-admin'
-  }
-
-  const totalRefund = items.reduce((sum, i) => sum + i.currentReturnQty * i.price, 0)
+  const totalRefund = items.reduce((sum, i) => sum + i.currentReturnQty * i.effectivePrice, 0)
 
   return (
     <Dialog open={open} onClose={() => !submitting && onClose()} maxWidth="md" fullWidth>
@@ -232,7 +227,7 @@ export default function ReturnTransactionDialog({
                         />
                       </TableCell>
                       <TableCell align="right">
-                        {(item.currentReturnQty * item.price).toLocaleString()}
+                        {(item.currentReturnQty * item.effectivePrice).toLocaleString()}
                       </TableCell>
                     </TableRow>
                   ))}

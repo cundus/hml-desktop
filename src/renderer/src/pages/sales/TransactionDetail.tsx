@@ -230,6 +230,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
           ...item,
           productName: product?.name ?? 'Unknown',
           productSku: product?.sku ?? '-',
+          displayQuantity: item.displayQuantity ?? item.quantity,
           weight: item.weight || Number(product?.weight ?? 0)
         }
       })
@@ -271,9 +272,13 @@ export default function TransactionDetailPage(): React.JSX.Element {
   const handleDelete = async (): Promise<void> => {
     if (!transaction) return
 
-    const confirmed = window.confirm(
-      `Apakah Anda yakin ingin menghapus transaksi ${transaction.code}?\n\nStock produk akan dikembalikan.`
-    )
+    const confirmed = await globalAlert.confirmWithOptions({
+      title: 'Hapus Transaksi',
+      message: `Apakah Anda yakin ingin menghapus transaksi ${transaction.code}?\n\nStock produk akan dikembalikan.`,
+      confirmText: 'Hapus',
+      cancelText: 'Batal',
+      type: 'error'
+    })
     if (!confirmed) return
 
     try {
@@ -316,7 +321,18 @@ export default function TransactionDetailPage(): React.JSX.Element {
       }
     }
 
-    const subtotal = editItems.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0)
+    const subtotal = editItems.reduce((sum, item) => {
+      // Calculate based on display quantity if available, otherwise quantity
+      console.log('ITEM', item)
+
+      let qty = 0
+      if (!item.displayQuantity) qty = item.quantity
+      else if (item.displayQuantity === item.quantity) qty = item.quantity
+      else qty = item.displayQuantity
+
+      return sum + Number(item.price) * qty
+    }, 0)
+
     const total = subtotal - editDiscount
 
     if (total < 0) {
@@ -333,12 +349,51 @@ export default function TransactionDetailPage(): React.JSX.Element {
         total: total.toString(),
         paymentMethod: editPaymentMethod,
         customerId: editCustomerId,
-        items: editItems.map((item) => ({
-          id: item.id,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price
-        }))
+        items: editItems.map((item) => {
+          // Calculate conversion factor to get back base quantity
+          // If displayQuantity is present, use it to calculate base quantity ratio
+          // Original: Qty=12, Display=1 (Pack), Ratio=12.
+          // New: Display=2 (Pack). Base = 2 * 12 = 24.
+
+          // If we don't have the conversion factor readily available without fetching,
+          // we should rely on the ratio:
+          // Conversion = OriginalBase / OriginalDisplay
+          // NewBase = NewDisplay * Conversion
+
+          let baseQuantity = item.quantity
+
+          // Only if we have original reference
+          const original = transaction.items?.find((i) => i.id === item.id)
+          if (original && original.productId === item.productId && original.displayQuantity) {
+            const conversion = original.quantity / original.displayQuantity
+            // item.quantity in edit state is actually holding the DISPLAY quantity value because we bound it to input
+            // WAIT, look at handleItemChange:
+            // newItems[index] = { ...newItems[index], quantity: value as number }
+            // So item.quantity IS the user input (Display Quantity).
+
+            baseQuantity = item.quantity * conversion
+
+            // Update the payload
+            return {
+              id: item.id,
+              productId: item.productId,
+              quantity: baseQuantity,
+              displayQuantity: item.quantity, // User input
+              uomCode: item.uomCode,
+              price: item.price
+            }
+          }
+
+          // New items or no UoM fallback
+          return {
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            displayQuantity: item.quantity,
+            uomCode: item.uomCode,
+            price: item.price
+          }
+        })
       })
 
       if (res.success) {
@@ -394,6 +449,15 @@ export default function TransactionDetailPage(): React.JSX.Element {
     setEditItems((prev) => prev.filter((_, i) => i !== index))
   }
 
+  // Helper to find original item for conversion factor (reserved for future UoM expansions)
+  const getConversionFactor = (itemId: string): number => {
+    const original = transaction?.items?.find((i) => i.id === itemId)
+    if (original && original.displayQuantity && original.quantity) {
+      return original.quantity / original.displayQuantity
+    }
+    return 1
+  }
+
   const handleItemChange = (
     index: number,
     field: 'productId' | 'quantity' | 'price',
@@ -417,6 +481,19 @@ export default function TransactionDetailPage(): React.JSX.Element {
       return newItems
     })
   }
+
+  // Pre-process items for display in edit mode
+  // The 'quantity' field in editItems will hold the DISPLAY QUANTITY for editing purposes
+  useEffect(() => {
+    if (isEditing && transaction?.items) {
+      setEditItems(
+        transaction.items.map((item) => ({
+          ...item,
+          quantity: item.displayQuantity ?? item.quantity
+        }))
+      )
+    }
+  }, [isEditing, transaction])
 
   const handleProductOptionsConfirm = (result: ProductSelectResult): void => {
     if (selectedItemIndex === null) return
@@ -934,6 +1011,18 @@ export default function TransactionDetailPage(): React.JSX.Element {
         }))}
         onClose={() => setDeliveryOrderModalOpen(false)}
       />
+
+      {transaction && (
+        <ReturnTransactionDialog
+          open={returnDialogOpen}
+          transaction={transaction}
+          onClose={() => setReturnDialogOpen(false)}
+          onSuccess={() => {
+            globalAlert.success('Retur berhasil diproses')
+            loadData()
+          }}
+        />
+      )}
     </Box>
   )
 }

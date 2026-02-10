@@ -370,11 +370,8 @@ export default function SalesReportsPage(): React.JSX.Element {
                 width: 130,
                 align: 'right',
                 headerAlign: 'right',
-                renderCell: (params: GridRenderCellParams<Transaction>) => (
-                  <Typography fontWeight="bold">
-                    {formatCurrency(Number(params.value) || 0)}
-                  </Typography>
-                )
+                renderCell: (params: GridRenderCellParams<Transaction>) =>
+                  formatCurrency(Number(params.value) || 0)
               },
               {
                 field: 'actions',

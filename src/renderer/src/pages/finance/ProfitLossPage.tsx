@@ -140,17 +140,9 @@ function CategoryRow(props: { row: CategoryBreakdown }): React.JSX.Element {
               borderRadius: 1,
               fontSize: '0.75rem',
               bgcolor:
-                row.margin >= 20
-                  ? 'success.100'
-                  : row.margin >= 0
-                    ? 'warning.100'
-                    : 'error.100',
+                row.margin >= 20 ? 'success.100' : row.margin >= 0 ? 'warning.100' : 'error.100',
               color:
-                row.margin >= 20
-                  ? 'success.dark'
-                  : row.margin >= 0
-                    ? 'warning.dark'
-                    : 'error.dark'
+                row.margin >= 20 ? 'success.dark' : row.margin >= 0 ? 'warning.dark' : 'error.dark'
             }}
           >
             {row.margin.toFixed(1)}%
@@ -486,7 +478,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       }
     })
 
-    const result = Array.from(categoryData.entries())
+    return Array.from(categoryData.entries())
       .map(([category, data]) => {
         const productList = Array.from(data.products.values())
           .map((p) => ({
@@ -506,20 +498,14 @@ export default function ProfitLossPage(): React.JSX.Element {
         }
       })
       .sort((a, b) => b.profit - a.profit)
-
-    console.log('Profit/Loss - Category Breakdown:', result)
-    return result
   }, [filteredData, productMap])
 
   // Calculate P&L Summary
   const summary = useMemo((): ProfitLossSummary => {
     // Force Client Side Calculation to match breakdown
     // if (report) {
-    //   console.log('Profit/Loss - Using API Report:', report)
     //   return report
     // }
-
-    console.log('Profit/Loss - Using Client Side Calculation (Forced for Consistency)')
     let grossRevenue = 0
     let discounts = 0
 
@@ -531,7 +517,6 @@ export default function ProfitLossPage(): React.JSX.Element {
 
     // Calculate COGS from Category Breakdown to ensure consistency
     const costOfGoodsSold = categoryBreakdown.reduce((sum, cat) => sum + cat.cost, 0)
-    console.log('Profit/Loss - Calculated COGS from Breakdown:', costOfGoodsSold)
 
     const netRevenue = grossRevenue - discounts
     const grossProfit = netRevenue - costOfGoodsSold
@@ -540,7 +525,7 @@ export default function ProfitLossPage(): React.JSX.Element {
     const netProfit = grossProfit - operatingExpenses
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
 
-    const summaryResult = {
+    return {
       grossRevenue,
       discounts,
       netRevenue,
@@ -551,11 +536,7 @@ export default function ProfitLossPage(): React.JSX.Element {
       profitMargin,
       brokenGoods
     }
-    console.log('Profit/Loss - Final Summary:', summaryResult)
-    return summaryResult
   }, [filteredData, categoryBreakdown, report, brokenGoods])
-
-
 
   // Calculate Expense Breakdown by Category
   const expenseBreakdown = useMemo(() => {

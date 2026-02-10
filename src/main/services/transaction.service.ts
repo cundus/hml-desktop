@@ -137,23 +137,7 @@ export class TransactionService {
     return []
   }
 
-  private async findAllLocal(): Promise<Transaction[]> {
-    const stmt = this.db.prepare(
-      'SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC'
-    )
-    const results: Transaction[] = []
-
-    while (stmt.step()) {
-      const row = stmt.getAsObject()
-      const transaction = this.mapRowToTransaction(row)
-      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
-      results.push(transaction)
-    }
-    stmt.free()
-
-    return results
-  }
-
+ 
   /*
    * Helper to merge cloud transactions with local pending changes (updates/deletes)
    */

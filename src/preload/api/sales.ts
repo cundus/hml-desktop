@@ -8,6 +8,8 @@ export interface TransactionItem {
   productId: string
   quantity: number
   price: string
+  displayQuantity?: number
+  uomCode?: string
   createdAt: Date
   updatedAt: Date
 }

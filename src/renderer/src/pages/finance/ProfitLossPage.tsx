@@ -39,6 +39,8 @@ interface Transaction {
 interface TransactionItem {
   productId: string
   quantity: number
+  displayQuantity?: number
+  uomCode?: string
   price: string
 }
 
@@ -98,7 +100,7 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
-  const [brokenGoods,   setBrokenGoods] = useState<number>(0)
+  const [brokenGoods, setBrokenGoods] = useState<number>(0)
 
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -197,8 +199,7 @@ export default function ProfitLossPage(): React.JSX.Element {
         )
       ])
 
-      console.log("Broken Goods Res", brokenGoodsRes);
-      
+      console.log('Broken Goods Res', brokenGoodsRes)
 
       if (transactionsRes.success) {
         const allTxns = transactionsRes.data ?? []
@@ -212,7 +213,9 @@ export default function ProfitLossPage(): React.JSX.Element {
         const allExpenses = expensesRes.data ?? []
         // Filter by store if specified
         setExpenses(
-          filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
+          filterStoreId
+            ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId)
+            : allExpenses
         )
       }
 
@@ -239,18 +242,20 @@ export default function ProfitLossPage(): React.JSX.Element {
           opsExpenses = filteredExp.reduce((sum, e) => sum + parseFloat(e.total), 0)
         }
 
-          setReport({
-            grossRevenue: data.revenue,
-            discounts: 0,
-            netRevenue: data.revenue,
-            costOfGoodsSold: data.cogs,
-            grossProfit: data.grossProfit,
-            operatingExpenses: opsExpenses + (data.brokenGoods || 0),
-            netProfit: data.grossProfit - opsExpenses - (data.brokenGoods || 0),
-            profitMargin:
-              data.revenue > 0 ? ((data.grossProfit - opsExpenses - (data.brokenGoods || 0)) / data.revenue) * 100 : 0,
-            brokenGoods: data.brokenGoods || 0
-          })
+        setReport({
+          grossRevenue: data.revenue,
+          discounts: 0,
+          netRevenue: data.revenue,
+          costOfGoodsSold: data.cogs,
+          grossProfit: data.grossProfit,
+          operatingExpenses: opsExpenses + (data.brokenGoods || 0),
+          netProfit: data.grossProfit - opsExpenses - (data.brokenGoods || 0),
+          profitMargin:
+            data.revenue > 0
+              ? ((data.grossProfit - opsExpenses - (data.brokenGoods || 0)) / data.revenue) * 100
+              : 0,
+          brokenGoods: data.brokenGoods || 0
+        })
       } else {
         setReport(null)
       }
@@ -318,10 +323,8 @@ export default function ProfitLossPage(): React.JSX.Element {
 
     const netRevenue = grossRevenue - discounts
     const grossProfit = netRevenue - costOfGoodsSold
-    const operatingExpenses = filteredData.expenses.reduce(
-      (sum, e) => sum + (parseFloat(e.total) || 0),
-      0
-    ) + brokenGoods // Include broken goods in OPEX
+    const operatingExpenses =
+      filteredData.expenses.reduce((sum, e) => sum + (parseFloat(e.total) || 0), 0) + brokenGoods // Include broken goods in OPEX
     const netProfit = grossProfit - operatingExpenses
     const profitMargin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
 
@@ -349,7 +352,13 @@ export default function ProfitLossPage(): React.JSX.Element {
           if (product) {
             const category = product.categoryName || 'Lainnya'
             const existing = categoryData.get(category) || { revenue: 0, cost: 0 }
-            const itemRevenue = parseFloat(item.price) * item.quantity
+
+            // Fix: Use displayQuantity if available (for UoM items), otherwise use base quantity
+            // Price is per-unit of the *display* quantity (e.g. per Pack), not per Base Unit (Pcs)
+            const qty = item.displayQuantity || item.quantity
+            const itemRevenue = parseFloat(item.price) * qty
+
+            // Cost is per Base Unit, so use item.quantity
             const itemCost = (parseFloat(product.cost) || 0) * item.quantity
 
             existing.revenue += itemRevenue
@@ -626,7 +635,7 @@ export default function ProfitLossPage(): React.JSX.Element {
                 BEBAN OPERASIONAL
               </TableCell>
             </TableRow>
-            
+
             {expenseBreakdown.map((cat) => (
               <TableRow key={cat.name}>
                 <TableCell sx={{ pl: 4 }}>{cat.name}</TableCell>

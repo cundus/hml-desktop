@@ -76,6 +76,7 @@ interface Store {
 interface ProfitLossSummary {
   grossRevenue: number
   discounts: number
+  returns: number
   netRevenue: number
   costOfGoodsSold: number
   grossProfit: number
@@ -211,6 +212,7 @@ export default function ProfitLossPage(): React.JSX.Element {
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [report, setReport] = useState<ProfitLossSummary | null>(null)
   const [brokenGoods, setBrokenGoods] = useState<number>(0)
+  const [returnTotal, setReturnTotal] = useState<number>(0)
 
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -294,20 +296,26 @@ export default function ProfitLossPage(): React.JSX.Element {
       // Determine which store to filter by
       const filterStoreId = selectedStore || branchStoreId || undefined
 
-      const [transactionsRes, expensesRes, reportRes, brokenGoodsRes] = await Promise.all([
-        window.api.db.transactions.getAll(),
-        window.api.db.expenses.getAll(),
-        window.api.db.transactions.getProfitLossReport(
-          dateRange.start.toISOString(),
-          dateRange.end.toISOString(),
-          filterStoreId // Use selected store for API call
-        ),
-        window.api.db.transactions.getBrokenGoodsSummary(
-          dateRange.start.toISOString(),
-          dateRange.end.toISOString(),
-          filterStoreId
-        )
-      ])
+      const [transactionsRes, expensesRes, reportRes, brokenGoodsRes, returnSummaryRes] =
+        await Promise.all([
+          window.api.db.transactions.getAll(),
+          window.api.db.expenses.getAll(),
+          window.api.db.transactions.getProfitLossReport(
+            dateRange.start.toISOString(),
+            dateRange.end.toISOString(),
+            filterStoreId // Use selected store for API call
+          ),
+          window.api.db.transactions.getBrokenGoodsSummary(
+            dateRange.start.toISOString(),
+            dateRange.end.toISOString(),
+            filterStoreId
+          ),
+          window.api.db.returns.getSummaryByDateRange(
+            dateRange.start.toISOString(),
+            dateRange.end.toISOString(),
+            filterStoreId
+          )
+        ])
 
       console.log('Broken Goods Res', brokenGoodsRes)
 
@@ -333,6 +341,12 @@ export default function ProfitLossPage(): React.JSX.Element {
         setBrokenGoods(brokenGoodsRes.data ?? 0)
       }
 
+      if (returnSummaryRes.success && returnSummaryRes.data) {
+        setReturnTotal(returnSummaryRes.data.totalRefund ?? 0)
+      } else {
+        setReturnTotal(0)
+      }
+
       // Handle Report Data
       if (reportRes.success && reportRes.data) {
         const data = reportRes.data
@@ -355,6 +369,7 @@ export default function ProfitLossPage(): React.JSX.Element {
         setReport({
           grossRevenue: data.revenue,
           discounts: 0,
+          returns: 0,
           netRevenue: data.revenue,
           costOfGoodsSold: data.cogs,
           grossProfit: data.grossProfit,
@@ -502,22 +517,22 @@ export default function ProfitLossPage(): React.JSX.Element {
 
   // Calculate P&L Summary
   const summary = useMemo((): ProfitLossSummary => {
-    // Force Client Side Calculation to match breakdown
-    // if (report) {
-    //   return report
-    // }
+    // Transaction subtotals are already reduced by returns (return.service updates them).
+    // So grossRevenue from subtotals already excludes returned amounts.
     let grossRevenue = 0
     let discounts = 0
 
-    // Calculate details from transactions for Revenue
     filteredData.transactions.forEach((txn) => {
       grossRevenue += parseFloat(txn.subtotal) || 0
       discounts += parseFloat(txn.discount) || 0
     })
 
+    const returns = returnTotal
+
     // Calculate COGS from Category Breakdown to ensure consistency
     const costOfGoodsSold = categoryBreakdown.reduce((sum, cat) => sum + cat.cost, 0)
 
+    // netRevenue = grossRevenue - discounts (returns already excluded from grossRevenue)
     const netRevenue = grossRevenue - discounts
     const grossProfit = netRevenue - costOfGoodsSold
     const operatingExpenses =
@@ -528,6 +543,7 @@ export default function ProfitLossPage(): React.JSX.Element {
     return {
       grossRevenue,
       discounts,
+      returns,
       netRevenue,
       costOfGoodsSold,
       grossProfit,
@@ -536,8 +552,10 @@ export default function ProfitLossPage(): React.JSX.Element {
       profitMargin,
       brokenGoods
     }
-  }, [filteredData, categoryBreakdown, report, brokenGoods])
+  }, [filteredData, categoryBreakdown, report, brokenGoods, returnTotal])
 
+  console.log("Summary", summary);
+  
   // Calculate Expense Breakdown by Category
   const expenseBreakdown = useMemo(() => {
     const breakdown = new Map<string, number>()
@@ -759,6 +777,12 @@ export default function ProfitLossPage(): React.JSX.Element {
               <TableCell sx={{ pl: 4, color: 'error.main' }}>Diskon</TableCell>
               <TableCell align="right" sx={{ color: 'error.main' }}>
                 ({formatCurrency(summary.discounts)})
+              </TableCell>
+            </TableRow>
+            <TableRow>
+              <TableCell sx={{ pl: 4, color: 'error.main' }}>Retur Penjualan</TableCell>
+              <TableCell align="right" sx={{ color: 'error.main' }}>
+                ({formatCurrency(summary.returns)})
               </TableCell>
             </TableRow>
             <TableRow sx={{ bgcolor: 'action.hover' }}>

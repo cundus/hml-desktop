@@ -136,6 +136,7 @@ function Home(): React.JSX.Element {
       setLoading(true)
       const response = await window.api.db.transactions.getDashboardStats()
       if (response.success && response.data) {
+        console.log(response.data)
         setStats(response.data)
       }
     } catch (error) {

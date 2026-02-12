@@ -165,12 +165,12 @@ const menus: MenuItem[] = [
         path: '/finance/cashflow',
         permissions: ['finance.cashflow']
       },
-      {
-        key: 'finance-reports',
-        label: 'Laporan Keuangan',
-        path: '/finance/reports',
-        permissions: ['finance.reports']
-      },
+      // {
+      //   key: 'finance-reports',
+      //   label: 'Laporan Keuangan',
+      //   path: '/finance/reports',
+      //   permissions: ['finance.reports']
+      // },
       {
         key: 'finance-profit-loss',
         label: 'Laporan Laba Rugi',

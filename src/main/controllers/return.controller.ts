@@ -8,6 +8,10 @@ export class ReturnController {
   registerHandlers(): void {
     ipcMain.handle('db:returns:create', this.createReturn.bind(this))
     ipcMain.handle('db:returns:getByTransactionId', this.getReturnsByTransactionId.bind(this))
+    ipcMain.handle(
+      'db:returns:getSummaryByDateRange',
+      this.getSummaryByDateRange.bind(this)
+    )
   }
 
   private async createReturn(_event: IpcMainInvokeEvent, data: ReturnDto): Promise<ApiResponse> {
@@ -29,6 +33,21 @@ export class ReturnController {
       return { success: true, data: result }
     } catch (error) {
       console.error('[ReturnController] getReturnsByTransactionId error:', error)
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async getSummaryByDateRange(
+    _event: IpcMainInvokeEvent,
+    startDate: string,
+    endDate: string,
+    storeId?: string
+  ): Promise<ApiResponse> {
+    try {
+      const result = await this.returnService.getReturnSummaryByDateRange(startDate, endDate, storeId)
+      return { success: true, data: result }
+    } catch (error) {
+      console.error('[ReturnController] getSummaryByDateRange error:', error)
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
   }

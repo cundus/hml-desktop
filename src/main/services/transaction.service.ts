@@ -742,6 +742,29 @@ export class TransactionService {
 
     saveDb(this.db)
 
+    // Cascade soft-delete to related transaction_return and transaction_return_item
+    try {
+      const returnsRes = await pool.query(
+        'SELECT id FROM transaction_return WHERE transaction_id = $1 AND deleted_at IS NULL',
+        [id]
+      )
+      if (returnsRes.rows.length > 0) {
+        const returnIds = returnsRes.rows.map((r: any) => r.id)
+        await pool.query(
+          'UPDATE transaction_return SET deleted_at = $1, updated_at = $2 WHERE transaction_id = $3 AND deleted_at IS NULL',
+          [nowDate, nowDate, id]
+        )
+        for (const returnId of returnIds) {
+          await pool.query(
+            'UPDATE transaction_return_item SET deleted_at = $1, updated_at = $2 WHERE return_id = $3 AND deleted_at IS NULL',
+            [nowDate, nowDate, returnId]
+          )
+        }
+      }
+    } catch (error) {
+      console.error('[TransactionService] Failed to cascade soft-delete to returns:', error)
+    }
+
     const deleted = await this.findById(id)
     if (!deleted) {
       throw new Error('Transaction not found after delete')

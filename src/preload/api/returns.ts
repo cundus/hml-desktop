@@ -22,5 +22,11 @@ export interface ReturnItemDto {
 export const returns = {
   create: (data: ReturnDto): Promise<ApiResponse> => ipcRenderer.invoke('db:returns:create', data),
   getByTransactionId: (transactionId: string): Promise<ApiResponse> =>
-    ipcRenderer.invoke('db:returns:getByTransactionId', transactionId)
+    ipcRenderer.invoke('db:returns:getByTransactionId', transactionId),
+  getSummaryByDateRange: (
+    startDate: string,
+    endDate: string,
+    storeId?: string
+  ): Promise<ApiResponse> =>
+    ipcRenderer.invoke('db:returns:getSummaryByDateRange', startDate, endDate, storeId)
 }

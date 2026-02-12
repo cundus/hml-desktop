@@ -331,6 +331,7 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize and register Return Service/Controller
   const returnService = new ReturnService(
+    db,
     queueService,
     stockTransactionService,
     productLocationService

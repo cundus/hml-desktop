@@ -71,6 +71,7 @@ export default function CashFlowPage(): React.JSX.Element {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [brokenGoods, setBrokenGoods] = useState<number>(0)
+  const [returnTotal, setReturnTotal] = useState<number>(0)
   const [expenseCategories, setExpenseCategories] = useState<Map<string, string>>(new Map())
   const [dateRange, setDateRange] = useState<DateRange>(() => {
     const now = new Date()
@@ -142,10 +143,15 @@ export default function CashFlowPage(): React.JSX.Element {
 
       const filterStoreId = selectedStore || branchStoreId || undefined
 
-      const [transactionsRes, expensesRes, brokenGoodsRes] = await Promise.all([
+      const [transactionsRes, expensesRes, brokenGoodsRes, returnSummaryRes] = await Promise.all([
         window.api.db.transactions.getAll(),
         window.api.db.expenses.getAll(),
         window.api.db.transactions.getBrokenGoodsSummary(
+          dateRange.start.toISOString(),
+          dateRange.end.toISOString(),
+          filterStoreId
+        ),
+        window.api.db.returns.getSummaryByDateRange(
           dateRange.start.toISOString(),
           dateRange.end.toISOString(),
           filterStoreId
@@ -168,6 +174,12 @@ export default function CashFlowPage(): React.JSX.Element {
       
       if (brokenGoodsRes.success) {
         setBrokenGoods(brokenGoodsRes.data ?? 0)
+      }
+
+      if (returnSummaryRes.success && returnSummaryRes.data) {
+        setReturnTotal(returnSummaryRes.data.totalRefund ?? 0)
+      } else {
+        setReturnTotal(0)
       }
     } catch (error) {
       console.error('Failed to load filtered data:', error)
@@ -215,10 +227,13 @@ export default function CashFlowPage(): React.JSX.Element {
     // Add broken goods to expense
     totalExpense += brokenGoods || 0
 
+    // Add return refunds to expense (cash outflow)
+    totalExpense += returnTotal || 0
+
     const netCashFlow = totalIncome - totalExpense
 
     return { totalIncome, totalExpense, netCashFlow }
-  }, [filteredData, brokenGoods])
+  }, [filteredData, brokenGoods, returnTotal])
 
   // Prepare chart data (group by date)
   const chartData = useMemo((): ChartDataPoint[] => {
@@ -276,8 +291,20 @@ export default function CashFlowPage(): React.JSX.Element {
       })
     }
 
+    // Add Return Refunds Virtual Item
+    if (returnTotal > 0) {
+      expenseItems.push({
+        id: 'return-refunds-summary',
+        date: dateRange.end,
+        description: 'Total Retur / Pengembalian',
+        type: 'expense' as const,
+        category: 'Retur Penjualan',
+        amount: returnTotal
+      })
+    }
+
     return [...incomeItems, ...expenseItems].sort((a, b) => b.date.getTime() - a.date.getTime())
-  }, [filteredData, expenseCategories, brokenGoods, dateRange])
+  }, [filteredData, expenseCategories, brokenGoods, returnTotal, dateRange])
 
   const handlePrint = (): void => {
     window.print()

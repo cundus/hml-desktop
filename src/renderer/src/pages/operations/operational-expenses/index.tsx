@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState, useMemo } from 'react'
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  PictureAsPdf as PdfIcon
 } from '@mui/icons-material'
 import {
   Box,
@@ -23,8 +24,11 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
+  TableSortLabel,
   TextField,
   Typography
 } from '@mui/material'
@@ -76,9 +80,21 @@ const expenseSchema = z.object({
 type ExpenseFormValues = z.infer<typeof expenseSchema>
 
 const MONTHS = [
-  'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-  'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember'
 ]
+
+type SortField = 'createdAt' | 'categoryId' | 'storeId' | 'item' | 'quantity' | 'price' | 'total'
 
 export default function OperationalExpensesPage(): React.JSX.Element {
   const { userId } = useAuth()
@@ -90,6 +106,18 @@ export default function OperationalExpensesPage(): React.JSX.Element {
   const [editing, setEditing] = useState<Expense | null>(null)
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth())
   const [filterYear, setFilterYear] = useState(new Date().getFullYear())
+
+  // Filter state
+  const [filterStoreId, setFilterStoreId] = useState<string>('')
+  const [filterCategoryId, setFilterCategoryId] = useState<string>('')
+
+  // Sorting state
+  const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+
+  // Pagination state
+  const [page, setPage] = useState(0)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
 
   const {
     register,
@@ -114,6 +142,11 @@ export default function OperationalExpensesPage(): React.JSX.Element {
   useEffect(() => {
     loadExpenses()
   }, [filterMonth, filterYear])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(0)
+  }, [filterStoreId, filterCategoryId, filterMonth, filterYear])
 
   const loadInitialData = async (): Promise<void> => {
     await Promise.all([loadCategories(), loadStores()])
@@ -151,7 +184,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
       const response = await window.api.db.expenses.getByDateRange(startStr, endStr)
       if (response.success) {
         // Filter only operational expenses (no shiftId)
-        const operationalExpenses = (response.data ?? []).filter(e => !e.shiftId)
+        const operationalExpenses = (response.data ?? []).filter((e) => !e.shiftId)
         setExpenses(operationalExpenses)
       }
     } catch (error) {
@@ -203,7 +236,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
       }
 
       if (response.success) {
-        globalAlert.success(editing ? 'Pengeluaran berhasil diperbarui' : 'Pengeluaran berhasil ditambahkan')
+        globalAlert.success(
+          editing ? 'Pengeluaran berhasil diperbarui' : 'Pengeluaran berhasil ditambahkan'
+        )
         closeDialog()
         await loadExpenses()
       } else {
@@ -215,7 +250,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
   }
 
   const handleDelete = async (id: string): Promise<void> => {
-    const confirmed = await globalAlert.confirm('Apakah Anda yakin ingin menghapus pengeluaran ini?')
+    const confirmed = await globalAlert.confirm(
+      'Apakah Anda yakin ingin menghapus pengeluaran ini?'
+    )
     if (!confirmed) return
 
     try {
@@ -233,13 +270,13 @@ export default function OperationalExpensesPage(): React.JSX.Element {
 
   const getCategoryName = (categoryId: string | null): string => {
     if (!categoryId) return '-'
-    const category = categories.find(c => c.id === categoryId)
+    const category = categories.find((c) => c.id === categoryId)
     return category?.name ?? '-'
   }
 
   const getStoreName = (storeId: string | null): string => {
     if (!storeId) return '-'
-    const store = stores.find(s => s.id === storeId)
+    const store = stores.find((s) => s.id === storeId)
     return store?.name ?? '-'
   }
 
@@ -248,7 +285,90 @@ export default function OperationalExpensesPage(): React.JSX.Element {
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
   }
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + Number(e.total), 0)
+  // Filtered expenses based on store and category filters
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter((e) => {
+      if (filterStoreId && e.storeId !== filterStoreId) return false
+      if (filterCategoryId && e.categoryId !== filterCategoryId) return false
+      return true
+    })
+  }, [expenses, filterStoreId, filterCategoryId])
+
+  // Total from filtered expenses
+  const totalExpenses = useMemo(() => {
+    return filteredExpenses.reduce((sum, e) => sum + Number(e.total), 0)
+  }, [filteredExpenses])
+
+  // Sorted expenses
+  const sortedExpenses = useMemo(() => {
+    const sorted = [...filteredExpenses]
+    sorted.sort((a, b) => {
+      let valA: string | number
+      let valB: string | number
+
+      switch (sortField) {
+        case 'createdAt':
+          valA = new Date(a.createdAt).getTime()
+          valB = new Date(b.createdAt).getTime()
+          break
+        case 'categoryId':
+          valA = getCategoryName(a.categoryId).toLowerCase()
+          valB = getCategoryName(b.categoryId).toLowerCase()
+          break
+        case 'storeId':
+          valA = getStoreName(a.storeId).toLowerCase()
+          valB = getStoreName(b.storeId).toLowerCase()
+          break
+        case 'item':
+          valA = a.item.toLowerCase()
+          valB = b.item.toLowerCase()
+          break
+        case 'quantity':
+          valA = a.quantity
+          valB = b.quantity
+          break
+        case 'price':
+          valA = Number(a.price)
+          valB = Number(b.price)
+          break
+        case 'total':
+          valA = Number(a.total)
+          valB = Number(b.total)
+          break
+        default:
+          return 0
+      }
+
+      if (valA < valB) return sortDirection === 'asc' ? -1 : 1
+      if (valA > valB) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+    return sorted
+  }, [filteredExpenses, sortField, sortDirection, categories, stores])
+
+  // Paginated expenses
+  const paginatedExpenses = useMemo(() => {
+    const start = page * rowsPerPage
+    return sortedExpenses.slice(start, start + rowsPerPage)
+  }, [sortedExpenses, page, rowsPerPage])
+
+  const handleSort = (field: SortField): void => {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const handleChangePage = (_: unknown, newPage: number): void => {
+    setPage(newPage)
+  }
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>): void => {
+    setRowsPerPage(parseInt(event.target.value, 10))
+    setPage(0)
+  }
 
   return (
     <>
@@ -268,7 +388,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
               onChange={(e) => setFilterMonth(e.target.value as number)}
             >
               {MONTHS.map((month, idx) => (
-                <MenuItem key={idx} value={idx}>{month}</MenuItem>
+                <MenuItem key={idx} value={idx}>
+                  {month}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
@@ -280,24 +402,81 @@ export default function OperationalExpensesPage(): React.JSX.Element {
               onChange={(e) => setFilterYear(e.target.value as number)}
             >
               {years.map((year) => (
-                <MenuItem key={year} value={year}>{year}</MenuItem>
+                <MenuItem key={year} value={year}>
+                  {year}
+                </MenuItem>
               ))}
             </Select>
           </FormControl>
+          <Button
+            variant="outlined"
+            startIcon={<PdfIcon />}
+            onClick={() => window.print()}
+          >
+            Export PDF
+          </Button>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
             Tambah Pengeluaran
           </Button>
         </Stack>
       </Stack>
 
+      {/* Store & Category Filters */}
+      <Paper sx={{ p: 2, mb: 2 }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <TextField
+            select
+            label="Filter Toko"
+            value={filterStoreId}
+            onChange={(e) => setFilterStoreId(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">Semua Toko</MenuItem>
+            {stores.map((store) => (
+              <MenuItem key={store.id} value={store.id}>
+                {store.name}
+              </MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            select
+            label="Filter Kategori"
+            value={filterCategoryId}
+            onChange={(e) => setFilterCategoryId(e.target.value)}
+            size="small"
+            sx={{ minWidth: 200 }}
+          >
+            <MenuItem value="">Semua Kategori</MenuItem>
+            {categories.map((cat) => (
+              <MenuItem key={cat.id} value={cat.id}>
+                {cat.name}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Stack>
+      </Paper>
+
       {/* Summary Card */}
       <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.main', color: 'primary.contrastText' }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
-            <Typography variant="body2">Total Pengeluaran Bulan {MONTHS[filterMonth]} {filterYear}</Typography>
-            <Typography variant="h4" fontWeight="bold">{formatCurrency(totalExpenses)}</Typography>
+            <Typography variant="body2">
+              Total Pengeluaran Bulan {MONTHS[filterMonth]} {filterYear}
+              {filterStoreId &&
+                ` — ${stores.find((s) => s.id === filterStoreId)?.name ?? ''}`}
+              {filterCategoryId &&
+                ` — ${categories.find((c) => c.id === filterCategoryId)?.name ?? ''}`}
+            </Typography>
+            <Typography variant="h4" fontWeight="bold">
+              {formatCurrency(totalExpenses)}
+            </Typography>
           </Box>
-          <Chip label={`${expenses.length} transaksi`} color="default" sx={{ bgcolor: 'primary.light' }} />
+          <Chip
+            label={`${filteredExpenses.length} transaksi`}
+            color="default"
+            sx={{ bgcolor: 'primary.light' }}
+          />
         </Stack>
       </Paper>
 
@@ -307,50 +486,126 @@ export default function OperationalExpensesPage(): React.JSX.Element {
         </Box>
       ) : (
         <Paper>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Tanggal</TableCell>
-                <TableCell>Kategori</TableCell>
-                <TableCell>Toko</TableCell>
-                <TableCell>Item</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell align="right">Harga</TableCell>
-                <TableCell align="right">Total</TableCell>
-                <TableCell align="right">Aksi</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {expenses.map((expense) => (
-                <TableRow key={expense.id}>
-                  <TableCell>{formatDate(expense.createdAt)}</TableCell>
-                  <TableCell>
-                    <Chip label={getCategoryName(expense.categoryId)} size="small" color="secondary" variant="outlined" />
-                  </TableCell>
-                  <TableCell>{getStoreName(expense.storeId)}</TableCell>
-                  <TableCell>{expense.item}</TableCell>
-                  <TableCell align="right">{expense.quantity}</TableCell>
-                  <TableCell align="right">{formatCurrency(Number(expense.price))}</TableCell>
-                  <TableCell align="right">{formatCurrency(Number(expense.total))}</TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(expense)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(expense.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {expenses.length === 0 && (
+          <TableContainer>
+            <Table>
+              <TableHead>
                 <TableRow>
-                  <TableCell colSpan={8} align="center">
-                    Tidak ada pengeluaran di bulan ini
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'createdAt'}
+                      direction={sortField === 'createdAt' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('createdAt')}
+                    >
+                      Tanggal
+                    </TableSortLabel>
                   </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'categoryId'}
+                      direction={sortField === 'categoryId' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('categoryId')}
+                    >
+                      Kategori
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'storeId'}
+                      direction={sortField === 'storeId' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('storeId')}
+                    >
+                      Toko
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell>
+                    <TableSortLabel
+                      active={sortField === 'item'}
+                      direction={sortField === 'item' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('item')}
+                    >
+                      Item
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={sortField === 'quantity'}
+                      direction={sortField === 'quantity' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('quantity')}
+                    >
+                      Qty
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={sortField === 'price'}
+                      direction={sortField === 'price' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('price')}
+                    >
+                      Harga
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">
+                    <TableSortLabel
+                      active={sortField === 'total'}
+                      direction={sortField === 'total' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('total')}
+                    >
+                      Total
+                    </TableSortLabel>
+                  </TableCell>
+                  <TableCell align="right">Aksi</TableCell>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHead>
+              <TableBody>
+                {paginatedExpenses.map((expense) => (
+                  <TableRow key={expense.id}>
+                    <TableCell>{formatDate(expense.createdAt)}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getCategoryName(expense.categoryId)}
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>{getStoreName(expense.storeId)}</TableCell>
+                    <TableCell>{expense.item}</TableCell>
+                    <TableCell align="right">{expense.quantity}</TableCell>
+                    <TableCell align="right">{formatCurrency(Number(expense.price))}</TableCell>
+                    <TableCell align="right">{formatCurrency(Number(expense.total))}</TableCell>
+                    <TableCell align="right">
+                      <IconButton size="small" onClick={() => openEdit(expense)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton size="small" onClick={() => handleDelete(expense.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredExpenses.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={8} align="center">
+                      Tidak ada pengeluaran di bulan ini
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
+          <TablePagination
+            component="div"
+            count={filteredExpenses.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            labelRowsPerPage="Baris per halaman"
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}–${to} dari ${count !== -1 ? count : `lebih dari ${to}`}`
+            }
+          />
         </Paper>
       )}
 
@@ -373,7 +628,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
                   helperText={errors.categoryId?.message}
                 >
                   {categories.map((cat) => (
-                    <MenuItem key={cat.id} value={cat.id}>{cat.name}</MenuItem>
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </MenuItem>
                   ))}
                 </TextField>
               )}
@@ -392,7 +649,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
                   helperText={errors.storeId?.message}
                 >
                   {stores.map((store) => (
-                    <MenuItem key={store.id} value={store.id}>{store.name}</MenuItem>
+                    <MenuItem key={store.id} value={store.id}>
+                      {store.name}
+                    </MenuItem>
                   ))}
                 </TextField>
               )}
@@ -443,6 +702,91 @@ export default function OperationalExpensesPage(): React.JSX.Element {
           </DialogActions>
         </form>
       </Dialog>
+
+      {/* Print-only section: all filtered+sorted data, no pagination */}
+      <Box
+        className="print-only"
+        sx={{ display: 'none' }}
+      >
+        <Typography variant="h5" fontWeight={700} textAlign="center" mb={0.5}>
+          Laporan Pengeluaran Operasional
+        </Typography>
+        <Typography variant="body2" textAlign="center" color="text.secondary" mb={0.5}>
+          Periode: {MONTHS[filterMonth]} {filterYear}
+          {filterStoreId && ` — Toko: ${stores.find((s) => s.id === filterStoreId)?.name ?? ''}`}
+          {filterCategoryId && ` — Kategori: ${categories.find((c) => c.id === filterCategoryId)?.name ?? ''}`}
+        </Typography>
+        <Typography variant="body2" textAlign="center" mb={2}>
+          Total: {formatCurrency(totalExpenses)} ({filteredExpenses.length} transaksi)
+        </Typography>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>No</TableCell>
+              <TableCell>Tanggal</TableCell>
+              <TableCell>Kategori</TableCell>
+              <TableCell>Toko</TableCell>
+              <TableCell>Item</TableCell>
+              <TableCell align="right">Qty</TableCell>
+              <TableCell align="right">Harga</TableCell>
+              <TableCell align="right">Total</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {sortedExpenses.map((expense, idx) => (
+              <TableRow key={expense.id}>
+                <TableCell>{idx + 1}</TableCell>
+                <TableCell>{formatDate(expense.createdAt)}</TableCell>
+                <TableCell>{getCategoryName(expense.categoryId)}</TableCell>
+                <TableCell>{getStoreName(expense.storeId)}</TableCell>
+                <TableCell>{expense.item}</TableCell>
+                <TableCell align="right">{expense.quantity}</TableCell>
+                <TableCell align="right">{formatCurrency(Number(expense.price))}</TableCell>
+                <TableCell align="right">{formatCurrency(Number(expense.total))}</TableCell>
+              </TableRow>
+            ))}
+            <TableRow>
+              <TableCell colSpan={7} sx={{ fontWeight: 700 }}>Total</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(totalExpenses)}</TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </Box>
+
+      {/* Print Styles */}
+      <style>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-only,
+          .print-only * {
+            visibility: visible !important;
+            display: revert !important;
+          }
+          .print-only {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+          }
+          .print-only table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+          .print-only th,
+          .print-only td {
+            border: 1px solid #ddd;
+            padding: 6px 8px;
+            font-size: 11px;
+          }
+          @page {
+            margin: 1cm;
+            size: landscape;
+          }
+        }
+      `}</style>
     </>
   )
 }

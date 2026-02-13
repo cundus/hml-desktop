@@ -88,7 +88,10 @@ export default function WarehousePurchasingPage(): React.JSX.Element {
     const parsedItems = Number(totalItems) || 0
     const parsedQty = Number(totalQty) || 0
 
-    if (!supplier || !date) {
+    const parsedDate = new Date(date)
+    const isValidDate = !isNaN(parsedDate.getTime())
+
+    if (!supplier || !date || !isValidDate) {
       setDialogOpen(false)
       return
     }

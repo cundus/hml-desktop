@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
+import { useDebounce } from '../../../hooks/useDebounce'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonGroup from '@mui/material/ButtonGroup'
@@ -47,33 +48,95 @@ function getPresetRange(preset: PeriodPreset): DateRange {
 }
 
 function formatDateForInput(date: Date): string {
-  return date.toISOString().split('T')[0]
+  if (isNaN(date.getTime())) return ''
+  try {
+    return date.toISOString().split('T')[0]
+  } catch (e) {
+    return ''
+  }
 }
 
 export default function PeriodSelector({ value, onChange }: PeriodSelectorProps): React.JSX.Element {
-  const [activePreset, setActivePreset] = useState<PeriodPreset>('today')
+  const [internalStart, setInternalStart] = useState(formatDateForInput(value.start))
+  const [internalEnd, setInternalEnd] = useState(formatDateForInput(value.end))
+
+  const debouncedStart = useDebounce(internalStart, 1000)
+  const debouncedEnd = useDebounce(internalEnd, 1000)
+
+  // Sync internal state with external value when it changes (e.g. from preset buttons)
+  useEffect(() => {
+    const formatted = formatDateForInput(value.start)
+    if (formatted !== internalStart) {
+      setInternalStart(formatted)
+    }
+  }, [value.start])
+
+  useEffect(() => {
+    const formatted = formatDateForInput(value.end)
+    if (formatted !== internalEnd) {
+      setInternalEnd(formatted)
+    }
+  }, [value.end])
+
+  // Call onChange when debounced values are valid and different
+  useEffect(() => {
+    const newDate = new Date(debouncedStart)
+    if (!isNaN(newDate.getTime()) && formatDateForInput(newDate) !== formatDateForInput(value.start)) {
+      let newEnd = value.end
+      // If start > end, also move end to same day (end of day)
+      if (newDate > value.end) {
+        newEnd = new Date(newDate.getTime())
+        newEnd.setHours(23, 59, 59, 999)
+      }
+      onChange({ start: newDate, end: newEnd })
+    }
+  }, [debouncedStart])
+
+  useEffect(() => {
+    const newDate = new Date(debouncedEnd + 'T23:59:59')
+    if (!isNaN(newDate.getTime()) && formatDateForInput(newDate) !== formatDateForInput(value.end)) {
+      let newStart = value.start
+      // If end < start, also move start to same day (start of day)
+      if (newDate < value.start) {
+        newStart = new Date(newDate.getTime())
+        newStart.setHours(0, 0, 0, 0)
+      }
+      onChange({ start: newStart, end: newDate })
+    }
+  }, [debouncedEnd])
+
+  const activePreset = useMemo<PeriodPreset>(() => {
+    const today = getPresetRange('today')
+    const week = getPresetRange('week')
+    const month = getPresetRange('month')
+
+    const isSameDay = (d1: Date, d2: Date): boolean => {
+      return (
+        d1.getFullYear() === d2.getFullYear() &&
+        d1.getMonth() === d2.getMonth() &&
+        d1.getDate() === d2.getDate()
+      )
+    }
+
+    if (isSameDay(value.start, today.start) && isSameDay(value.end, today.end)) return 'today'
+    if (isSameDay(value.start, week.start) && isSameDay(value.end, week.end)) return 'week'
+    if (isSameDay(value.start, month.start) && isSameDay(value.end, month.end)) return 'month'
+
+    return 'custom'
+  }, [value])
 
   const handlePresetClick = (preset: PeriodPreset): void => {
-    setActivePreset(preset)
     if (preset !== 'custom') {
       onChange(getPresetRange(preset))
     }
   }
 
   const handleStartChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setActivePreset('custom')
-    onChange({
-      ...value,
-      start: new Date(e.target.value)
-    })
+    setInternalStart(e.target.value)
   }
 
   const handleEndChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setActivePreset('custom')
-    onChange({
-      ...value,
-      end: new Date(e.target.value + 'T23:59:59')
-    })
+    setInternalEnd(e.target.value)
   }
 
   const periodLabel = useMemo(() => {
@@ -118,7 +181,7 @@ export default function PeriodSelector({ value, onChange }: PeriodSelectorProps)
           type="date"
           size="small"
           label="Dari"
-          value={formatDateForInput(value.start)}
+          value={internalStart}
           onChange={handleStartChange}
           InputLabelProps={{ shrink: true }}
           sx={{ width: 160 }}
@@ -128,7 +191,7 @@ export default function PeriodSelector({ value, onChange }: PeriodSelectorProps)
           type="date"
           size="small"
           label="Sampai"
-          value={formatDateForInput(value.end)}
+          value={internalEnd}
           onChange={handleEndChange}
           InputLabelProps={{ shrink: true }}
           sx={{ width: 160 }}

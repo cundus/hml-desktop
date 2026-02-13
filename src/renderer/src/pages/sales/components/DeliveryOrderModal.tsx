@@ -150,9 +150,10 @@ export default function DeliveryOrderModal({
       let deliveryOrder = existingDO
 
       if (!deliveryOrder) {
+        const parsedTanggal = new Date(tanggal)
         const createRes = await window.api.db.deliveryOrders.create({
           transactionId: transaction.id,
-          tanggal: new Date(tanggal),
+          tanggal: !isNaN(parsedTanggal.getTime()) ? parsedTanggal : new Date(),
           sales: sales.trim() || undefined,
           customerId: selectedCustomer?.id,
           customerName,
@@ -182,7 +183,7 @@ export default function DeliveryOrderModal({
       // Print - always use current form values, not saved DO values
       const printRes = await window.api.db.printer.printDeliveryOrder({
         noSuratJalan: deliveryOrder.noSuratJalan,
-        tanggalSuratJalan: new Date(tanggal), // Use form tanggal
+        tanggalSuratJalan: !isNaN(new Date(tanggal).getTime()) ? new Date(tanggal) : new Date(), // Use form tanggal
         receiptNumber: transaction.code,
         receiptDate: transaction.createdAt,
         sales: sales.trim() || null, // Use form sales
@@ -211,7 +212,9 @@ export default function DeliveryOrderModal({
   }
 
   const formatDate = (date: Date | string): string => {
-    return new Date(date).toLocaleDateString('id-ID', {
+    const dateValue = new Date(date)
+    if (isNaN(dateValue.getTime())) return '-'
+    return dateValue.toLocaleDateString('id-ID', {
       day: '2-digit',
       month: 'long',
       year: 'numeric'

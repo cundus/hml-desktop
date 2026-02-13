@@ -19,7 +19,7 @@ import SideNav from '../components/SideNav'
 import { QueueStatusIndicator } from '../components/QueueStatusIndicator'
 import useThemeMode from '../hooks/useThemeMode'
 import useAuth from '../hooks/useAuth'
-import { Paper } from '@mui/material'
+import { Paper, Tooltip } from '@mui/material'
 
 const drawerWidth = 200
 
@@ -70,6 +70,24 @@ export default function MainLayout(): React.JSX.Element {
       }
     }
     loadBranchInfo()
+  }, [])
+
+  // Poll sync status
+  useEffect(() => {
+    const checkSyncStatus = async (): Promise<void> => {
+      try {
+        const res = await window.api.db.sync.getStatus()
+        if (res.success && res.data) {
+          setIsSyncing(res.data.isSyncing)
+        }
+      } catch (err) {
+        console.error('Failed to check sync status:', err)
+      }
+    }
+
+    checkSyncStatus()
+    const interval = setInterval(checkSyncStatus, 2000)
+    return () => clearInterval(interval)
   }, [])
 
   const { date, time, day } = formatDateTime(currentTime)
@@ -151,25 +169,29 @@ export default function MainLayout(): React.JSX.Element {
             variant="outlined"
             sx={{ mr: 1, fontSize: '0.7rem', height: 22, color: 'inherit', borderColor: 'rgba(255,255,255,0.3)' }}
           />
-          <IconButton
-            color="inherit"
-            onClick={handleManualSync}
-            disabled={isSyncing}
-            sx={{
-              mr: 1,
-              animation: isSyncing ? 'spin 2s linear infinite' : 'none',
-              '@keyframes spin': {
-                '0%': {
-                  transform: 'rotate(0deg)'
-                },
-                '100%': {
-                  transform: 'rotate(360deg)'
-                }
-              }
-            }}
-          >
-            <SyncIcon />
-          </IconButton>
+          <Tooltip title={isSyncing ? 'Sedang sinkronisasi...' : 'Sinkronisasi sekarang'}>
+            <span>
+              <IconButton
+                color="inherit"
+                onClick={handleManualSync}
+                disabled={isSyncing}
+                sx={{
+                  mr: 1,
+                  animation: isSyncing ? 'spin 2s linear infinite' : 'none',
+                  '@keyframes spin': {
+                    '0%': {
+                      transform: 'rotate(0deg)'
+                    },
+                    '100%': {
+                      transform: 'rotate(360deg)'
+                    }
+                  }
+                }}
+              >
+                <SyncIcon />
+              </IconButton>
+            </span>
+          </Tooltip>
           <QueueStatusIndicator />
           <IconButton color="inherit" onClick={toggleTheme} aria-label="Toggle theme">
             {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}

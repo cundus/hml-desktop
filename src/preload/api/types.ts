@@ -28,6 +28,7 @@ export interface SyncStatus {
   lastSyncTime: Date | null
   unsyncedRecordsCount: number
   deviceId: string
+  isSyncing: boolean
 }
 
 export interface SyncResult {

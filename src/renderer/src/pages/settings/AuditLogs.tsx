@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useDebounce } from '../../hooks/useDebounce'
 import HistoryIcon from '@mui/icons-material/History'
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import FilterListIcon from '@mui/icons-material/FilterList'
@@ -115,9 +116,24 @@ export default function AuditLogs(): React.JSX.Element {
   const [filterStoreId, setFilterStoreId] = useState<string>('')
   const [filterStartDate, setFilterStartDate] = useState<string>('')
   const [filterEndDate, setFilterEndDate] = useState<string>('')
+  const debouncedStartDate = useDebounce(filterStartDate, 1000)
+  const debouncedEndDate = useDebounce(filterEndDate, 1000)
 
   // Expanded row for details
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+
+  // Sync chronology after debounce
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedStartDate > debouncedEndDate) {
+      setFilterEndDate(debouncedStartDate)
+    }
+  }, [debouncedStartDate])
+
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedEndDate < debouncedStartDate) {
+      setFilterStartDate(debouncedEndDate)
+    }
+  }, [debouncedEndDate])
 
   const canView = hasPermission('audit.view')
 
@@ -128,8 +144,8 @@ export default function AuditLogs(): React.JSX.Element {
       entityType: filterEntityType || undefined,
       userId: filterUserId || undefined,
       storeId: filterStoreId || undefined,
-      startDate: filterStartDate || undefined,
-      endDate: filterEndDate || undefined,
+      startDate: debouncedStartDate || undefined,
+      endDate: debouncedEndDate || undefined,
       limit: rowsPerPage,
       offset: page * rowsPerPage
     }),
@@ -138,8 +154,8 @@ export default function AuditLogs(): React.JSX.Element {
       filterEntityType,
       filterUserId,
       filterStoreId,
-      filterStartDate,
-      filterEndDate,
+      debouncedStartDate,
+      debouncedEndDate,
       page,
       rowsPerPage
     ]
@@ -211,7 +227,9 @@ export default function AuditLogs(): React.JSX.Element {
   }
 
   const formatDate = (date: Date): string => {
-    return new Date(date).toLocaleString('id-ID', {
+    const dateValue = new Date(date)
+    if (isNaN(dateValue.getTime())) return '-'
+    return dateValue.toLocaleString('id-ID', {
       dateStyle: 'medium',
       timeStyle: 'short'
     })

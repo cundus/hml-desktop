@@ -4,12 +4,14 @@ import { getConnectivity } from '../services/connectivity.service'
 import { QueueProcessorService } from '../services/queue-processor.service'
 import { AppConfigService } from '../services/app-config.service'
 import { ApiResponse } from '../types/response'
+import { getPeriodicSync } from '../services/periodic-sync.service'
 
 interface SyncStatus {
   isCloudConnected: boolean
   lastSyncTime: string | null
   unsyncedRecordsCount: number
   deviceId: string
+  isSyncing: boolean
 }
 
 interface SyncResult {
@@ -186,12 +188,15 @@ export class CloudController {
     try {
       const cloudDb = getCloudDb()
       const stats = this.queueProcessor.getStats()
+      const periodicSync = getPeriodicSync()
+      const periodicStatus = periodicSync?.getStatus()
 
       const status: SyncStatus = {
         isCloudConnected: cloudDb.isConnected(),
-        lastSyncTime: null, // Could track this if needed
+        lastSyncTime: periodicStatus?.lastSyncResult?.timestamp?.toISOString() || null,
         unsyncedRecordsCount: stats.pending + stats.failed,
-        deviceId: 'local' // Could get from app config
+        deviceId: 'local', // Could get from app config
+        isSyncing: periodicStatus?.isSyncing || false
       }
 
       return {

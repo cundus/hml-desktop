@@ -141,9 +141,10 @@ export default function BatchesPage(): React.JSX.Element {
 
   const onSubmit = async (values: BatchFormValues): Promise<void> => {
     try {
+      const expiryDate = values.expiryDate ? new Date(values.expiryDate) : undefined
       const data = {
         ...values,
-        expiryDate: values.expiryDate ? new Date(values.expiryDate) : undefined
+        expiryDate: expiryDate && !isNaN(expiryDate.getTime()) ? expiryDate : undefined
       }
 
       if (editing) {
@@ -189,18 +190,24 @@ export default function BatchesPage(): React.JSX.Element {
 
   const isExpiringSoon = (expiryDate: Date | null): boolean => {
     if (!expiryDate) return false
-    const days = Math.floor((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    const dateValue = new Date(expiryDate).getTime()
+    if (isNaN(dateValue)) return false
+    const days = Math.floor((dateValue - Date.now()) / (1000 * 60 * 60 * 24))
     return days <= 30 && days >= 0
   }
 
   const isExpired = (expiryDate: Date | null): boolean => {
     if (!expiryDate) return false
-    return new Date(expiryDate) < new Date()
+    const dateValue = new Date(expiryDate)
+    if (isNaN(dateValue.getTime())) return false
+    return dateValue < new Date()
   }
 
   const formatDate = (date: Date | null): string => {
     if (!date) return 'N/A'
-    return new Date(date).toLocaleDateString()
+    const dateValue = new Date(date)
+    if (isNaN(dateValue.getTime())) return 'Invalid Date'
+    return dateValue.toLocaleDateString()
   }
 
   if (loading) {

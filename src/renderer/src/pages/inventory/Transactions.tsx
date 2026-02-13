@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDebounce } from '../../hooks/useDebounce'
 import { globalAlert } from '../../lib/globalAlert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -88,6 +89,9 @@ export default function TransactionsPage(): React.JSX.Element {
     endDate: ''
   })
 
+  const debouncedStartDate = useDebounce(filters.startDate, 1000)
+  const debouncedEndDate = useDebounce(filters.endDate, 1000)
+
   const {
     register,
     handleSubmit,
@@ -114,9 +118,22 @@ export default function TransactionsPage(): React.JSX.Element {
     loadData()
   }, [branchStoreId])
 
+  // Sync chronology after debounce
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedStartDate > debouncedEndDate) {
+      setFilters((prev) => ({ ...prev, endDate: debouncedStartDate }))
+    }
+  }, [debouncedStartDate])
+
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedEndDate < debouncedStartDate) {
+      setFilters((prev) => ({ ...prev, startDate: debouncedEndDate }))
+    }
+  }, [debouncedEndDate])
+
   useEffect(() => {
     applyFilters()
-  }, [items, filters])
+  }, [items, filters.productId, filters.storeId, filters.type, debouncedStartDate, debouncedEndDate])
 
   const loadData = async (): Promise<void> => {
     try {
@@ -178,14 +195,18 @@ export default function TransactionsPage(): React.JSX.Element {
       filtered = filtered.filter((item) => item.type === filters.type)
     }
 
-    if (filters.startDate) {
-      const start = new Date(filters.startDate).getTime()
-      filtered = filtered.filter((item) => new Date(item.createdAt).getTime() >= start)
+    if (debouncedStartDate) {
+      const start = new Date(debouncedStartDate).getTime()
+      if (!isNaN(start)) {
+        filtered = filtered.filter((item) => new Date(item.createdAt).getTime() >= start)
+      }
     }
 
-    if (filters.endDate) {
-      const end = new Date(filters.endDate).getTime()
-      filtered = filtered.filter((item) => new Date(item.createdAt).getTime() <= end)
+    if (debouncedEndDate) {
+      const end = new Date(debouncedEndDate).getTime()
+      if (!isNaN(end)) {
+        filtered = filtered.filter((item) => new Date(item.createdAt).getTime() <= end)
+      }
     }
 
     setFilteredItems(filtered)
@@ -212,9 +233,10 @@ export default function TransactionsPage(): React.JSX.Element {
 
   const onSubmit = async (values: TransactionFormValues): Promise<void> => {
     try {
+      const expiryDate = values.expiryDate ? new Date(values.expiryDate) : undefined
       const payload = {
         ...values,
-        expiryDate: values.expiryDate ? new Date(values.expiryDate) : undefined
+        expiryDate: expiryDate && !isNaN(expiryDate.getTime()) ? expiryDate : undefined
       }
       const response = await window.api.db.stockTransactions.create(payload)
       if (response.success) {

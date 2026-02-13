@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useDebounce } from '../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import ReceiptIcon from '@mui/icons-material/Receipt'
@@ -69,6 +70,8 @@ export default function SalesReportsPage(): React.JSX.Element {
   const [selectedStore, setSelectedStore] = useState<string>('')
   const [startDate, setStartDate] = useState<string>('')
   const [endDate, setEndDate] = useState<string>('')
+  const debouncedStartDate = useDebounce(startDate, 1000)
+  const debouncedEndDate = useDebounce(endDate, 1000)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -76,9 +79,22 @@ export default function SalesReportsPage(): React.JSX.Element {
     loadData()
   }, [branchStoreId])
 
+  // Sync chronology after debounce
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedStartDate > debouncedEndDate) {
+      setEndDate(debouncedStartDate)
+    }
+  }, [debouncedStartDate])
+
+  useEffect(() => {
+    if (debouncedStartDate && debouncedEndDate && debouncedEndDate < debouncedStartDate) {
+      setStartDate(debouncedEndDate)
+    }
+  }, [debouncedEndDate])
+
   useEffect(() => {
     applyFilters()
-  }, [transactions, selectedStore, startDate, endDate])
+  }, [transactions, selectedStore, debouncedStartDate, debouncedEndDate])
 
   const loadData = async (): Promise<void> => {
     try {
@@ -131,14 +147,18 @@ export default function SalesReportsPage(): React.JSX.Element {
       filtered = filtered.filter((txn) => txn.storeId === selectedStore)
     }
 
-    if (startDate) {
-      const start = new Date(startDate).getTime()
-      filtered = filtered.filter((txn) => new Date(txn.createdAt).getTime() >= start)
+    if (debouncedStartDate) {
+      const start = new Date(debouncedStartDate).getTime()
+      if (!isNaN(start)) {
+        filtered = filtered.filter((txn) => new Date(txn.createdAt).getTime() >= start)
+      }
     }
 
-    if (endDate) {
-      const end = new Date(endDate).getTime()
-      filtered = filtered.filter((txn) => new Date(txn.createdAt).getTime() <= end)
+    if (debouncedEndDate) {
+      const end = new Date(debouncedEndDate).getTime()
+      if (!isNaN(end)) {
+        filtered = filtered.filter((txn) => new Date(txn.createdAt).getTime() <= end)
+      }
     }
 
     setFilteredTransactions(filtered)

@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useState, useEffect, useCallback } from 'react'
+import { useDebounce } from '../../../hooks/useDebounce'
 import { useNavigate } from 'react-router-dom'
 import Box from '@mui/material/Box'
 import Paper from '@mui/material/Paper'
@@ -47,6 +48,20 @@ export default function ShiftHistoryPage(): React.JSX.Element {
   const [filterOpen, setFilterOpen] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const debouncedFromDate = useDebounce(fromDate, 1000)
+  const debouncedToDate = useDebounce(toDate, 1000)
+  // Sync chronology after debounce
+  useEffect(() => {
+    if (debouncedFromDate && debouncedToDate && debouncedFromDate > debouncedToDate) {
+      setToDate(debouncedFromDate)
+    }
+  }, [debouncedFromDate])
+
+  useEffect(() => {
+    if (debouncedFromDate && debouncedToDate && debouncedToDate < debouncedFromDate) {
+      setFromDate(debouncedToDate)
+    }
+  }, [debouncedToDate])
 
   const loadShifts = useCallback(async () => {
     try {
@@ -58,14 +73,19 @@ export default function ShiftHistoryPage(): React.JSX.Element {
         toDate?: number
       } = {}
 
-      if (fromDate) {
-        filters.fromDate = new Date(fromDate).getTime()
+      if (debouncedFromDate) {
+        const dateValue = new Date(debouncedFromDate).getTime()
+        if (!isNaN(dateValue)) {
+          filters.fromDate = dateValue
+        }
       }
-      if (toDate) {
-        // Set to end of day
-        const endDate = new Date(toDate)
-        endDate.setHours(23, 59, 59, 999)
-        filters.toDate = endDate.getTime()
+      if (debouncedToDate) {
+        const endDate = new Date(debouncedToDate)
+        if (!isNaN(endDate.getTime())) {
+          // Set to end of day
+          endDate.setHours(23, 59, 59, 999)
+          filters.toDate = endDate.getTime()
+        }
       }
 
       const response = await window.api.db.shifts.getAll(filters)
@@ -95,7 +115,9 @@ export default function ShiftHistoryPage(): React.JSX.Element {
   }
 
   const formatDate = (date: Date | string): string => {
-    return new Date(date).toLocaleString('id-ID', {
+    const dateValue = new Date(date)
+    if (isNaN(dateValue.getTime())) return '-'
+    return dateValue.toLocaleString('id-ID', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',

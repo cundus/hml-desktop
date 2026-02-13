@@ -61,7 +61,9 @@ export default function WarehouseStockOpnamePage(): React.JSX.Element {
   }
 
   const handleCreate = (): void => {
-    const effectiveDate = date || new Date().toISOString().slice(0, 10)
+    const parsedDate = new Date(date)
+    const isValidDate = !isNaN(parsedDate.getTime())
+    const effectiveDate = isValidDate ? date : new Date().toISOString().slice(0, 10)
     const nextNumber = sessions.length + 1
     const newSession: StockOpnameSession = {
       id: `so${Date.now()}`,

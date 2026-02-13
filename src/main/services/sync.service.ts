@@ -431,6 +431,50 @@ function pgTable(name: string): string {
   return `"${name}"`
 }
 
+export type SyncType = 'critical' | 'standard' | 'all'
+
+const PRIORITY_GROUPS: Record<SyncType, string[]> = {
+  critical: [
+    'user',
+    'role',
+    'permission',
+    'store',
+    'product',
+    'product_price',
+    'product_location',
+    'uom',
+    'price_category',
+    'product_uom',
+    'product_uom_category_price',
+    'store_product_uom_price'
+  ],
+  standard: [
+    'customer',
+    'customer_category',
+    'supplier',
+    'category',
+    'payment_method',
+    'batch'
+  ],
+  all: Object.keys(ENTITY_CONFIG)
+}
+
+function getEntitiesForSync(type: SyncType): string[] {
+  if (type === 'all') return PRIORITY_GROUPS.all
+
+  const entities = new Set<string>()
+  
+  // Critical always includes critical entities
+  PRIORITY_GROUPS.critical.forEach(e => entities.add(e))
+
+  // Standard includes critical + standard
+  if (type === 'standard') {
+    PRIORITY_GROUPS.standard.forEach(e => entities.add(e))
+  }
+
+  return Array.from(entities)
+}
+
 /**
  * SyncService - Handles bidirectional sync between local sql.js and cloud PostgreSQL
  *
@@ -547,7 +591,7 @@ export class SyncService {
   /**
    * Full sync: Pull from cloud then push local changes
    */
-  async fullSync(): Promise<SyncResult> {
+  async fullSync(type: SyncType = 'all'): Promise<SyncResult> {
     if (!this.isCloudConnected()) {
       throw new Error('Cloud not connected. Call initCloudConnection() first.')
     }
@@ -565,7 +609,8 @@ export class SyncService {
     try {
       console.log('Starting pull from cloud...')
       // Pull first (cloud is source of truth for conflicts)
-      const pullResult = await this.pullFromCloud()
+      // Pull first (cloud is source of truth for conflicts)
+      const pullResult = await this.pullFromCloud(type)
       result.pulled = pullResult.count
       result.conflicts += pullResult.conflicts
       this.mergeEntityStats(result.byEntity!, pullResult.byEntity)
@@ -573,7 +618,8 @@ export class SyncService {
 
       console.log('Starting push to cloud...')
       // Then push local changes
-      const pushResult = await this.pushToCloud()
+      // Then push local changes
+      const pushResult = await this.pushToCloud(type)
       result.pushed = pushResult.count
       result.conflicts += pushResult.conflicts
       this.mergeEntityStats(result.byEntity!, pushResult.byEntity)
@@ -595,7 +641,7 @@ export class SyncService {
   /**
    * Pull data from cloud to local (only new/updated records)
    */
-  async pullFromCloud(): Promise<{
+  async pullFromCloud(type: SyncType = 'all'): Promise<{
     count: number
     conflicts: number
     byEntity: Record<string, EntitySyncStats>
@@ -608,7 +654,9 @@ export class SyncService {
     let totalConflicts = 0
     const byEntity: Record<string, EntitySyncStats> = {}
 
-    for (const entity of SYNC_ENTITIES) {
+    const entitiesToSync = getEntitiesForSync(type)
+
+    for (const entity of entitiesToSync) {
       try {
         console.log(`  Pulling ${entity}...`)
         const { count, conflicts } = await this.pullEntityFromCloud(entity)
@@ -637,6 +685,7 @@ export class SyncService {
 
   /**
    * Pull single entity from cloud
+   * optimized with chunking to prevent UI blocking
    */
   private async pullEntityFromCloud(
     entityName: string
@@ -660,6 +709,8 @@ export class SyncService {
       ? `WHERE updated_at > $1 OR synced_at > $1 OR synced_at IS NULL`
       : `WHERE updated_at > $1`
     
+    // TODO: optimization - verify if streaming is better for very large datasets
+    // For now, we fetch all but process in chunks
     const cloudRecords = await this.cloudPool.query(
       `SELECT ${columns} FROM ${tableName} ${whereClause}`,
       [lastPullDate]
@@ -667,37 +718,51 @@ export class SyncService {
 
     let count = 0
     let conflicts = 0
+    
+    // Process in chunks to avoid blocking the main thread
+    const CHUNK_SIZE = 50
+    const rows = cloudRecords.rows
+    
+    for (let i = 0; i < rows.length; i += CHUNK_SIZE) {
+      const chunk = rows.slice(i, i + CHUNK_SIZE)
+      
+      // Process chunk
+      for (const cloudRecord of chunk) {
+        // Check if record exists locally
+        const localStmt = this.localDb.prepare(`SELECT * FROM ${entityName} WHERE id = ?`)
+        localStmt.bind([cloudRecord.id])
 
-    for (const cloudRecord of cloudRecords.rows) {
-      // Check if record exists locally
-      const localStmt = this.localDb.prepare(`SELECT * FROM ${entityName} WHERE id = ?`)
-      localStmt.bind([cloudRecord.id])
+        const hasLocal = localStmt.step()
+        const localRecord = hasLocal ? localStmt.getAsObject() : null
+        localStmt.free()
 
-      const hasLocal = localStmt.step()
-      const localRecord = hasLocal ? localStmt.getAsObject() : null
-      localStmt.free()
+        // Convert cloud record timestamps to local format
+        const normalizedCloudRecord = this.normalizeCloudRecord(cloudRecord)
 
-      // Convert cloud record timestamps to local format
-      const normalizedCloudRecord = this.normalizeCloudRecord(cloudRecord)
-
-      if (!localRecord) {
-        // New record - insert
-        this.insertRecordToLocal(entityName, normalizedCloudRecord, config.columns)
-        count++
-      } else {
-        // Existing record - check for conflict
-        const localUpdatedAt = (localRecord.updated_at as number) || 0
-        const cloudUpdatedAt = this.toTimestamp(cloudRecord.updated_at)
-
-        if (cloudUpdatedAt > localUpdatedAt) {
-          // Cloud is newer - update local
-          this.updateRecordInLocal(entityName, normalizedCloudRecord, config.columns)
+        if (!localRecord) {
+          // New record - insert
+          this.insertRecordToLocal(entityName, normalizedCloudRecord, config.columns)
           count++
-        } else if (localUpdatedAt > cloudUpdatedAt) {
-          // Local is newer - conflict (will be resolved on push)
-          conflicts++
+        } else {
+          // Existing record - check for conflict
+          const localUpdatedAt = (localRecord.updated_at as number) || 0
+          const cloudUpdatedAt = this.toTimestamp(cloudRecord.updated_at)
+
+          if (cloudUpdatedAt > localUpdatedAt) {
+            // Cloud is newer - update local
+            this.updateRecordInLocal(entityName, normalizedCloudRecord, config.columns)
+            count++
+          } else if (localUpdatedAt > cloudUpdatedAt) {
+            // Local is newer - conflict (will be resolved on push)
+            conflicts++
+          }
+          // If equal, no action needed
         }
-        // If equal, no action needed
+      }
+      
+      // Yield to event loop after each chunk
+      if (i + CHUNK_SIZE < rows.length) {
+        await new Promise(resolve => setTimeout(resolve, 0))
       }
     }
 
@@ -735,7 +800,7 @@ export class SyncService {
   /**
    * Push local data to cloud (only new/updated records)
    */
-  async pushToCloud(): Promise<{
+  async pushToCloud(type: SyncType = 'all'): Promise<{
     count: number
     conflicts: number
     byEntity: Record<string, EntitySyncStats>
@@ -748,7 +813,9 @@ export class SyncService {
     let totalConflicts = 0
     const byEntity: Record<string, EntitySyncStats> = {}
 
-    for (const entity of SYNC_ENTITIES) {
+    const entitiesToSync = getEntitiesForSync(type)
+
+    for (const entity of entitiesToSync) {
       try {
         console.log(`  Pushing ${entity}...`)
         const { count, conflicts } = await this.pushEntityToCloud(entity)

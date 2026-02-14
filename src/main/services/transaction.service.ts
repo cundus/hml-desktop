@@ -1274,7 +1274,7 @@ export class TransactionService {
   /**
    * Get dashboard statistics
    */
-  async getDashboardStats(): Promise<{
+  async getDashboardStats(storeId?: string): Promise<{
     todayRevenue: number
     todayTransactions: number
     weekRevenue: number
@@ -1297,6 +1297,14 @@ export class TransactionService {
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
+        
+        const queryParams = [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()]
+        let storeFilter = ''
+        if (storeId) {
+          storeFilter = `AND store_id = $${queryParams.length + 1}`
+          queryParams.push(storeId)
+        }
+
         const result = await pool.query(`
           SELECT 
             COALESCE(SUM(CASE WHEN created_at >= $1 THEN total ELSE 0 END), 0) as today_revenue,
@@ -1306,26 +1314,60 @@ export class TransactionService {
             COALESCE(SUM(CASE WHEN created_at >= $3 THEN total ELSE 0 END), 0) as month_revenue,
             COUNT(CASE WHEN created_at >= $3 THEN 1 END) as month_transactions
           FROM transactions 
-          WHERE deleted_at IS NULL
-        `, [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()])
+          WHERE deleted_at IS NULL ${storeFilter}
+        `, queryParams)
         
         const row = result.rows[0]
         
         // Cloud Returns
+        const returnParams = [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()]
+        let returnStoreFilter = ''
+        if (storeId) {
+            returnStoreFilter = `AND store_id = $${returnParams.length + 1}`
+            returnParams.push(storeId)
+        }
+
         const returnResult = await pool.query(`
           SELECT 
             COALESCE(SUM(CASE WHEN created_at >= $1 THEN total_refund ELSE 0 END), 0) as today_refund,
             COALESCE(SUM(CASE WHEN created_at >= $2 THEN total_refund ELSE 0 END), 0) as week_refund,
             COALESCE(SUM(CASE WHEN created_at >= $3 THEN total_refund ELSE 0 END), 0) as month_refund
           FROM transaction_return 
-          WHERE deleted_at IS NULL
-        `, [todayStart.toISOString(), weekStart.toISOString(), monthStart.toISOString()])
+          WHERE deleted_at IS NULL ${returnStoreFilter}
+        `, returnParams)
 
         const returnRow = returnResult.rows[0]
 
         // Cloud Counts
+        // If filtering by store, we might want to count products available in that store? 
+        // For now, keeping total products as it's often a global catalog.
+        // But low stock should definitely be per store if selected.
         const productCount = await pool.query('SELECT COUNT(*) as count FROM product WHERE deleted_at IS NULL AND is_active = true')
         const customerCount = await pool.query('SELECT COUNT(*) as count FROM customer WHERE deleted_at IS NULL')
+        
+        // Calculate Low Stock Count (Threshold 5)
+        let lowStockQuery = `
+          SELECT COUNT(*) as count FROM (
+            SELECT p.id 
+            FROM product p
+            LEFT JOIN product_location pl ON p.id = pl.product_id
+            WHERE p.deleted_at IS NULL AND p.is_active = true
+        `
+        const lowStockParams: any[] = []
+        
+        if (storeId) {
+            lowStockQuery += ` AND pl.store_id = $1`
+            lowStockParams.push(storeId)
+        }
+        
+        lowStockQuery += `
+            GROUP BY p.id
+            HAVING COALESCE(SUM(pl.quantity), 0) <= 5
+          ) as sub
+        `
+        
+        const lowStockRes = await pool.query(lowStockQuery, lowStockParams)
+        const lowStockCount = parseInt(lowStockRes.rows[0]?.count || '0')
 
         return {
           todayRevenue: parseFloat(row.today_revenue) - parseFloat(returnRow.today_refund),
@@ -1336,7 +1378,7 @@ export class TransactionService {
           monthTransactions: parseInt(row.month_transactions),
           totalProducts: parseInt(productCount.rows[0].count),
           totalCustomers: parseInt(customerCount.rows[0].count),
-          lowStockCount: 0 
+          lowStockCount: lowStockCount
         }
 
       } catch (error) {
@@ -1346,6 +1388,267 @@ export class TransactionService {
     }
 
     throw new Error('Offline mode not supported for dashboard stats')
+  }
+
+  /**
+   * Get Top Products by Revenue
+   */
+  async getTopProducts(limit: number = 5, storeId?: string): Promise<{
+    rank: number
+    name: string
+    sku: string
+    category: string
+    units: number
+    revenue: number
+  }[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        // Get top products from last 30 days
+        const startDate = new Date()
+        startDate.setDate(startDate.getDate() - 30)
+        
+        let query = `
+          SELECT 
+            p.name, 
+            p.sku, 
+            c.name as category, 
+            SUM(ti.quantity) as units, 
+            SUM(ti.quantity * ti.price) as revenue
+          FROM transaction_items ti
+          JOIN transactions t ON ti.transaction_id = t.id
+          JOIN product p ON ti.product_id = p.id
+          LEFT JOIN category c ON p.category_id = c.id
+          WHERE t.deleted_at IS NULL 
+            AND t.created_at >= $1
+        `
+        const params: any[] = [startDate.toISOString(), limit]
+        
+        if (storeId) {
+            query += ` AND t.store_id = $${params.length + 1}`
+            params.push(storeId)
+        }
+        
+        // Correcting param index for LIMIT since we pushed storeId before LIMIT in query string construction logic
+        // Actually, easier to append LIMIT at the end.
+        
+        // Let's rewrite params carefuly:
+        const queryParams: any[] = [startDate.toISOString()]
+        let filteredQuery = `
+          SELECT 
+            p.name, 
+            p.sku, 
+            c.name as category, 
+            SUM(ti.quantity) as units, 
+            SUM(ti.quantity * ti.price) as revenue
+          FROM transaction_items ti
+          JOIN transactions t ON ti.transaction_id = t.id
+          JOIN product p ON ti.product_id = p.id
+          LEFT JOIN category c ON p.category_id = c.id
+          WHERE t.deleted_at IS NULL 
+            AND t.created_at >= $1
+        `
+        
+        if (storeId) {
+            filteredQuery += ` AND t.store_id = $2`
+            queryParams.push(storeId)
+        }
+        
+        filteredQuery += `
+          GROUP BY p.id, p.name, p.sku, c.name
+          ORDER BY revenue DESC
+          LIMIT $${queryParams.length + 1}
+        `
+        queryParams.push(limit)
+
+        const result = await pool.query(filteredQuery, queryParams)
+        
+        return result.rows.map((row, index) => ({
+          rank: index + 1,
+          name: row.name,
+          sku: row.sku,
+          category: row.category || 'Uncategorized',
+          units: parseFloat(row.units),
+          revenue: parseFloat(row.revenue)
+        }))
+      } catch (error) {
+        console.error('[TransactionService] getTopProducts cloud error:', error)
+        return []
+      }
+    }
+    return []
+  }
+
+  /**
+   * Get Dashboard Alerts
+   */
+  async getDashboardAlerts(storeId?: string): Promise<{
+    lowStock: { name: string; onHand: number; reorderPoint: number; severity: string }[]
+    pendingReturns: { code: string; items: number; days: number }[]
+    unpaidInvoices: { code: string; amount: string; status: string }[]
+  }> {
+    const alerts = {
+      lowStock: [] as any[],
+      pendingReturns: [] as any[],
+      unpaidInvoices: [] as any[]
+    }
+
+    if (this.isOnline()) {
+      const pool = getCloudDb().getPool()
+
+      try {
+        // 1. Low Stock (Threshold hardcoded to 5 for now since min_stock column missing)
+        let lowStockQuery = `
+          SELECT 
+            p.name, 
+            COALESCE(SUM(pl.quantity), 0) as on_hand
+          FROM product p
+          LEFT JOIN product_location pl ON p.id = pl.product_id
+          WHERE p.deleted_at IS NULL AND p.is_active = true
+        `
+        const lowStockParams: any[] = []
+        
+        if (storeId) {
+            lowStockQuery += ` AND pl.store_id = $1`
+            lowStockParams.push(storeId)
+        }
+        
+        lowStockQuery += `
+          GROUP BY p.id, p.name
+          HAVING COALESCE(SUM(pl.quantity), 0) <= 5
+          LIMIT 5
+        `
+        
+        const lowStockRes = await pool.query(lowStockQuery, lowStockParams)
+        alerts.lowStock = lowStockRes.rows.map(row => ({
+          name: row.name,
+          onHand: parseFloat(row.on_hand),
+          reorderPoint: 5,
+          severity: parseFloat(row.on_hand) <= 0 ? 'Critical' : 'Warning'
+        }))
+
+        // 2. Recent Returns (Last 7 days)
+        let returnQuery = `
+          SELECT 
+            tr.return_number as code,
+            COUNT(tri.id) as items,
+            EXTRACT(DAY FROM NOW() - tr.created_at) as days
+          FROM transaction_return tr
+          LEFT JOIN transaction_return_item tri ON tr.id = tri.return_id
+          WHERE tr.created_at >= NOW() - INTERVAL '7 days'
+        `
+        const returnParams: any[] = []
+        
+        if (storeId) {
+            returnQuery += ` AND tr.store_id = $1`
+            returnParams.push(storeId)
+        }
+        
+        returnQuery += `
+          GROUP BY tr.id, tr.return_number, tr.created_at
+          ORDER BY tr.created_at DESC
+          LIMIT 5
+        `
+        
+        const returnRes = await pool.query(returnQuery, returnParams)
+        alerts.pendingReturns = returnRes.rows.map(row => ({
+          code: row.code,
+          items: parseInt(row.items),
+          days: parseInt(row.days)
+        }))
+        
+      } catch (error) {
+         console.error('[TransactionService] getDashboardAlerts cloud error:', error)
+      }
+    }
+    
+    return alerts
+  }
+
+  /**
+   * Get transactions by date range
+   */
+  async findByDateRange(
+    startDate: Date,
+    endDate: Date,
+    storeId?: string
+  ): Promise<Transaction[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+        let query = `
+          SELECT * FROM transactions 
+          WHERE deleted_at IS NULL 
+            AND created_at >= $1 
+            AND created_at <= $2
+        `
+        const params: any[] = [startDate.toISOString(), endDate.toISOString()]
+
+        if (storeId) {
+          query += ` AND store_id = $${params.length + 1}`
+          params.push(storeId)
+        }
+
+        query += ` ORDER BY created_at DESC`
+
+        const result = await pool.query(query, params)
+        const transactions = result.rows.map((row) => this.mapCloudRowToTransaction(row))
+
+        // Populate items for each transaction
+        // Note: In a real production app, we should use a JOIN or dataloader to avoid N+1
+        // But for now, we'll fetch items in parallel chunks
+        const chunkSize = 20
+        for (let i = 0; i < transactions.length; i += chunkSize) {
+          const chunk = transactions.slice(i, i + chunkSize)
+          await Promise.all(
+            chunk.map(async (txn) => {
+              const itemsRes = await pool.query(
+                `SELECT * FROM transaction_items WHERE transaction_id = $1 AND deleted_at IS NULL`,
+                [txn.id]
+              )
+              txn.items = itemsRes.rows.map((row) => this.mapCloudRowToTransactionItem(row))
+            })
+          )
+        }
+
+        return transactions
+      } catch (error) {
+        console.error('[TransactionService] findByDateRange cloud error:', error)
+        throw error
+      }
+    }
+    
+    // Offline Fallback
+    const startTs = startDate.getTime()
+    const endTs = endDate.getTime()
+    
+    let query = `
+      SELECT * FROM transactions 
+      WHERE deleted_at IS NULL 
+        AND created_at >= ? 
+        AND created_at <= ?
+    `
+    const params: any[] = [startTs, endTs]
+
+    if (storeId) {
+      query += ` AND store_id = ?`
+      params.push(storeId)
+    }
+
+    query += ` ORDER BY created_at DESC`
+
+    const stmt = this.db.prepare(query)
+    stmt.bind(params)
+    
+    const transactions: Transaction[] = []
+    while(stmt.step()) {
+      const txn = this.mapRowToTransaction(stmt.getAsObject())
+      txn.items = this.findItemsByTransactionIdLocal(txn.id)
+      transactions.push(txn)
+    }
+    stmt.free()
+    
+    return transactions
   }
 
   /**
@@ -1370,7 +1673,23 @@ export class TransactionService {
         const start = startDate.toISOString()
         const end = endDate.toISOString()
 
-        let revenueQuery = `SELECT COALESCE(SUM(total), 0) as revenue, COUNT(*) as count FROM transactions WHERE deleted_at IS NULL AND created_at >= $1 AND created_at <= $2`
+        // 1. Calculate Revenue (Net Revenue)
+        // Since transactions.subtotal/total is ALREADY reduced by returns (in ReturnService),
+        // we can just sum the subtotal to get Gross Revenue.
+        // And we do NOT need to subtract returns again for the P&L top-line if we consider "Revenue" as "Net Sales".
+        // However, P&L typically shows: Gross Sales - Discounts - Returns = Net Sales
+        
+        // Let's get the raw sales sums
+        let revenueQuery = `
+          SELECT 
+            COALESCE(SUM(subtotal), 0) as gross_sales, 
+            COALESCE(SUM(discount), 0) as total_discount,
+            COUNT(*) as count 
+          FROM transactions 
+          WHERE deleted_at IS NULL 
+            AND created_at >= $1 
+            AND created_at <= $2
+        `
         const revenueParams: any[] = [start, end]
         if (storeId) {
           revenueQuery += ` AND store_id = $3`
@@ -1378,20 +1697,11 @@ export class TransactionService {
         }
         
         const revResult = await pool.query(revenueQuery, revenueParams)
-        const revenue = parseFloat(revResult.rows[0].revenue)
+        const grossSales = parseFloat(revResult.rows[0].gross_sales)
+        const totalDiscount = parseFloat(revResult.rows[0].total_discount)
         const count = parseInt(revResult.rows[0].count)
-
-        // Deduct Returns from Revenue
-        let returnQuery = `SELECT COALESCE(SUM(total_refund), 0) as refund FROM transaction_return WHERE deleted_at IS NULL AND created_at >= $1 AND created_at <= $2`
-        const returnParams: any[] = [start, end]
-        if (storeId) {
-          returnQuery += ` AND store_id = $3`
-          returnParams.push(storeId)
-        }
-        const retResult = await pool.query(returnQuery, returnParams)
-        const totalRefund = parseFloat(retResult.rows[0].refund)
         
-        const netRevenue = revenue - totalRefund
+        const netRevenue = grossSales - totalDiscount
 
         // 2. Calculate COGS (HPP) from Stock Transactions (SALE type)
         // Cloud Query
@@ -1421,8 +1731,6 @@ export class TransactionService {
           cogsParams.push(storeId)
         }
 
-        console.log(cogsParams)
-
         const cogsResult = await pool.query(cogsQuery, cogsParams)
         const cogs = parseFloat(cogsResult.rows[0].total_cogs || '0')
 
@@ -1430,9 +1738,13 @@ export class TransactionService {
         const brokenGoods = await this.getBrokenGoodsSummary(startDate, endDate, storeId)
         
         const grossProfit = netRevenue - cogs
-        const totalExpenses = brokenGoods // Add other expenses here if needed
-        const netProfit = grossProfit - totalExpenses
-        const margin = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0
+        
+        // Net profit calculation should also include operational expenses from 'expenses' table
+        // But looking at existing code, that was done on frontend.
+        // Ideally we fetch it here, but let's stick to the interface contract for now.
+        // The frontend adds operational expenses.
+        
+        const margin = netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0
 
         return {
           revenue: netRevenue,

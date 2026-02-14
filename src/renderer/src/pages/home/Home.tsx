@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Box, Grid, Typography, CircularProgress } from '@mui/material'
+import { Box, Grid, Typography, CircularProgress, MenuItem, TextField } from '@mui/material'
 import useAuth from '../../hooks/useAuth'
 import KpiSummary, { type KpiItem } from './components/KpiSummary'
 import SalesPerformanceCard from './components/SalesPerformanceCard'
@@ -32,63 +32,6 @@ const formatCurrency = (value: number): string => {
   }).format(value)
 }
 
-const lowStockAlerts: LowStockAlert[] = [
-  { name: 'Premium Dog Food 10kg', onHand: 3, reorderPoint: 10, severity: 'Critical' },
-  { name: 'Cat Litter 10kg', onHand: 5, reorderPoint: 15, severity: 'Warning' }
-]
-
-const pendingReturns: PendingReturn[] = [
-  { code: 'RT-1023', items: 2, days: 1 },
-  { code: 'RT-1024', items: 5, days: 3 }
-]
-
-const unpaidInvoices: UnpaidInvoice[] = [
-  { code: 'INV-2045', amount: 'Rp 3.500.000', status: '7 days overdue' },
-  { code: 'INV-2048', amount: 'Rp 1.200.000', status: 'Due today' }
-]
-
-const topProducts: TopProduct[] = [
-  {
-    rank: 1,
-    name: 'Premium Dog Food 10kg',
-    sku: 'DOG-FOOD-001',
-    category: 'Food',
-    units: 142,
-    revenue: 'Rp 18.900.000'
-  },
-  {
-    rank: 2,
-    name: 'Cat Kibble Salmon 5kg',
-    sku: 'CAT-FOOD-002',
-    category: 'Food',
-    units: 121,
-    revenue: 'Rp 15.200.000'
-  },
-  {
-    rank: 3,
-    name: 'Dog Shampoo Medicated',
-    sku: 'DOG-CARE-003',
-    category: 'Care',
-    units: 88,
-    revenue: 'Rp 9.800.000'
-  },
-  {
-    rank: 4,
-    name: 'Cat Litter 10kg',
-    sku: 'CAT-LITTER-004',
-    category: 'Care',
-    units: 73,
-    revenue: 'Rp 8.500.000'
-  },
-  {
-    rank: 5,
-    name: 'Pet Leash Nylon',
-    sku: 'ACC-LEASH-005',
-    category: 'Accessories',
-    units: 65,
-    revenue: 'Rp 6.200.000'
-  }
-]
 
 const quickNavItems: QuickNavItem[] = [
   { key: 'pos', label: 'Kasir', description: 'Buka terminal kasir', path: '/sales' },
@@ -127,34 +70,79 @@ const quickNavItems: QuickNavItem[] = [
 function Home(): React.JSX.Element {
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [loading, setLoading] = useState(true)
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([])
+  const [alerts, setAlerts] = useState<{
+    lowStock: LowStockAlert[]
+    pendingReturns: PendingReturn[]
+    unpaidInvoices: UnpaidInvoice[]
+  }>({
+    lowStock: [],
+    pendingReturns: [],
+    unpaidInvoices: []
+  })
+  
+  // Store Filter State
+  const [stores, setStores] = useState<{ id: string; name: string }[]>([])
+  const [selectedStore, setSelectedStore] = useState('')
+
   const { hasPermission } = useAuth()
   const canViewDashboard = hasPermission('dashboard.view')
 
-  const loadDashboardStats = useCallback(async () => {
+  // Load stores on mount
+  useEffect(() => {
+    if (canViewDashboard) {
+      void window.api.db.stores.getAll().then((res) => {
+        if (res.success && res.data) {
+          setStores(res.data)
+        }
+      })
+    }
+  }, [canViewDashboard])
+
+  const loadDashboardData = useCallback(async () => {
     if (!canViewDashboard) return
     try {
       setLoading(true)
-      const response = await window.api.db.transactions.getDashboardStats()
-      if (response.success && response.data) {
-        console.log(response.data)
-        setStats(response.data)
+      const storeIdArg = selectedStore || undefined
+      
+      const [statsRes, topProductsRes, alertsRes] = await Promise.all([
+        window.api.db.transactions.getDashboardStats(storeIdArg),
+        window.api.db.transactions.getTopProducts(5, storeIdArg),
+        window.api.db.transactions.getDashboardAlerts(storeIdArg)
+      ])
+
+      if (statsRes.success && statsRes.data) {
+        setStats(statsRes.data)
       }
+      
+      if (topProductsRes.success && topProductsRes.data) {
+        // Map backend top products to frontend component format
+        setTopProducts(topProductsRes.data.map(p => ({
+            ...p,
+            revenue: formatCurrency(p.revenue) // convert number to formatted string for component
+        })))
+      }
+
+      if (alertsRes.success && alertsRes.data) {
+        setAlerts(alertsRes.data)
+      }
+
     } catch (error) {
       console.error('Failed to load dashboard stats:', error)
     } finally {
       setLoading(false)
     }
-  }, [canViewDashboard])
+  }, [canViewDashboard, selectedStore])
 
   useEffect(() => {
     if (!canViewDashboard) return
-    void loadDashboardStats()
+    void loadDashboardData()
     // Refresh every 60 seconds
     const interval = setInterval(() => {
-      void loadDashboardStats()
+      void loadDashboardData()
     }, 60000)
     return () => clearInterval(interval)
-  }, [canViewDashboard, loadDashboardStats])
+  }, [canViewDashboard, loadDashboardData])
 
   const handleNavigate = (path: string): void => {
     window.location.hash = `#${path}`
@@ -234,7 +222,7 @@ function Home(): React.JSX.Element {
     )
   }
 
-  if (loading) {
+  if (loading && !stats) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
         <CircularProgress />
@@ -245,13 +233,32 @@ function Home(): React.JSX.Element {
   return (
     <Box sx={{ flexGrow: 1, height: '100%', display: 'flex' }}>
       <Box sx={{ width: '100%', p: 2 }}>
-        <Box sx={{ mb: 3 }}>
-          <Typography variant="h5" fontWeight={600} gutterBottom>
-            Ringkasan Toko
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Lihat performa hari ini dan hal yang perlu perhatian Anda.
-          </Typography>
+        <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Box>
+            <Typography variant="h5" fontWeight={600} gutterBottom>
+                Ringkasan Toko
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+                Lihat performa hari ini dan hal yang perlu perhatian Anda.
+            </Typography>
+          </Box>
+          <Box>
+            <TextField
+              select
+              label="Toko"
+              value={selectedStore}
+              onChange={(e) => setSelectedStore(e.target.value)}
+              sx={{ minWidth: 200 }}
+              size="small"
+            >
+              <MenuItem value="">Semua Toko</MenuItem>
+              {stores.map((store) => (
+                <MenuItem key={store.id} value={store.id}>
+                  {store.name}
+                </MenuItem>
+              ))}
+            </TextField>
+          </Box>
         </Box>
 
         {/* Quick Navigation - Top Bar */}
@@ -275,9 +282,9 @@ function Home(): React.JSX.Element {
             sx={{ display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0 }}
           >
             <AlertsPanel
-              lowStock={lowStockAlerts}
-              pendingReturns={pendingReturns}
-              unpaidInvoices={unpaidInvoices}
+              lowStock={alerts.lowStock}
+              pendingReturns={alerts.pendingReturns}
+              unpaidInvoices={alerts.unpaidInvoices}
             />
           </Grid>
         </Grid>

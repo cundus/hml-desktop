@@ -180,7 +180,7 @@ export async function bootstrap(): Promise<void> {
   const damagedGoodsService = new DamagedGoodsService()
 
   // Initialize shift service
-  const shiftService = new ShiftService(db, expenseService, auditLogService)
+  const shiftService = new ShiftService(db, expenseService, queueService, auditLogService)
 
   // Initialize app config service
   const appConfigService = new AppConfigService(db)

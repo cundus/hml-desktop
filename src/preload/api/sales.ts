@@ -123,8 +123,8 @@ export const transactionApi = {
   restore: (id: string) =>
     ipcRenderer.invoke('db:transactions:restore', id) as Promise<ApiResponse<Transaction>>,
 
-  getDashboardStats: () =>
-    ipcRenderer.invoke('db:transactions:getDashboardStats') as Promise<ApiResponse<DashboardStats>>,
+  getDashboardStats: (storeId?: string) =>
+    ipcRenderer.invoke('db:transactions:getDashboardStats', storeId) as Promise<ApiResponse<DashboardStats>>,
 
   printReceipt: (transaction: Transaction) =>
     ipcRenderer.invoke('receipt:print', transaction) as Promise<
@@ -151,11 +151,36 @@ export const transactionApi = {
       brokenGoods: number
     }>>,
 
+  getByDateRange: (startDate: string, endDate: string, storeId?: string) =>
+    ipcRenderer.invoke(
+      'db:transactions:getByDateRange',
+      startDate,
+      endDate,
+      storeId
+    ) as Promise<ApiResponse<Transaction[]>>,
+
   getBrokenGoodsSummary: (startDate: string, endDate: string, storeId?: string) => 
     ipcRenderer.invoke(
       'db:transactions:getBrokenGoodsSummary',
       startDate,
       endDate,
       storeId
-    ) as Promise<ApiResponse<number>>
+    ) as Promise<ApiResponse<number>>,
+
+  getTopProducts: (limit?: number, storeId?: string) =>
+    ipcRenderer.invoke('db:transactions:getTopProducts', limit, storeId) as Promise<ApiResponse<{
+      rank: number
+      name: string
+      sku: string
+      category: string
+      units: number
+      revenue: number
+    }[]>>,
+
+  getDashboardAlerts: (storeId?: string) =>
+    ipcRenderer.invoke('db:transactions:getDashboardAlerts', storeId) as Promise<ApiResponse<{
+      lowStock: { name: string; onHand: number; reorderPoint: number; severity: string }[]
+      pendingReturns: { code: string; items: number; days: number }[]
+      unpaidInvoices: { code: string; amount: string; status: string }[]
+    }>>
 }

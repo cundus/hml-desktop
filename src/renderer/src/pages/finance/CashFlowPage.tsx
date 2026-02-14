@@ -136,7 +136,7 @@ export default function CashFlowPage(): React.JSX.Element {
     }
   }
 
-  // Load filtered data (transactions, expenses) - reactive to date/store
+  // Load filtered data (transactions and expenses) - reactive to date/store
   const loadFilteredData = async (): Promise<void> => {
     try {
       setLoading(true)
@@ -144,7 +144,11 @@ export default function CashFlowPage(): React.JSX.Element {
       const filterStoreId = selectedStore || branchStoreId || undefined
 
       const [transactionsRes, expensesRes, brokenGoodsRes, returnSummaryRes] = await Promise.all([
-        window.api.db.transactions.getAll(),
+        window.api.db.transactions.getByDateRange( 
+          dateRange.start.toISOString(), 
+          dateRange.end.toISOString(), 
+          filterStoreId
+        ),
         window.api.db.expenses.getAll(),
         window.api.db.transactions.getBrokenGoodsSummary(
           dateRange.start.toISOString(),
@@ -159,19 +163,19 @@ export default function CashFlowPage(): React.JSX.Element {
       ])
 
       if (transactionsRes.success) {
-        const allTxns = transactionsRes.data ?? []
-        setTransactions(
-          filterStoreId ? allTxns.filter((t) => t.storeId === filterStoreId) : allTxns
-        )
+        setTransactions(transactionsRes.data ?? [])
       }
 
       if (expensesRes.success) {
         const allExpenses = expensesRes.data ?? []
+        // Filter expenses by store
         setExpenses(
-          filterStoreId ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId) : allExpenses
+          filterStoreId
+            ? allExpenses.filter((e) => e.storeId === filterStoreId || !e.storeId)
+            : allExpenses
         )
       }
-      
+
       if (brokenGoodsRes.success) {
         setBrokenGoods(brokenGoodsRes.data ?? 0)
       }
@@ -183,31 +187,34 @@ export default function CashFlowPage(): React.JSX.Element {
       }
     } catch (error) {
       console.error('Failed to load filtered data:', error)
-      setBrokenGoods(0)
     } finally {
       setLoading(false)
     }
   }
 
-  // Filter data by date range and selected store
+  // Filter data by date range
   const filteredData = useMemo(() => {
     const startTime = dateRange.start.getTime()
     const endTime = dateRange.end.getTime()
 
-    let filteredTxns = transactions.filter((t) => {
-      const txnTime = new Date(t.createdAt).getTime()
-      return txnTime >= startTime && txnTime <= endTime
-    })
+    // Transactions already filtered by backend
+    let filteredTxns = transactions
 
+    // Expenses still need client-side filtering because we fetch all
     let filteredExpenses = expenses.filter((e) => {
+      // 1. Filter by date
       const expTime = new Date(e.createdAt).getTime()
-      return expTime >= startTime && expTime <= endTime
+      if (expTime < startTime || expTime > endTime) return false
+
+      // 2. Filter by store (if selectedStore is set)
+      if (selectedStore && e.storeId && e.storeId !== selectedStore) return false
+
+      return true
     })
 
-    // Apply store filter if selected
+    // If store selected, filter transactions again (redundant but safe)
     if (selectedStore) {
       filteredTxns = filteredTxns.filter((t) => t.storeId === selectedStore)
-      filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore)
     }
 
     return { transactions: filteredTxns, expenses: filteredExpenses }

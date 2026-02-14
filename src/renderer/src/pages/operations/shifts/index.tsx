@@ -11,6 +11,7 @@ import TableCell from '@mui/material/TableCell'
 import TableContainer from '@mui/material/TableContainer'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
 import IconButton from '@mui/material/IconButton'
 import Button from '@mui/material/Button'
@@ -48,8 +49,21 @@ export default function ShiftHistoryPage(): React.JSX.Element {
   const [filterOpen, setFilterOpen] = useState(false)
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [stores, setStores] = useState<{ id: string; name: string }[]>([])
+  const [selectedStore, setSelectedStore] = useState('')
+  
   const debouncedFromDate = useDebounce(fromDate, 1000)
   const debouncedToDate = useDebounce(toDate, 1000)
+  
+  // Load stores
+  useEffect(() => {
+    void window.api.db.stores.getAll().then((res) => {
+      if (res.success && res.data) {
+        setStores(res.data)
+      }
+    })
+  }, [])
+
   // Sync chronology after debounce
   useEffect(() => {
     if (debouncedFromDate && debouncedToDate && debouncedFromDate > debouncedToDate) {
@@ -71,6 +85,7 @@ export default function ShiftHistoryPage(): React.JSX.Element {
       const filters: {
         fromDate?: number
         toDate?: number
+        storeId?: string
       } = {}
 
       if (debouncedFromDate) {
@@ -86,6 +101,9 @@ export default function ShiftHistoryPage(): React.JSX.Element {
           endDate.setHours(23, 59, 59, 999)
           filters.toDate = endDate.getTime()
         }
+      }
+      if (selectedStore) {
+        filters.storeId = selectedStore
       }
 
       const response = await window.api.db.shifts.getAll(filters)
@@ -104,7 +122,7 @@ export default function ShiftHistoryPage(): React.JSX.Element {
     } finally {
       setLoading(false)
     }
-  }, [fromDate, toDate])
+  }, [debouncedFromDate, debouncedToDate, selectedStore])
 
   useEffect(() => {
     void loadShifts()
@@ -165,6 +183,21 @@ export default function ShiftHistoryPage(): React.JSX.Element {
         <Paper sx={{ p: 2, mb: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center">
             <TextField
+              select
+              label="Toko"
+              value={selectedStore}
+              onChange={(e) => setSelectedStore(e.target.value)}
+              sx={{ minWidth: 200 }}
+              size="small"
+            >
+              <MenuItem value="">Semua Toko</MenuItem>
+              {stores.map((store) => (
+                <MenuItem key={store.id} value={store.id}>
+                  {store.name}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField
               type="date"
               label="Dari Tanggal"
               value={fromDate}
@@ -185,6 +218,7 @@ export default function ShiftHistoryPage(): React.JSX.Element {
               onClick={() => {
                 setFromDate('')
                 setToDate('')
+                setSelectedStore('')
               }}
             >
               Reset

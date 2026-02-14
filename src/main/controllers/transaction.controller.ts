@@ -128,6 +128,24 @@ export class TransactionController {
       }
     )
 
+    // Get transactions by date range
+    ipcMain.handle(
+      'db:transactions:getByDateRange',
+      async (_, startDate: string, endDate: string, storeId?: string) => {
+        try {
+          const start = new Date(startDate)
+          const end = new Date(endDate)
+          const transactions = await this.transactionService.findByDateRange(start, end, storeId)
+          return { success: true, data: transactions }
+        } catch (error) {
+          return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        }
+      }
+    )
+
     // Get sales summary
     ipcMain.handle(
       'db:transactions:getSalesSummary',
@@ -173,10 +191,36 @@ export class TransactionController {
     })
 
     // Get dashboard stats
-    ipcMain.handle('db:transactions:getDashboardStats', async () => {
+    ipcMain.handle('db:transactions:getDashboardStats', async (_, storeId?: string) => {
       try {
-        const stats = await this.transactionService.getDashboardStats()
+        const stats = await this.transactionService.getDashboardStats(storeId)
         return { success: true, data: stats }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
+
+    // Get Top Products
+    ipcMain.handle('db:transactions:getTopProducts', async (_, limit: number, storeId?: string) => {
+      try {
+        const products = await this.transactionService.getTopProducts(limit, storeId)
+        return { success: true, data: products }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
+
+    // Get Dashboard Alerts
+    ipcMain.handle('db:transactions:getDashboardAlerts', async (_, storeId?: string) => {
+      try {
+        const alerts = await this.transactionService.getDashboardAlerts(storeId)
+        return { success: true, data: alerts }
       } catch (error) {
         return {
           success: false,

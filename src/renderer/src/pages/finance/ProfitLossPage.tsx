@@ -298,7 +298,12 @@ export default function ProfitLossPage(): React.JSX.Element {
 
       const [transactionsRes, expensesRes, reportRes, brokenGoodsRes, returnSummaryRes] =
         await Promise.all([
-          window.api.db.transactions.getAll(),
+          // Use date-filtered query instead of getAll
+          window.api.db.transactions.getByDateRange(
+            dateRange.start.toISOString(), 
+            dateRange.end.toISOString(), 
+            filterStoreId
+          ),
           window.api.db.expenses.getAll(),
           window.api.db.transactions.getProfitLossReport(
             dateRange.start.toISOString(),
@@ -320,11 +325,8 @@ export default function ProfitLossPage(): React.JSX.Element {
       console.log('Broken Goods Res', brokenGoodsRes)
 
       if (transactionsRes.success) {
-        const allTxns = transactionsRes.data ?? []
-        // Filter by store if specified
-        setTransactions(
-          filterStoreId ? allTxns.filter((t) => t.storeId === filterStoreId) : allTxns
-        )
+        // transactionsRes.data is already filtered by date and store (if provided) from backend
+        setTransactions(transactionsRes.data ?? [])
       }
 
       if (expensesRes.success) {
@@ -352,6 +354,8 @@ export default function ProfitLossPage(): React.JSX.Element {
         const data = reportRes.data
 
         // Calculate expenses for the filtered store
+        // Note: Operational expenses are still calculated from local expenses table
+        // We might want to move this to backend eventually
         let opsExpenses = 0
         if (expensesRes.success) {
           const allExp = expensesRes.data ?? []
@@ -367,18 +371,17 @@ export default function ProfitLossPage(): React.JSX.Element {
         }
 
         setReport({
-          grossRevenue: data.revenue,
-          discounts: 0,
-          returns: 0,
+          grossRevenue: data.revenue + (returnSummaryRes.data?.totalRefund || 0), // Back out returns to show Gross
+          discounts: 0, // Backend report netRevenue = Gross - Discount - Returns. We need to split it out if possible, but backend aggregation simplifies it.
+                        // Actually, backend report returns: revenue (Net Sales), cogs, grossProfit.
+                        // We can use data.revenue as Net Revenue.
+          returns: returnSummaryRes.data?.totalRefund || 0,
           netRevenue: data.revenue,
           costOfGoodsSold: data.cogs,
           grossProfit: data.grossProfit,
           operatingExpenses: opsExpenses + (data.brokenGoods || 0),
           netProfit: data.grossProfit - opsExpenses - (data.brokenGoods || 0),
-          profitMargin:
-            data.revenue > 0
-              ? ((data.grossProfit - opsExpenses - (data.brokenGoods || 0)) / data.revenue) * 100
-              : 0,
+          profitMargin: data.margin,
           brokenGoods: data.brokenGoods || 0
         })
       } else {
@@ -393,20 +396,18 @@ export default function ProfitLossPage(): React.JSX.Element {
 
   // Filter data by date range and selected store (Effectively used for Breakdown)
   const filteredData = useMemo(() => {
+    // Transactions are already filtered by backend
+    let filteredTxns = transactions
+
+    // Expenses still need client-side filtering because we fetch all
     const startTime = dateRange.start.getTime()
     const endTime = dateRange.end.getTime()
-
-    let filteredTxns = transactions.filter((t) => {
-      const txnTime = new Date(t.createdAt).getTime()
-      return txnTime >= startTime && txnTime <= endTime
-    })
-
     let filteredExpenses = expenses.filter((e) => {
       const expTime = new Date(e.createdAt).getTime()
       return expTime >= startTime && expTime <= endTime
     })
 
-    // Apply store filter if selected
+    // Apply store filter if selected (redundant for txns if backend filtered, but safe)
     if (selectedStore) {
       filteredTxns = filteredTxns.filter((t) => t.storeId === selectedStore)
       filteredExpenses = filteredExpenses.filter((e) => e.storeId === selectedStore || !e.storeId)
@@ -517,6 +518,12 @@ export default function ProfitLossPage(): React.JSX.Element {
 
   // Calculate P&L Summary
   const summary = useMemo((): ProfitLossSummary => {
+    // Priority: Use Backend Report if available
+    if (report) {
+       return report
+    }
+
+    // Fallback to client-side calc (e.g. offline or pending load)
     // Transaction subtotals are already reduced by returns (return.service updates them).
     // So grossRevenue from subtotals already excludes returned amounts.
     let grossRevenue = 0
@@ -529,7 +536,7 @@ export default function ProfitLossPage(): React.JSX.Element {
 
     const returns = returnTotal
 
-    // Calculate COGS from Category Breakdown to ensure consistency
+    // Calculate COGS from Category Breakdown
     const costOfGoodsSold = categoryBreakdown.reduce((sum, cat) => sum + cat.cost, 0)
 
     // netRevenue = grossRevenue - discounts (returns already excluded from grossRevenue)

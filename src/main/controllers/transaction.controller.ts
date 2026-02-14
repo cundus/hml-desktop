@@ -265,5 +265,18 @@ export class TransactionController {
         }
       }
     )
+
+    // Get Profit Detail (Admin/Owner)
+    ipcMain.handle('db:transactions:getProfitDetail', async (_, transactionId: string) => {
+      try {
+        const detail = await this.transactionService.getProfitDetail(transactionId)
+        return { success: true, data: detail }
+      } catch (error) {
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }
+      }
+    })
   }
 }

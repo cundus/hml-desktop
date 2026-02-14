@@ -26,6 +26,15 @@ import {
   clearStoreName
 } from '../lib/authStorage'
 import { AuthContext, type AuthContextValue, type Credentials } from './authContextBase'
+import { useContext } from 'react'
+
+export const useAuth = (): AuthContextValue => {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
   const [token, setToken] = useState<string | null>(null)

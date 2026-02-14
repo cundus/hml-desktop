@@ -1707,7 +1707,9 @@ export class TransactionService {
         // Cloud Query
         let cogsQuery = `
           SELECT SUM(
-            st.quantity * COALESCE(
+            st.quantity * 
+            CASE WHEN st.type = 'RETURN' THEN -1 ELSE 1 END *
+            COALESCE(
               b.cost,
               pp.cost,
               p.cost,
@@ -1717,10 +1719,14 @@ export class TransactionService {
           FROM stock_transaction st
           LEFT JOIN batch b ON st.batch_id = b.id
           LEFT JOIN product p ON st.product_id = p.id
-          LEFT JOIN product_price pp ON st.product_id = pp.product_id 
-            AND pp.store_id = st.store_id 
-            AND pp.deleted_at IS NULL
-          WHERE st.type = 'SALE' 
+          LEFT JOIN LATERAL (
+            SELECT cost FROM product_price 
+            WHERE product_id = st.product_id 
+              AND store_id = st.store_id 
+              AND deleted_at IS NULL
+            ORDER BY updated_at DESC LIMIT 1
+          ) pp ON TRUE
+          WHERE st.type IN ('SALE', 'RETURN') 
             AND st.deleted_at IS NULL 
             AND st.created_at >= $1 
             AND st.created_at <= $2
@@ -1796,6 +1802,114 @@ export class TransactionService {
     }
 
     throw new Error('Offline mode not supported for broken goods summary')
+  }
+
+  /**
+   * Get transaction profit detail (Admin/Owner only)
+   */
+  /**
+   * Get transaction profit detail (Admin/Owner only)
+   */
+  async getProfitDetail(transactionId: string): Promise<any[]> {
+    if (this.isOnline()) {
+      try {
+        const pool = getCloudDb().getPool()
+
+        // 1. Get Transaction Header for Code
+        const txnResult = await pool.query('SELECT code FROM transactions WHERE id = $1', [transactionId])
+        if (txnResult.rows.length === 0) return []
+        const code = txnResult.rows[0].code
+
+        // 2. Get Transaction Items with UOM Conversion info
+        // We link to product_uom just for info, but we rely on display_quantity for UI
+        const itemsQuery = `
+          SELECT 
+            ti.id, ti.transaction_id, ti.product_id, ti.quantity, ti.display_quantity, ti.price, ti.uom_code,
+            p.name as product_name
+          FROM transaction_items ti
+          LEFT JOIN product p ON ti.product_id = p.id
+          WHERE ti.transaction_id = $1
+        `
+        const itemsResult = await pool.query(itemsQuery, [transactionId])
+        const items = itemsResult.rows
+
+        // 3. Get Stock Transactions for COGS (FIFO Batches)
+        // Group by product to get total actual cost incurred for this transaction reference
+        // We use SALE type transactions to establish the "Unit Cost" for this sale
+        const stockResult = await pool.query(`
+          SELECT 
+            st.product_id, 
+            SUM(st.quantity * COALESCE(b.cost, pp.cost, p.cost, 0)) as total_sale_cost,
+            SUM(st.quantity) as total_sale_base_qty
+          FROM stock_transaction st
+          LEFT JOIN batch b ON st.batch_id = b.id
+          LEFT JOIN product p ON st.product_id = p.id
+          LEFT JOIN LATERAL (
+            SELECT cost FROM product_price 
+            WHERE product_id = st.product_id 
+              AND store_id = st.store_id 
+              AND deleted_at IS NULL
+            ORDER BY updated_at DESC LIMIT 1
+          ) pp ON TRUE
+          WHERE st.reference = $1 
+            AND st.type = 'SALE'
+            AND st.deleted_at IS NULL
+          GROUP BY st.product_id
+        `, [code])
+        
+        const productUnitCostMap = new Map<string, number>()
+        stockResult.rows.forEach(row => {
+          const totalCost = parseFloat(row.total_sale_cost || '0')
+          const totalQty = parseFloat(row.total_sale_base_qty || '0')
+          const avgUnitCost = totalQty > 0 ? totalCost / totalQty : 0
+          productUnitCostMap.set(row.product_id, avgUnitCost)
+        })
+
+        // 4. Calculate Profit per Item 
+        // We apply the established Unit Cost to the CURRENT quantity in transaction_items
+        // This automatically handles returns since transaction_items qty is reduced after return.
+        return items.map(item => {
+          const displayQty = parseFloat(item.display_quantity ?? item.quantity)
+          const sellPrice = parseFloat(item.price)
+          const subtotal = displayQty * sellPrice
+
+          // Quantity in Base Units
+          const baseQty = parseFloat(item.quantity)
+
+          // Get established unit cost for this product in this transaction
+          const unitCost = productUnitCostMap.get(item.product_id) || 0
+          
+          // Total COGS for this item = current qty * avg unit cost
+          const allocatedCogs = unitCost * baseQty
+
+          const profitTotal = subtotal - allocatedCogs
+          const cogsUnit = displayQty > 0 ? allocatedCogs / displayQty : 0
+          const profitUnit = displayQty > 0 ? profitTotal / displayQty : 0
+          const margin = subtotal > 0 ? (profitTotal / subtotal) * 100 : 0
+
+          return {
+            id: item.id,
+            productId: item.product_id,
+            productName: item.product_name,
+            quantity: displayQty, 
+            uomCode: item.uom_code,
+            sellPrice: sellPrice,
+            subtotal: subtotal,
+            cogsUnit: cogsUnit, 
+            cogsTotal: allocatedCogs,
+            profitUnit: profitUnit, 
+            profitTotal: profitTotal,
+            margin: margin
+          }
+        })
+
+      } catch (error) {
+        console.error('[TransactionService] getProfitDetail cloud error:', error)
+        throw error
+      }
+    }
+
+    throw new Error('Offline mode not supported for profit detail')
   }
 
   /**

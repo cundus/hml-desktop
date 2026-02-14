@@ -25,6 +25,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'sales.pos', name: 'Use point of sale' },
   { id: 'sales.reports', name: 'View sales reports' },
   { id: 'sales.manage', name: 'Manage sales' },
+  { id: 'sales.profit-detail', name: 'View profit detail', description: 'Access to view itemized profit/loss detail in transactions' },
   { id: 'inventory.manage', name: 'Manage inventory' },
   { id: 'inventory.dashboard', name: 'View inventory dashboard' },
   { id: 'inventory.stocks', name: 'Manage stocks' },

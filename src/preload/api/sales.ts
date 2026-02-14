@@ -182,5 +182,21 @@ export const transactionApi = {
       lowStock: { name: string; onHand: number; reorderPoint: number; severity: string }[]
       pendingReturns: { code: string; items: number; days: number }[]
       unpaidInvoices: { code: string; amount: string; status: string }[]
-    }>>
+    }>>,
+
+  getProfitDetail: (transactionId: string) =>
+    ipcRenderer.invoke('db:transactions:getProfitDetail', transactionId) as Promise<ApiResponse<{
+      id: string
+      productId: string
+      productName: string
+      uomCode: string | null
+      quantity: number
+      sellPrice: number
+      subtotal: number
+      cogsUnit: number
+      cogsTotal: number
+      profitUnit: number
+      profitTotal: number
+      margin: number
+    }[]>>
 }

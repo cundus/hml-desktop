@@ -38,6 +38,7 @@ import DeliveryOrderModal from './components/DeliveryOrderModal'
 import { globalAlert } from '../../lib/globalAlert'
 import { formatCurrency } from '../../utils/currency'
 import ReturnTransactionDialog from './components/ReturnTransactionDialog'
+import { useAuth } from '../../contexts/AuthContext'
 
 interface TransactionItem {
   id: string
@@ -115,6 +116,23 @@ export default function TransactionDetailPage(): React.JSX.Element {
   const [deliveryOrderModalOpen, setDeliveryOrderModalOpen] = useState(false)
   const [returnDialogOpen, setReturnDialogOpen] = useState(false)
   const [returns, setReturns] = useState<any[]>([])
+
+  // Profit Detail State (Admin/Owner)
+  const { hasPermission } = useAuth()
+  const [profitDetail, setProfitDetail] = useState<any[]>([])
+  const canViewProfit = hasPermission('sales.profit-detail')
+
+  useEffect(() => {
+    if (transactionId && canViewProfit) {
+      window.api.db.transactions.getProfitDetail(transactionId)
+        .then(res => {
+          if (res.success && res.data) {
+            setProfitDetail(res.data)
+          }
+        })
+        .catch(err => console.error('Failed to load profit detail', err))
+    }
+  }, [transactionId, canViewProfit])
 
   useEffect(() => {
     if (transactionId) {
@@ -1083,6 +1101,76 @@ export default function TransactionDetailPage(): React.JSX.Element {
           }}
         />
       )}
+
+      {/* Profit Detail Section (Admin Only) */}
+      {canViewProfit && profitDetail.length > 0 && !isEditing && (
+        <Card sx={{ mt: 3, mb: 10 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom color="primary">
+              Detail Keuntungan (Admin/Owner)
+            </Typography>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Produk</TableCell>
+                  <TableCell align="right">Qty</TableCell>
+                  <TableCell align="center">Satuan</TableCell>
+                  <TableCell align="right">Harga Jual</TableCell>
+                  <TableCell align="right">HPP (Unit)</TableCell>
+                  <TableCell align="right">HPP (Total)</TableCell>
+                  <TableCell align="right">Profit (Unit)</TableCell>
+                  <TableCell align="right">Profit (Total)</TableCell>
+                  <TableCell align="right">Margin (%)</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {profitDetail.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>{item.productName}</TableCell>
+                    <TableCell align="right">{item.quantity}</TableCell>
+                    <TableCell align="center">{item.uomCode || 'PCS'}</TableCell>
+                    <TableCell align="right">{formatCurrency(item.sellPrice)}</TableCell>
+                    <TableCell align="right">{formatCurrency(item.cogsUnit)}</TableCell>
+                    <TableCell align="right">{formatCurrency(item.cogsTotal)}</TableCell>
+                    <TableCell align="right" sx={{ color: item.profitUnit >= 0 ? 'success.main' : 'error.main' }}>
+                      {formatCurrency(item.profitUnit)}
+                    </TableCell>
+                    <TableCell align="right" sx={{ color: item.profitTotal >= 0 ? 'success.main' : 'error.main' }}>
+                      {formatCurrency(item.profitTotal)}
+                    </TableCell>
+                    <TableCell align="right">
+                      <Chip 
+                        label={`${item.margin.toFixed(2)}%`} 
+                        size="small" 
+                        color={item.margin >= 0 ? 'success' : 'error'} 
+                        variant="outlined"
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell colSpan={5} align="right" sx={{ fontWeight: 'bold' }}>Total</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                    {formatCurrency(profitDetail.reduce((sum, i) => sum + i.cogsTotal, 0))}
+                  </TableCell>
+                  <TableCell />
+                  <TableCell align="right" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                     {formatCurrency(profitDetail.reduce((sum, i) => sum + i.profitTotal, 0))}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                    {(() => {
+                       const totalRev = profitDetail.reduce((sum, i) => sum + i.subtotal, 0)
+                       const totalProf = profitDetail.reduce((sum, i) => sum + i.profitTotal, 0)
+                       return totalRev ? `${((totalProf / totalRev) * 100).toFixed(2)}%` : '0%'
+                    })()}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
     </Box>
   )
 }

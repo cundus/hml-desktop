@@ -1,6 +1,8 @@
+import { Pool, PoolClient } from 'pg'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService, QueueItem } from './queue.service'
+import { getSyncLockService } from './sync-lock.service'
 
 const MAX_RETRIES = 5
 const PROCESS_INTERVAL_MS = 5000
@@ -24,6 +26,9 @@ export class QueueProcessorService {
    */
   start(): void {
     if (this.processInterval) return
+
+    // Recover any stale processing items from previous run/crash
+    this.queueService.recoverStaleProcessing()
 
     const connectivity = getConnectivity()
 
@@ -61,42 +66,99 @@ export class QueueProcessorService {
     if (this.isProcessing) return
     if (!getConnectivity().isOnline()) return
 
-    this.isProcessing = true
-    const pending = this.queueService.getPending()
-
-    if (pending.length === 0) {
-      this.isProcessing = false
+    // Acquire lock to prevent conflict with SyncService
+    const lock = getSyncLockService()
+    if (!lock.acquire('sync')) {
       return
     }
 
-    console.log(`[QueueProcessor] Processing ${pending.length} items...`)
+    this.isProcessing = true
+    
+    try {
+      const cloudDb = getCloudDb()
+      const pool = cloudDb.getPool()
 
-    for (const item of pending) {
-      try {
-        // Apply exponential backoff delay based on retry count
-        if (item.retryCount > 0) {
-          const delay = BASE_RETRY_DELAY_MS * Math.pow(2, item.retryCount - 1)
-          console.log(`[QueueProcessor] Waiting ${delay}ms before retry ${item.retryCount}...`)
-          await this.sleep(delay)
-        }
-
-        this.queueService.markProcessing(item.id)
-        await this.executeItem(item)
-        this.queueService.markComplete(item.id)
-      } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : String(error)
-
-        if (item.retryCount >= MAX_RETRIES - 1) {
-          this.queueService.markFailed(item.id, errorMsg)
-          console.error(`[QueueProcessor] Max retries exceeded for ${item.id}`)
-        } else {
-          this.queueService.markRetry(item.id, errorMsg)
+      // 1. Process Grouped Items (Transactions)
+      const groups = this.queueService.getPendingGroups()
+      
+      if (groups.length > 0) {
+        console.log(`[QueueProcessor] Processing ${groups.length} groups...`)
+        
+        for (const group of groups) {
+          const client = await pool.connect()
+          this.queueService.markGroupProcessing(group.groupId)
+          
+          try {
+            await client.query('BEGIN')
+            
+            // Items are already sorted by priority from getPendingGroups()
+            for (const item of group.items) {
+              await this.executeItem(item, client)
+            }
+            
+            await client.query('COMMIT')
+            this.queueService.markGroupComplete(group.groupId)
+          } catch (error) {
+            await client.query('ROLLBACK')
+            const errorMsg = error instanceof Error ? error.message : String(error)
+            
+            // Check retry count of first item to determine group retry status
+            const firstItem = group.items[0]
+            if (firstItem.retryCount >= MAX_RETRIES - 1) {
+              this.queueService.markGroupFailed(group.groupId, errorMsg)
+              console.error(`[QueueProcessor] Max retries exceeded for group ${group.groupId}`)
+            } else {
+              this.queueService.markGroupRetry(group.groupId, errorMsg)
+              
+              // Apply backoff based on group retry count
+              const delay = BASE_RETRY_DELAY_MS * Math.pow(2, firstItem.retryCount)
+              console.log(`[QueueProcessor] Waiting ${delay}ms before retry group ${group.groupId}...`)
+              // We don't sleep here to avoid blocking other groups, just separate failures
+            }
+          } finally {
+            client.release()
+          }
         }
       }
-    }
 
-    this.isProcessing = false
-    console.log('[QueueProcessor] Processing complete')
+      // 2. Process Ungrouped Items (Individual)
+      // Filter out items that have group_id (they should be handled above, but double check)
+      const pending = this.queueService.getPending().filter(i => !i.groupId)
+
+      if (pending.length > 0) {
+        console.log(`[QueueProcessor] Processing ${pending.length} individual items...`)
+
+        for (const item of pending) {
+          try {
+            // Apply exponential backoff delay based on retry count
+            if (item.retryCount > 0) {
+              const delay = BASE_RETRY_DELAY_MS * Math.pow(2, item.retryCount - 1)
+              console.log(`[QueueProcessor] Waiting ${delay}ms before retry ${item.retryCount}...`)
+              await this.sleep(delay)
+            }
+
+            this.queueService.markProcessing(item.id)
+            await this.executeItem(item, pool)
+            this.queueService.markComplete(item.id)
+          } catch (error) {
+            const errorMsg = error instanceof Error ? error.message : String(error)
+
+            if (item.retryCount >= MAX_RETRIES - 1) {
+              this.queueService.markFailed(item.id, errorMsg)
+              console.error(`[QueueProcessor] Max retries exceeded for ${item.id}`)
+            } else {
+              this.queueService.markRetry(item.id, errorMsg)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[QueueProcessor] Error dealing with queue:', error)
+    } finally {
+      this.isProcessing = false
+      getSyncLockService().release('sync')
+      // console.log('[QueueProcessor] Processing complete')
+    }
   }
 
   /**
@@ -121,21 +183,19 @@ export class QueueProcessorService {
   /**
    * Execute a single queue item on cloud
    */
-  private async executeItem(item: QueueItem): Promise<void> {
-    const cloudDb = getCloudDb()
-    const pool = cloudDb.getPool()
+  private async executeItem(item: QueueItem, clientOrPool: Pool | PoolClient): Promise<void> {
     const payload = this.queueService.parsePayload(item)
     const entity = item.entity
 
     switch (item.action) {
       case 'INSERT':
-        await this.executeInsert(pool, entity, payload)
+        await this.executeInsert(clientOrPool, entity, payload)
         break
       case 'UPDATE':
-        await this.executeUpdate(pool, entity, payload)
+        await this.executeUpdate(clientOrPool, entity, payload)
         break
       case 'DELETE':
-        await this.executeDelete(pool, entity, payload)
+        await this.executeDelete(clientOrPool, entity, payload)
         break
       default:
         throw new Error(`Unknown action: ${item.action}`)
@@ -146,7 +206,7 @@ export class QueueProcessorService {
    * Execute INSERT on cloud
    */
   private async executeInsert(
-    pool: ReturnType<typeof getCloudDb.prototype.getPool>,
+    clientOrPool: Pool | PoolClient,
     entity: string,
     payload: Record<string, unknown>
   ): Promise<void> {
@@ -155,7 +215,7 @@ export class QueueProcessorService {
     const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ')
     const tableName = this.quoteTable(entity)
 
-    await pool.query(
+    await clientOrPool.query(
       `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders})
        ON CONFLICT (id) DO UPDATE SET ${columns.map((c, i) => `${c} = $${i + 1}`).join(', ')}`,
       values
@@ -166,7 +226,7 @@ export class QueueProcessorService {
    * Execute UPDATE on cloud
    */
   private async executeUpdate(
-    pool: ReturnType<typeof getCloudDb.prototype.getPool>,
+    clientOrPool: Pool | PoolClient,
     entity: string,
     payload: Record<string, unknown>
   ): Promise<void> {
@@ -178,14 +238,14 @@ export class QueueProcessorService {
     const setClause = columns.map((c, i) => `${c} = $${i + 1}`).join(', ')
     const tableName = this.quoteTable(entity)
 
-    await pool.query(`UPDATE ${tableName} SET ${setClause} WHERE id = $${values.length}`, values)
+    await clientOrPool.query(`UPDATE ${tableName} SET ${setClause} WHERE id = $${values.length}`, values)
   }
 
   /**
    * Execute DELETE on cloud
    */
   private async executeDelete(
-    pool: ReturnType<typeof getCloudDb.prototype.getPool>,
+    clientOrPool: Pool | PoolClient,
     entity: string,
     payload: Record<string, unknown>
   ): Promise<void> {
@@ -193,7 +253,7 @@ export class QueueProcessorService {
     const tableName = this.quoteTable(entity)
 
     // Soft delete by setting deleted_at
-    await pool.query(`UPDATE ${tableName} SET deleted_at = NOW() WHERE id = $1`, [id])
+    await clientOrPool.query(`UPDATE ${tableName} SET deleted_at = NOW() WHERE id = $1`, [id])
   }
 
   /**

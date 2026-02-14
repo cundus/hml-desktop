@@ -234,7 +234,7 @@ export async function bootstrap(): Promise<void> {
       console.log('✓ Cloud connected')
 
       // Start periodic full sync (every 5 minutes)
-      const syncService = new SyncService(db)
+      const syncService = new SyncService(db, queueService)
       await syncService.initCloudConnection(pgUrl)
       const periodicSync = initPeriodicSync(syncService)
       periodicSync.start()

@@ -4,6 +4,8 @@ import * as pgSchema from '../db/pg-schema'
 import { Pool } from 'pg'
 import { randomUUID } from 'crypto'
 import { saveDb } from '../localDb'
+import { QueueService } from './queue.service'
+import { getSyncLockService } from './sync-lock.service'
 
 /**
  * Entity configuration for sync
@@ -486,21 +488,26 @@ function getEntitiesForSync(type: SyncType): string[] {
  * - Only sync records that have changed since last sync
  * - Use syncedAt timestamp to track sync state per record
  * - Use deviceId to identify record origin
+ * - Use deviceId to identify record origin
  * - Conflict resolution: Last write wins (based on updatedAt)
+ * - Concurrency control: Uses SyncLockService to prevent race with QueueProcessor
  *
  * Sync Flow:
- * 1. Pull: Fetch cloud records updated since last pull → upsert to local
- * 2. Push: Fetch local records updated since last push → upsert to cloud
- * 3. Update sync metadata after successful sync
+ * 1. Acquire lock
+ * 2. Pull: Fetch cloud records (skip if local queue has pending for entity)
+ * 3. Push: Fetch local records updated since last push
+ * 4. Release lock
  */
 export class SyncService {
   private localDb: Database
   private cloudDb: NodePgDatabase<typeof pgSchema> | null = null
   private cloudPool: Pool | null = null
   private deviceId: string
+  private queueService: QueueService | null = null
 
-  constructor(localDb: Database, deviceId?: string) {
+  constructor(localDb: Database, queueService?: QueueService, deviceId?: string) {
     this.localDb = localDb
+    this.queueService = queueService || null
     this.deviceId = deviceId || this.getOrCreateDeviceId()
   }
 
@@ -606,6 +613,14 @@ export class SyncService {
       byEntity: {}
     }
 
+    const lock = getSyncLockService()
+    if (!lock.acquire('sync')) {
+      console.warn('[Sync] Sync skipped - locked by another process (queue/sync)')
+      result.success = false
+      result.errors.push('Sync locked')
+      return result
+    }
+
     try {
       console.log('Starting pull from cloud...')
       // Pull first (cloud is source of truth for conflicts)
@@ -633,6 +648,8 @@ export class SyncService {
       const errorMsg = error instanceof Error ? error.message : String(error)
       result.errors.push(errorMsg)
       console.error('✗ Full sync failed:', errorMsg)
+    } finally {
+      lock.release('sync')
     }
 
     return result
@@ -657,6 +674,14 @@ export class SyncService {
     const entitiesToSync = getEntitiesForSync(type)
 
     for (const entity of entitiesToSync) {
+      if (this.queueService) {
+        const pendingCount = this.queueService.getPendingForEntity(entity)
+        if (pendingCount > 0) {
+          console.log(`  [Sync] Skipping pull for ${entity} - ${pendingCount} pending local operations`)
+          continue
+        }
+      }
+
       try {
         console.log(`  Pulling ${entity}...`)
         const { count, conflicts } = await this.pullEntityFromCloud(entity)

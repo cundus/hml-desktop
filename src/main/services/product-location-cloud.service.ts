@@ -29,6 +29,11 @@ export interface UpdateProductLocationDto {
   reservedQuantity?: number
 }
 
+export interface TransactionOptions {
+  groupId?: string
+  save?: boolean
+}
+
 export class ProductLocationCloudService {
   private localDb: Database
   private queueService: QueueService
@@ -160,9 +165,10 @@ export class ProductLocationCloudService {
     return undefined
   }
 
-  async create(data: CreateProductLocationDto): Promise<ProductLocation> {
+  async create(data: CreateProductLocationDto, options?: TransactionOptions): Promise<ProductLocation> {
     const id = randomUUID()
     const now = new Date()
+    const save = options?.save ?? true
     const pl: ProductLocation = {
       id,
       productId: data.productId,
@@ -201,7 +207,12 @@ export class ProductLocationCloudService {
         now.getTime()
       ]
     )
-    saveDb(this.localDb)
+    
+    if (save) {
+      saveDb(this.localDb)
+    }
+    
+    // Priority 3 for product location (lowest)
     await this.queueService.add('INSERT', 'product_location', {
       id,
       product_id: data.productId,
@@ -210,7 +221,7 @@ export class ProductLocationCloudService {
       reserved_quantity: pl.reservedQuantity,
       created_at: now.toISOString(),
       updated_at: now.toISOString()
-    })
+    }, 3, options?.groupId, save)
 
     if (this.auditLogService) {
       void this.auditLogService.log({
@@ -226,10 +237,11 @@ export class ProductLocationCloudService {
     return pl
   }
 
-  async update(id: string, data: UpdateProductLocationDto): Promise<ProductLocation> {
+  async update(id: string, data: UpdateProductLocationDto, options?: TransactionOptions): Promise<ProductLocation> {
     const existing = await this.findById(id)
     if (!existing) throw new Error('Product location not found')
     const now = new Date()
+    const save = options?.save ?? true
     const updated: ProductLocation = {
       ...existing,
       quantity: data.quantity,
@@ -254,13 +266,17 @@ export class ProductLocationCloudService {
       'UPDATE product_location SET quantity = ?, reserved_quantity = ?, updated_at = ? WHERE id = ?',
       [updated.quantity, updated.reservedQuantity, now.getTime(), id]
     )
-    saveDb(this.localDb)
+    
+    if (save) {
+      saveDb(this.localDb)
+    }
+    
     await this.queueService.add('UPDATE', 'product_location', {
       id,
       quantity: updated.quantity,
       reserved_quantity: updated.reservedQuantity,
       updated_at: now.toISOString()
-    })
+    }, 3, options?.groupId, save)
 
     if (this.auditLogService) {
       void this.auditLogService.log({
@@ -280,16 +296,17 @@ export class ProductLocationCloudService {
   async adjustQuantity(
     productId: string,
     storeId: string,
-    delta: number
+    delta: number,
+    options?: TransactionOptions
   ): Promise<ProductLocation> {
     let location = await this.findByProductAndStore(productId, storeId)
     if (!location) {
-      location = await this.create({ productId, storeId, quantity: delta, reservedQuantity: 0 })
+      location = await this.create({ productId, storeId, quantity: delta, reservedQuantity: 0 }, options)
     } else {
       location = await this.update(location.id, {
         quantity: location.quantity + delta,
         reservedQuantity: location.reservedQuantity
-      })
+      }, options)
     }
     return location
   }
@@ -297,7 +314,8 @@ export class ProductLocationCloudService {
   async reserveQuantity(
     productId: string,
     storeId: string,
-    quantity: number
+    quantity: number,
+    options?: TransactionOptions
   ): Promise<ProductLocation> {
     const location = await this.findByProductAndStore(productId, storeId)
     if (!location) throw new Error('Product location not found')
@@ -306,20 +324,21 @@ export class ProductLocationCloudService {
     return await this.update(location.id, {
       quantity: location.quantity,
       reservedQuantity: location.reservedQuantity + quantity
-    })
+    }, options)
   }
 
   async releaseReservedQuantity(
     productId: string,
     storeId: string,
-    quantity: number
+    quantity: number,
+    options?: TransactionOptions
   ): Promise<ProductLocation> {
     const location = await this.findByProductAndStore(productId, storeId)
     if (!location) throw new Error('Product location not found')
     return await this.update(location.id, {
       quantity: location.quantity,
       reservedQuantity: Math.max(0, location.reservedQuantity - quantity)
-    })
+    }, options)
   }
 
   async softDelete(id: string): Promise<ProductLocation> {

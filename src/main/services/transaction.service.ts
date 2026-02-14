@@ -3,10 +3,10 @@ import { saveDb } from '../localDb'
 import { randomUUID } from 'crypto'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
-import { StockTransactionCloudService } from './stock-transaction-cloud.service'
+import { StockTransactionCloudService, TransactionOptions } from './stock-transaction-cloud.service'
 import { BatchCloudService } from './batch-cloud.service'
 import { ProductLocationCloudService } from './product-location-cloud.service'
-import { QueueService } from './queue.service'
+import { QueueService, QueueAction } from './queue.service'
 import { PointCloudService } from './point.service'
 import { AuditLogService } from './audit-log.service'
 
@@ -125,19 +125,30 @@ export class TransactionService {
           transaction.items = await this.findItemsByTransactionId(transaction.id)
           transactions.push(transaction)
         }
-
-        // Merge with local pending changes (updates/deletes)
-        // const localPending = await this.findLocalPendingChanges()
         return transactions
       } catch (error) {
         console.error('[TransactionService] findAll cloud error, falling back to local:', error)
       }
     }
-    // return this.findAllLocal()
-    return []
+    // Fallback to local
+    return this.findAllLocal()
   }
 
- 
+  private async findAllLocal(): Promise<Transaction[]> {
+    const stmt = this.db.prepare('SELECT * FROM transactions WHERE deleted_at IS NULL ORDER BY created_at DESC')
+    const transactions: Transaction[] = []
+    
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const transaction = this.mapRowToTransaction(row)
+      transaction.items = await this.findItemsByTransactionIdLocal(transaction.id)
+      transactions.push(transaction)
+    }
+    stmt.free()
+    
+    return transactions
+  }
+
   /*
    * Helper to merge cloud transactions with local pending changes (updates/deletes)
    */
@@ -167,8 +178,6 @@ export class TransactionService {
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     )
   }
-
-
 
   /**
    * Get transaction by ID
@@ -273,6 +282,7 @@ export class TransactionService {
         console.error('[TransactionService] findByStoreId cloud error, falling back to local:', error)
       }
     }
+    // Fallback to local
     return this.findByStoreIdLocal(storeId)
   }
 
@@ -338,6 +348,7 @@ export class TransactionService {
         console.error('[TransactionService] findByCustomerId cloud error, falling back to local:', error)
       }
     }
+    // Fallback to local
     return this.findByCustomerIdLocal(customerId)
   }
 
@@ -403,8 +414,13 @@ export class TransactionService {
         console.error('[TransactionService] findByUserId cloud error, falling back to local:', error)
       }
     }
+    // Fallback to local
     return this.findByUserIdLocal(userId)
   }
+
+
+
+
 
   private async findByUserIdLocal(userId: string): Promise<Transaction[]> {
     const stmt = this.db.prepare(
@@ -484,173 +500,205 @@ export class TransactionService {
     const id = randomUUID()
     const now = Date.now()
     const nowIso = new Date(now).toISOString()
+    const groupId = id // Use Transaction ID as Group ID for processing
+    const savePointName = `sp_${id.replace(/-/g, '_')}` // Sanitize SAVEPOINT name
 
-    // 1. Queue Transaction Header INSERT (Cloud-First pattern: queue it immediately)
-    // We queue BEFORE local insert to ensure we capture the intent, though strictly for offline-fallback it doesn't matter much.
-    // Important: Header must be queued BEFORE items for FK constraints.
-    if (this.queueService) {
-      await this.queueService.add('INSERT', 'transactions', {
-        id,
-        code: data.code,
-        store_id: data.storeId,
-        subtotal: data.subtotal,
-        discount: data.discount ?? '0',
-        tax: data.tax ?? '0',
-        total: data.total,
-        total_weight: data.totalWeight ?? '0',
-        payment_method: data.paymentMethod ?? 'cash',
-        payment_deadline: data.paymentDeadline ? data.paymentDeadline.toISOString() : null,
-        receipt_printed: (data.receiptPrinted ?? false) ? 1 : 0,
-        customer_id: data.customerId ?? null,
-        user_id: data.userId ?? null,
-        sales_id: data.salesId ?? null,
-        sales_name: data.salesName ?? null,
-        created_at: nowIso,
-        updated_at: nowIso
-      })
-    }
+    // Start Atomic Local Transaction
+    this.db.run(`SAVEPOINT ${savePointName}`)
 
-    // 2. Insert transaction locally
-    this.db.run(
-      'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, sales_id, sales_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [
-        id,
-        data.code,
-        data.storeId,
-        data.subtotal,
-        data.discount ?? '0',
-        data.tax ?? '0',
-        data.total,
-        data.totalWeight ?? '0',
-        data.paymentMethod ?? 'cash',
-        data.paymentDeadline ? data.paymentDeadline.getTime() : null,
-        (data.receiptPrinted ?? false) ? 1 : 0,
-        data.customerId ?? null,
-        data.userId ?? null,
-        data.salesId ?? null,
-        data.salesName ?? null,
-        now,
-        now
-      ]
-    )
+    try {
+      const txnOptions: TransactionOptions = { groupId, save: false }
 
-    // 3. Process Items
-    for (const item of data.items) {
-      const itemId = randomUUID()
-
-      // 3a. Queue Item INSERT
+      // 1. Queue Transaction Header INSERT (Priority 0)
       if (this.queueService) {
-        await this.queueService.add('INSERT', 'transaction_items', {
-          id: itemId,
-          transaction_id: id,
-          product_id: item.productId,
-          quantity: item.quantity,
-          display_quantity: item.displayQuantity ?? item.quantity,
-          uom_code: item.uomCode ?? null,
-          product_name: item.productName ?? null,
-          product_sku: item.productSku ?? null,
-          price: item.price,
+        await this.queueService.add('INSERT', 'transactions', {
+          id,
+          code: data.code,
+          store_id: data.storeId,
+          subtotal: data.subtotal,
+          discount: data.discount ?? '0',
+          tax: data.tax ?? '0',
+          total: data.total,
+          total_weight: data.totalWeight ?? '0',
+          payment_method: data.paymentMethod ?? 'cash',
+          payment_deadline: data.paymentDeadline ? data.paymentDeadline.toISOString() : null,
+          receipt_printed: (data.receiptPrinted ?? false) ? 1 : 0,
+          customer_id: data.customerId ?? null,
+          user_id: data.userId ?? null,
+          sales_id: data.salesId ?? null,
+          sales_name: data.salesName ?? null,
           created_at: nowIso,
           updated_at: nowIso
-        })
+        }, 0, groupId, false)
       }
 
-      // 3b. Insert Item Locally
+      // 2. Insert transaction locally
       this.db.run(
-        'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, product_name, product_sku, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO transactions (id, code, store_id, subtotal, discount, tax, total, total_weight, payment_method, payment_deadline, receipt_printed, customer_id, user_id, sales_id, sales_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [
-          itemId,
           id,
-          item.productId,
-          item.quantity,
-          item.displayQuantity ?? item.quantity,
-          item.uomCode ?? null,
-          item.productName ?? null,
-          item.productSku ?? null,
-          item.price,
+          data.code,
+          data.storeId,
+          data.subtotal,
+          data.discount ?? '0',
+          data.tax ?? '0',
+          data.total,
+          data.totalWeight ?? '0',
+          data.paymentMethod ?? 'cash',
+          data.paymentDeadline ? data.paymentDeadline.getTime() : null,
+          (data.receiptPrinted ?? false) ? 1 : 0,
+          data.customerId ?? null,
+          data.userId ?? null,
+          data.salesId ?? null,
+          data.salesName ?? null,
           now,
           now
         ]
       )
 
-      // 3c. Inventory Side Logic (INV-001) & FIFO Allocation (INV-002)
-      if (this.stockTransactionService && this.productLocationService && this.batchService) {
-        // 1. ALLOCATE STOCK (FIFO)
-        const allocations = await this.batchService.allocateStock(
-          item.productId,
-          data.storeId,
-          item.quantity
+      // 3. Process Items
+      const queueItems: {
+        action: QueueAction
+        entity: string
+        payload: Record<string, unknown>
+        priority?: number
+      }[] = []
+
+      for (const item of data.items) {
+        const itemId = randomUUID()
+
+        // 3a. Prepare Item Queue Payload (Priority 1)
+        if (this.queueService) {
+          queueItems.push({
+            action: 'INSERT',
+            entity: 'transaction_items',
+            payload: {
+              id: itemId,
+              transaction_id: id,
+              product_id: item.productId,
+              quantity: item.quantity,
+              display_quantity: item.displayQuantity ?? item.quantity,
+              uom_code: item.uomCode ?? null,
+              product_name: item.productName ?? null,
+              product_sku: item.productSku ?? null,
+              price: item.price,
+              created_at: nowIso,
+              updated_at: nowIso
+            },
+            priority: 1
+          })
+        }
+
+        // 3b. Insert Item Locally
+        this.db.run(
+          'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, product_name, product_sku, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            itemId,
+            id,
+            item.productId,
+            item.quantity,
+            item.displayQuantity ?? item.quantity,
+            item.uomCode ?? null,
+            item.productName ?? null,
+            item.productSku ?? null,
+            item.price,
+            now,
+            now
+          ]
         )
 
-        let remainingQty = item.quantity
+        // 3c. Inventory Side Logic (INV-001) & FIFO Allocation (INV-002)
+        // These services use queue priority 2 (stock) and 3 (product_location)
+        if (this.stockTransactionService && this.productLocationService && this.batchService) {
+          // 1. ALLOCATE STOCK (FIFO)
+          const allocations = await this.batchService.allocateStock(
+            item.productId,
+            data.storeId,
+            item.quantity
+          )
 
-        // 2. Create Stock Transactions for Allocated Batches
-        for (const alloc of allocations) {
-          if (alloc.quantity > 0) {
+          let remainingQty = item.quantity
+
+          // 2. Create Stock Transactions for Allocated Batches
+          for (const alloc of allocations) {
+            if (alloc.quantity > 0) {
+              await this.stockTransactionService.create({
+                productId: item.productId,
+                storeId: data.storeId,
+                type: 'SALE',
+                quantity: alloc.quantity,
+                reference: data.code,
+                customerId: data.customerId,
+                performedBy: data.userId,
+                batchId: alloc.batch_id // Link to specific batch
+              }, txnOptions)
+              remainingQty -= alloc.quantity
+            }
+          }
+
+          // 3. Fallback: If allocations didn't cover everything, create General Stock transaction
+          if (remainingQty > 0) {
             await this.stockTransactionService.create({
               productId: item.productId,
               storeId: data.storeId,
               type: 'SALE',
-              quantity: alloc.quantity,
+              quantity: remainingQty,
               reference: data.code,
               customerId: data.customerId,
               performedBy: data.userId,
-              batchId: alloc.batch_id // Link to specific batch
-            })
-            remainingQty -= alloc.quantity
+              batchId: undefined // General stock
+            }, txnOptions)
           }
-        }
 
-        // 3. Fallback: If allocations didn't cover everything, create General Stock transaction
-        // This handles cases where stock is negative or batch data is missing.
-        // The total deduction from ProductLocation must still be full item.quantity.
-        if (remainingQty > 0) {
+          // Deduct from product_location (Aggregate)
+          await this.productLocationService.adjustQuantity(
+            item.productId,
+            data.storeId,
+            -item.quantity,
+            txnOptions
+          )
+        } else if (this.stockTransactionService && this.productLocationService) {
+          // Fallback for when batchService is not injected (though it should be)
           await this.stockTransactionService.create({
             productId: item.productId,
             storeId: data.storeId,
             type: 'SALE',
-            quantity: remainingQty,
+            quantity: item.quantity,
             reference: data.code,
             customerId: data.customerId,
-            performedBy: data.userId,
-            batchId: undefined // General stock
-          })
+            performedBy: data.userId
+          }, txnOptions)
+
+          await this.productLocationService.adjustQuantity(
+            item.productId,
+            data.storeId,
+            -item.quantity,
+            txnOptions
+          )
         }
-
-        // Deduct from product_location (Aggregate)
-        await this.productLocationService.adjustQuantity(
-          item.productId,
-          data.storeId,
-          -item.quantity
-        )
-      } else if (this.stockTransactionService && this.productLocationService) {
-        // Fallback for when batchService is not injected (though it should be)
-        await this.stockTransactionService.create({
-          productId: item.productId,
-          storeId: data.storeId,
-          type: 'SALE',
-          quantity: item.quantity,
-          reference: data.code,
-          customerId: data.customerId,
-          performedBy: data.userId
-        })
-
-        await this.productLocationService.adjustQuantity(
-          item.productId,
-          data.storeId,
-          -item.quantity
-        )
       }
-    }
 
-    saveDb(this.db)
+      // 4. Batch Queue Items (Priority 1)
+      if (this.queueService && queueItems.length > 0) {
+        await this.queueService.addBatch(groupId, queueItems, false)
+      }
+
+      // 5. Commit & Save
+      this.db.run(`RELEASE SAVEPOINT ${savePointName}`)
+      saveDb(this.db)
+
+    } catch (error) {
+      // Rollback on error
+      this.db.run(`ROLLBACK TO SAVEPOINT ${savePointName}`)
+      throw error
+    }
 
     const created = await this.findById(id)
     if (!created) {
       throw new Error('Transaction not found after creation')
     }
 
-    // Earn points for customer if applicable
+    // Earn points for customer if applicable (Outside Transaction)
     if (data.customerId && this.pointService) {
       try {
         const pointResult = await this.pointService.addPoints({
@@ -665,7 +713,6 @@ export class TransactionService {
         }
       } catch (error) {
         console.error('[Transaction] Failed to add points:', error)
-        // Don't fail the transaction if points fail
       }
     }
 
@@ -694,75 +741,99 @@ export class TransactionService {
       throw new Error('Transaction not found')
     }
 
-    // Reverse stock for all items
-    // Improved Logic: We should reverse the SPECIFIC stock transactions that were made.
-    // Instead of iterating items and guessing, let's find the OUTBOUND/SALE stock transactions
-    // linked to this transaction code and reverse them.
-    if (this.stockTransactionService && this.productLocationService) {
-      // Find existing stock transactions for this sales code
-      const stockTxns = await this.stockTransactionService.findByReference(existing.code)
+    const groupId = id
+    const spName = `sp_del_${id.replace(/-/g, '_')}`
+    this.db.run(`SAVEPOINT ${spName}`)
 
-      // Filter for SALE/OUTBOUND types that need reversing
-      const salesTxns = stockTxns.filter(
-        (st) => ['SALE', 'OUTBOUND'].includes(st.type) && st.deletedAt === null
-      )
-
-      for (const st of salesTxns) {
-        // Reverse each stock transaction by soft deleting it
-        // Note: We do NOT create a new adjustment transaction here because soft-deleting the original
-        // 'SALE' transaction effectively removes the deduction from history calculations.
-        // Creating an adjustment AND deleting the sale would result in double counting (virtual stock gain).
-        
-        await this.stockTransactionService.softDelete(st.id)
-
-        // Adjust product location (Total stock)
-        // We MUST adjust the counter validation because ProductLocation is a snapshot.
-        await this.productLocationService.adjustQuantity(
-          st.productId,
-          st.storeId,
-          st.quantity // Positive adds back
-        )
-      }
-    }
-
-    const now = Date.now()
-    const nowDate = new Date(now)
-    const pool = getCloudDb().getPool()
-    await pool.query('UPDATE transactions SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
-      nowDate,
-      nowDate,
-      id
-    ])
-
-    this.db.run('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?', [
-      now,
-      now,
-      id
-    ])
-
-    saveDb(this.db)
-
-    // Cascade soft-delete to related transaction_return and transaction_return_item
     try {
-      const returnsRes = await pool.query(
-        'SELECT id FROM transaction_return WHERE transaction_id = $1 AND deleted_at IS NULL',
-        [id]
-      )
-      if (returnsRes.rows.length > 0) {
-        const returnIds = returnsRes.rows.map((r: any) => r.id)
-        await pool.query(
-          'UPDATE transaction_return SET deleted_at = $1, updated_at = $2 WHERE transaction_id = $3 AND deleted_at IS NULL',
-          [nowDate, nowDate, id]
+      const txnOptions: TransactionOptions = { groupId, save: false }
+
+      // Reverse stock for all items
+      if (this.stockTransactionService && this.productLocationService) {
+        // Find existing stock transactions for this sales code
+        const stockTxns = await this.stockTransactionService.findByReference(existing.code)
+
+        // Filter for SALE/OUTBOUND types that need reversing
+        const salesTxns = stockTxns.filter(
+          (st) => ['SALE', 'OUTBOUND'].includes(st.type) && st.deletedAt === null
         )
-        for (const returnId of returnIds) {
-          await pool.query(
-            'UPDATE transaction_return_item SET deleted_at = $1, updated_at = $2 WHERE return_id = $3 AND deleted_at IS NULL',
-            [nowDate, nowDate, returnId]
+
+        for (const st of salesTxns) {
+          // Reverse each stock transaction by soft deleting it
+          await this.stockTransactionService.softDelete(st.id, txnOptions)
+
+          // Adjust product location (Total stock)
+          await this.productLocationService.adjustQuantity(
+            st.productId,
+            st.storeId,
+            st.quantity, // Positive adds back
+            txnOptions
           )
         }
       }
+
+      const now = Date.now()
+      const nowDate = new Date(now)
+      const pool = getCloudDb().getPool()
+      
+      if (this.isOnline()) {
+        try {
+          await pool.query('UPDATE transactions SET deleted_at = $1, updated_at = $2 WHERE id = $3', [
+            nowDate,
+            nowDate,
+            id
+          ])
+        } catch (e) {
+          console.error('[TransactionService] delete cloud error:', e)
+        }
+      }
+
+      this.db.run('UPDATE transactions SET deleted_at = ?, updated_at = ? WHERE id = ?', [
+        now,
+        now,
+        id
+      ])
+      
+      // Cascade soft-delete to related transaction_return and transaction_return_item
+      // Note: This cascading is done blindly for now, ideal to have this atomic too if possible.
+      // But transaction_return is separate table.
+      // We process main transaction here.
+      
+      this.db.run(`RELEASE SAVEPOINT ${spName}`)
+      saveDb(this.db)
+
     } catch (error) {
-      console.error('[TransactionService] Failed to cascade soft-delete to returns:', error)
+      this.db.run(`ROLLBACK TO SAVEPOINT ${spName}`)
+      throw error
+    }
+
+    // Cascade cloud side (outside atomic block to avoid blocking)
+    if (this.isOnline()) {
+       // ... existing cascade logic ...
+       const pool = getCloudDb().getPool()
+       try {
+        const returnsRes = await pool.query(
+          'SELECT id FROM transaction_return WHERE transaction_id = $1 AND deleted_at IS NULL',
+          [id]
+        )
+        if (returnsRes.rows.length > 0) {
+          // ...
+          const nowDate = new Date()
+          const returnIds = returnsRes.rows.map((r: any) => r.id)
+          await pool.query(
+            'UPDATE transaction_return SET deleted_at = $1, updated_at = $2 WHERE transaction_id = $3 AND deleted_at IS NULL',
+            [nowDate, nowDate, id]
+          )
+          for (const returnId of returnIds) {
+            await pool.query(
+              'UPDATE transaction_return_item SET deleted_at = $1, updated_at = $2 WHERE return_id = $3 AND deleted_at IS NULL',
+              [nowDate, nowDate, returnId]
+            )
+          }
+        }
+      } catch (error) {
+        console.error('[TransactionService] Failed to cascade soft-delete to returns:', error)
+      }
     }
 
     const deleted = await this.findById(id)
@@ -789,227 +860,248 @@ export class TransactionService {
    * Note: This recalculates inventory if items change
    */
   async update(id: string, data: UpdateTransactionDto): Promise<Transaction> {
-    // 1. Validate & Setup
-    // Ensure we are working with the latest cloud data (if online)
-    // findById checks isOnline() and fetches from cloud if available
     const existing = await this.findById(id)
     if (!existing) {
       throw new Error('Transaction not found')
     }
 
+    const groupId = id
+    const spName = `sp_upd_${id.replace(/-/g, '_')}`
+    this.db.run(`SAVEPOINT ${spName}`)
+
     const pool = this.isOnline() ? getCloudDb().getPool() : null
     const now = new Date()
     const nowTs = now.getTime()
 
-    // 2. Prepare Transaction Header Updates
-    const cloudUpdates: string[] = []
-    const cloudParams: (string | number | null | Date)[] = []
-    let cloudParamIndex = 1
+    try {
+      const txnOptions: TransactionOptions = { groupId, save: false }
 
-    const localUpdates: string[] = []
-    const localParams: (string | number | null)[] = []
+      // 2. Prepare Transaction Header Updates
+      // ... existing updates collection ...
+      const cloudUpdates: string[] = []
+      const cloudParams: (string | number | null | Date)[] = []
+      let cloudParamIndex = 1
 
-    if (data.subtotal !== undefined) {
-      cloudUpdates.push(`subtotal = $${cloudParamIndex++}`)
-      cloudParams.push(data.subtotal)
-      localUpdates.push('subtotal = ?')
-      localParams.push(data.subtotal)
-    }
-    if (data.discount !== undefined) {
-      cloudUpdates.push(`discount = $${cloudParamIndex++}`)
-      cloudParams.push(data.discount)
-      localUpdates.push('discount = ?')
-      localParams.push(data.discount)
-    }
-    if (data.tax !== undefined) {
-      cloudUpdates.push(`tax = $${cloudParamIndex++}`)
-      cloudParams.push(data.tax)
-      localUpdates.push('tax = ?')
-      localParams.push(data.tax)
-    }
-    if (data.total !== undefined) {
-      cloudUpdates.push(`total = $${cloudParamIndex++}`)
-      cloudParams.push(data.total)
-      localUpdates.push('total = ?')
-      localParams.push(data.total)
-    }
-    if (data.paymentMethod !== undefined) {
-      cloudUpdates.push(`payment_method = $${cloudParamIndex++}`)
-      cloudParams.push(data.paymentMethod)
-      localUpdates.push('payment_method = ?')
-      localParams.push(data.paymentMethod)
-    }
-    if (data.paymentDeadline !== undefined) {
-      cloudUpdates.push(`payment_deadline = $${cloudParamIndex++}`)
-      cloudParams.push(data.paymentDeadline ? data.paymentDeadline : null)
-      localUpdates.push('payment_deadline = ?')
-      localParams.push(data.paymentDeadline ? data.paymentDeadline.getTime() : null)
-    }
-    if (data.customerId !== undefined) {
-      cloudUpdates.push(`customer_id = $${cloudParamIndex++}`)
-      cloudParams.push(data.customerId)
-      localUpdates.push('customer_id = ?')
-      localParams.push(data.customerId)
-    }
+      const localUpdates: string[] = []
+      const localParams: (string | number | null)[] = []
 
-    // Always update timestamp
-    cloudUpdates.push(`updated_at = $${cloudParamIndex++}`)
-    cloudParams.push(now)
-    localUpdates.push('updated_at = ?')
-    localParams.push(nowTs)
-
-    // Add ID as last param
-    cloudParams.push(id)
-    localParams.push(id)
-
-    // 3. Execute Header Updates
-    if (cloudUpdates.length > 0 && pool) {
-      try {
-        await pool.query(
-          `UPDATE transactions SET ${cloudUpdates.join(', ')} WHERE id = $${cloudParamIndex}`,
-          cloudParams
-        )
-      } catch (error) {
-        console.error('[TransactionService] update cloud error:', error)
-        // If cloud fails, should we stop? For now, we continue to local to ensure consistency if possible,
-        // or throw if strict consistency is needed.
-        throw error
+      // ... (Same field checks as before) ...
+      if (data.subtotal !== undefined) {
+        cloudUpdates.push(`subtotal = $${cloudParamIndex++}`)
+        cloudParams.push(data.subtotal)
+        localUpdates.push('subtotal = ?')
+        localParams.push(data.subtotal)
       }
-    }
+      if (data.discount !== undefined) {
+        cloudUpdates.push(`discount = $${cloudParamIndex++}`)
+        cloudParams.push(data.discount)
+        localUpdates.push('discount = ?')
+        localParams.push(data.discount)
+      }
+      if (data.tax !== undefined) {
+        cloudUpdates.push(`tax = $${cloudParamIndex++}`)
+        cloudParams.push(data.tax)
+        localUpdates.push('tax = ?')
+        localParams.push(data.tax)
+      }
+      if (data.total !== undefined) {
+        cloudUpdates.push(`total = $${cloudParamIndex++}`)
+        cloudParams.push(data.total)
+        localUpdates.push('total = ?')
+        localParams.push(data.total)
+      }
+      if (data.paymentMethod !== undefined) {
+        cloudUpdates.push(`payment_method = $${cloudParamIndex++}`)
+        cloudParams.push(data.paymentMethod)
+        localUpdates.push('payment_method = ?')
+        localParams.push(data.paymentMethod)
+      }
+      if (data.paymentDeadline !== undefined) {
+        cloudUpdates.push(`payment_deadline = $${cloudParamIndex++}`)
+        cloudParams.push(data.paymentDeadline ? data.paymentDeadline : null)
+        localUpdates.push('payment_deadline = ?')
+        localParams.push(data.paymentDeadline ? data.paymentDeadline.getTime() : null)
+      }
+      if (data.customerId !== undefined) {
+        cloudUpdates.push(`customer_id = $${cloudParamIndex++}`)
+        cloudParams.push(data.customerId)
+        localUpdates.push('customer_id = ?')
+        localParams.push(data.customerId)
+      }
 
-    if (localUpdates.length > 0) {
-      this.db.run(`UPDATE transactions SET ${localUpdates.join(', ')} WHERE id = ?`, localParams)
-    }
+      cloudUpdates.push(`updated_at = $${cloudParamIndex++}`)
+      cloudParams.push(now)
+      localUpdates.push('updated_at = ?')
+      localParams.push(nowTs)
 
-    // 4. Update Items & Inventory
-    if (data.items) {
-      const existingItems = existing.items ?? []
-      const existingItemIds = new Set(existingItems.map((i) => i.id))
-      const newItemIds = new Set(data.items.filter((i) => i.id).map((i) => i.id))
+      cloudParams.push(id)
+      localParams.push(id)
 
-      // A. Handle Deleted Items (Reverse Inventory)
-      for (const oldItem of existingItems) {
-        if (!newItemIds.has(oldItem.id)) {
-          // Reverse the inventory deduction (Add back to stock)
-          if (this.stockTransactionService && this.productLocationService) {
-            await this.stockTransactionService.create({
-              productId: oldItem.productId,
-              storeId: existing.storeId,
-              type: 'ADJUSTMENT', // Using ADJUSTMENT to reverse the sale effect
-              quantity: oldItem.quantity,
-              reference: `CORRECTION_DEL:${existing.code}`,
-              performedBy: existing.userId ?? undefined
-            })
-            await this.productLocationService.adjustQuantity(
-              oldItem.productId,
-              existing.storeId,
-              oldItem.quantity // positive adds back
-            )
-          }
-          
-          if (pool) {
-            await pool.query('DELETE FROM transaction_items WHERE id = $1', [oldItem.id])
-          }
-          this.db.run('DELETE FROM transaction_items WHERE id = ?', [oldItem.id])
+      // 3. Execute Header Updates
+      if (cloudUpdates.length > 0 && pool) {
+        try {
+          await pool.query(
+            `UPDATE transactions SET ${cloudUpdates.join(', ')} WHERE id = $${cloudParamIndex}`,
+            cloudParams
+          )
+        } catch (error) {
+          console.error('[TransactionService] update cloud error:', error)
+          // Continue
         }
       }
 
-      // B. Handle New & Updated Items
-      for (const newItem of data.items) {
-        if (newItem.id && existingItemIds.has(newItem.id)) {
-          // --- UPDATE EXISTING ITEM ---
-          const oldItem = existingItems.find((i) => i.id === newItem.id)
-          if (oldItem) {
-            // Check if Product Changed
-            if (oldItem.productId !== newItem.productId) {
-              // 1. Reverse OLD product (Add back old qty)
-              if (this.stockTransactionService && this.productLocationService) {
-                await this.stockTransactionService.create({
-                  productId: oldItem.productId,
-                  storeId: existing.storeId,
-                  type: 'ADJUSTMENT',
-                  quantity: oldItem.quantity,
-                  reference: `CORRECTION_SWAP_OUT:${existing.code}`,
-                  performedBy: existing.userId ?? undefined
-                })
-                await this.productLocationService.adjustQuantity(
-                  oldItem.productId,
-                  existing.storeId,
-                  oldItem.quantity
-                )
+      if (localUpdates.length > 0) {
+        this.db.run(`UPDATE transactions SET ${localUpdates.join(', ')} WHERE id = ?`, localParams)
+      }
 
-                // 2. Deduct NEW product (Subtract new qty)
-                await this.stockTransactionService.create({
-                  productId: newItem.productId,
-                  storeId: existing.storeId,
-                  type: 'SALE',
-                  quantity: newItem.quantity,
-                  reference: `CORRECTION_SWAP_IN:${existing.code}`,
-                  performedBy: existing.userId ?? undefined
-                })
-                await this.productLocationService.adjustQuantity(
-                  newItem.productId,
-                  existing.storeId,
-                  -newItem.quantity
-                )
-              }
-            } else {
-              // Same Product, Check Quantity Difference
-              const qtyDiff = newItem.quantity - oldItem.quantity
-              if (qtyDiff !== 0 && this.stockTransactionService && this.productLocationService) {
-                await this.stockTransactionService.create({
-                  productId: newItem.productId,
-                  storeId: existing.storeId,
-                  type: qtyDiff > 0 ? 'SALE' : 'ADJUSTMENT',
-                  quantity: Math.abs(qtyDiff),
-                  reference: `CORRECTION_QTY:${existing.code}`,
-                  performedBy: existing.userId ?? undefined
-                })
-                await this.productLocationService.adjustQuantity(
-                  newItem.productId,
-                  existing.storeId,
-                  -qtyDiff // negative checks out more, positive puts back
-                )
-              }
+      // 4. Update Items & Inventory
+      if (data.items) {
+        const existingItems = existing.items ?? []
+        const existingItemIds = new Set(existingItems.map((i) => i.id))
+        const newItemIds = new Set(data.items.filter((i) => i.id).map((i) => i.id))
+
+        // A. Handle Deleted Items (Reverse Inventory)
+        for (const oldItem of existingItems) {
+          if (!newItemIds.has(oldItem.id)) {
+            if (this.stockTransactionService && this.productLocationService) {
+              await this.stockTransactionService.create({
+                productId: oldItem.productId,
+                storeId: existing.storeId,
+                type: 'ADJUSTMENT',
+                quantity: oldItem.quantity,
+                reference: `CORRECTION_DEL:${existing.code}`,
+                performedBy: existing.userId ?? undefined
+              }, txnOptions) // Passed options
+              
+              await this.productLocationService.adjustQuantity(
+                oldItem.productId,
+                existing.storeId,
+                oldItem.quantity, // positive adds back
+                txnOptions // Passed options
+              )
             }
-
-            // Sync Update
+            
             if (pool) {
-              await pool.query(
-                'UPDATE transaction_items SET product_id = $1, quantity = $2, display_quantity = $3, uom_code = $4, price = $5, updated_at = $6 WHERE id = $7',
+              await pool.query('DELETE FROM transaction_items WHERE id = $1', [oldItem.id])
+            }
+            this.db.run('DELETE FROM transaction_items WHERE id = ?', [oldItem.id])
+          }
+        }
+
+        // B. Handle New & Updated Items
+        for (const newItem of data.items) {
+          if (newItem.id && existingItemIds.has(newItem.id)) {
+            // --- UPDATE EXISTING ITEM ---
+            const oldItem = existingItems.find((i) => i.id === newItem.id)
+            if (oldItem) {
+              if (oldItem.productId !== newItem.productId) {
+                // Product Changed
+                if (this.stockTransactionService && this.productLocationService) {
+                  // Reverse OLD
+                  await this.stockTransactionService.create({
+                    productId: oldItem.productId,
+                    storeId: existing.storeId,
+                    type: 'ADJUSTMENT',
+                    quantity: oldItem.quantity,
+                    reference: `CORRECTION_SWAP_OUT:${existing.code}`,
+                    performedBy: existing.userId ?? undefined
+                  }, txnOptions)
+                  await this.productLocationService.adjustQuantity(
+                    oldItem.productId,
+                    existing.storeId,
+                    oldItem.quantity,
+                    txnOptions
+                  )
+
+                  // Deduct NEW
+                  await this.stockTransactionService.create({
+                    productId: newItem.productId,
+                    storeId: existing.storeId,
+                    type: 'SALE',
+                    quantity: newItem.quantity,
+                    reference: `CORRECTION_SWAP_IN:${existing.code}`,
+                    performedBy: existing.userId ?? undefined
+                  }, txnOptions)
+                  await this.productLocationService.adjustQuantity(
+                    newItem.productId,
+                    existing.storeId,
+                    -newItem.quantity,
+                    txnOptions
+                  )
+                }
+              } else {
+                // Same Product, Qty Changed
+                const qtyDiff = newItem.quantity - oldItem.quantity
+                if (qtyDiff !== 0 && this.stockTransactionService && this.productLocationService) {
+                  await this.stockTransactionService.create({
+                    productId: newItem.productId,
+                    storeId: existing.storeId,
+                    type: qtyDiff > 0 ? 'SALE' : 'ADJUSTMENT',
+                    quantity: Math.abs(qtyDiff),
+                    reference: `CORRECTION_QTY:${existing.code}`,
+                    performedBy: existing.userId ?? undefined
+                  }, txnOptions)
+                  await this.productLocationService.adjustQuantity(
+                    newItem.productId,
+                    existing.storeId,
+                    -qtyDiff,
+                    txnOptions
+                  )
+                }
+              }
+
+              // Update DB
+              if (pool) {
+                await pool.query(
+                  'UPDATE transaction_items SET product_id = $1, quantity = $2, display_quantity = $3, uom_code = $4, price = $5, updated_at = $6 WHERE id = $7',
+                  [
+                    newItem.productId,
+                    newItem.quantity,
+                    newItem.displayQuantity ?? newItem.quantity,
+                    newItem.uomCode ?? null,
+                    newItem.price,
+                    now,
+                    newItem.id
+                  ]
+                )
+              }
+              this.db.run(
+                'UPDATE transaction_items SET product_id = ?, quantity = ?, display_quantity = ?, uom_code = ?, price = ?, updated_at = ? WHERE id = ?',
                 [
                   newItem.productId,
                   newItem.quantity,
                   newItem.displayQuantity ?? newItem.quantity,
                   newItem.uomCode ?? null,
                   newItem.price,
-                  now,
+                  nowTs,
                   newItem.id
                 ]
               )
             }
+          } else {
+            // --- ADD NEW ITEM ---
+            const itemId = randomUUID()
+            const displayQty = newItem.displayQuantity ?? newItem.quantity
+            const uomCode = newItem.uomCode ?? null
+            
+            if (pool) {
+              await pool.query(
+                'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, price, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+                [
+                  itemId,
+                  id,
+                  newItem.productId,
+                  newItem.quantity,
+                  displayQty,
+                  uomCode,
+                  newItem.price,
+                  now,
+                  now
+                ]
+              )
+            }
             this.db.run(
-              'UPDATE transaction_items SET product_id = ?, quantity = ?, display_quantity = ?, uom_code = ?, price = ?, updated_at = ? WHERE id = ?',
-              [
-                newItem.productId,
-                newItem.quantity,
-                newItem.displayQuantity ?? newItem.quantity,
-                newItem.uomCode ?? null,
-                newItem.price,
-                nowTs,
-                newItem.id
-              ]
-            )
-          }
-        } else {
-          // --- ADD NEW ITEM ---
-          const itemId = randomUUID()
-          const displayQty = newItem.displayQuantity ?? newItem.quantity
-          const uomCode = newItem.uomCode ?? null
-          
-          if (pool) {
-            await pool.query(
-              'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, price, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+              'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
               [
                 itemId,
                 id,
@@ -1018,50 +1110,39 @@ export class TransactionService {
                 displayQty,
                 uomCode,
                 newItem.price,
-                now,
-                now
+                nowTs,
+                nowTs
               ]
             )
-          }
-          this.db.run(
-            'INSERT INTO transaction_items (id, transaction_id, product_id, quantity, display_quantity, uom_code, price, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-              itemId,
-              id,
-              newItem.productId,
-              newItem.quantity,
-              displayQty,
-              uomCode,
-              newItem.price,
-              nowTs,
-              nowTs
-            ]
-          )
 
-          // Deduct inventory for new item
-          if (this.stockTransactionService && this.productLocationService) {
-            await this.stockTransactionService.create({
-              productId: newItem.productId,
-              storeId: existing.storeId,
-              type: 'SALE',
-              quantity: newItem.quantity,
-              reference: `CORRECTION_ADD:${existing.code}`,
-              performedBy: existing.userId ?? undefined
-            })
-            await this.productLocationService.adjustQuantity(
-              newItem.productId,
-              existing.storeId,
-              -newItem.quantity
-            )
+            if (this.stockTransactionService && this.productLocationService) {
+              await this.stockTransactionService.create({
+                productId: newItem.productId,
+                storeId: existing.storeId,
+                type: 'SALE',
+                quantity: newItem.quantity,
+                reference: `CORRECTION_ADD:${existing.code}`,
+                performedBy: existing.userId ?? undefined
+              }, txnOptions)
+              await this.productLocationService.adjustQuantity(
+                newItem.productId,
+                existing.storeId,
+                -newItem.quantity,
+                txnOptions
+              )
+            }
           }
         }
       }
+
+      this.db.run(`RELEASE SAVEPOINT ${spName}`)
+      saveDb(this.db)
+
+    } catch (error) {
+      this.db.run(`ROLLBACK TO SAVEPOINT ${spName}`)
+      throw error
     }
 
-    saveDb(this.db)
-
-    // 5. Verification: Fetch updated record
-    // We fetch checks both (cloud preferably, falls back to local)
     const updated = await this.findById(id)
     if (!updated) {
       throw new Error('Transaction not found after update')
@@ -1346,8 +1427,6 @@ export class TransactionService {
         const cogs = parseFloat(cogsResult.rows[0].total_cogs || '0')
 
         // 3. Calculate Broken Goods (Waste) Value
-        // Assuming 'WASTE' type is used for broken goods.
-        // Value = quantity * cost
         const brokenGoods = await this.getBrokenGoodsSummary(startDate, endDate, storeId)
         
         const grossProfit = netRevenue - cogs

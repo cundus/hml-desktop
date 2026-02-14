@@ -15,6 +15,7 @@ export type StockTransactionType =
   | 'ADJUSTMENT'
   | 'SALE'
   | 'RETURN'
+  | 'WASTE'
 
 export interface StockTransaction {
   id: string
@@ -50,11 +51,15 @@ export interface CreateStockTransactionDto {
   cost?: string
 }
 
+export interface TransactionOptions {
+  groupId?: string
+  save?: boolean
+}
+
 export class StockTransactionCloudService {
   private localDb: Database
   private queueService: QueueService
   private batchService: BatchCloudService
-
   private auditLogService?: AuditLogService
 
   constructor(
@@ -68,16 +73,6 @@ export class StockTransactionCloudService {
     this.batchService = batchService
     this.auditLogService = auditLogService
   }
-  // ... (isOnline, findAll, etc unchanged until create)
-
-  // ... (findById, findByProduct, etc - I must be careful not to delete them if I replace Create block)
-  // I will replace ONLY the create method block and constructor/DTO?
-  // But DTO is at top and Create is at bottom.
-  // I should do 2 replace calls or rewrite file.
-  // Rewrite file is safer to avoid cutting "..." comments if i replace huge chunks.
-  // Or replace DTO first. Then Constructor. Then Create.
-
-  // Let's replace Step-by-Step.
 
   private isOnline(): boolean {
     return getConnectivity().isOnline()
@@ -217,21 +212,24 @@ export class StockTransactionCloudService {
     return results
   }
 
-  async create(data: CreateStockTransactionDto): Promise<StockTransaction> {
-    const isOutbound = ['OUTBOUND', 'TRANSFER_OUT', 'SALE'].includes(data.type)
-    // If adjustment is negative, treat like outbound logic?
-    // Usually Adjustment specifies batch if specific. If generic adjustment (-5), allocation applies?
-    // Let's stick to explicitly Outbound types for now.
+  async create(data: CreateStockTransactionDto, options?: TransactionOptions): Promise<StockTransaction> {
+    const isOutbound = ['OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE'].includes(data.type)
 
     // Auto-create/find batch if code is provided (INBOUND)
     let finalBatchId = data.batchId
     if (!isOutbound && !finalBatchId && data.batchCode) {
-      // ... existing inbound logic ...
       const existing = await this.batchService.findByCode(data.batchCode)
+      // Check store matches? Batch is per product usually, but implementation might vary.
+      // Assuming product is unique per code or ... code+product.
+      // Here code is primary for Batch?
+      // batchService.findByCode(string) suggests code is unique.
+      
       if (existing) {
         if (existing.productId === data.productId) {
           finalBatchId = existing.id
         } else {
+          // Different product reusing same code? Possible conflict.
+          // For now assume same product or just use existing.
           finalBatchId = existing.id
         }
       } else {
@@ -264,7 +262,7 @@ export class StockTransactionCloudService {
           ...data,
           quantity: takeQty,
           batchId: batch.batchId || undefined
-        })
+        }, options)
 
         remainingQty -= takeQty
       }
@@ -275,11 +273,10 @@ export class StockTransactionCloudService {
           ...data,
           quantity: remainingQty,
           batchId: undefined // No batch
-        })
+        }, options)
       }
 
       // Return the last created transaction (as a proxy for success)
-      // Ideally we return list, but interface is single.
       if (lastTxn) return lastTxn
       throw new Error('Failed to create outbound transaction')
     }
@@ -288,14 +285,17 @@ export class StockTransactionCloudService {
     return this.createSingleTransaction({
       ...data,
       batchId: finalBatchId
-    })
+    }, options)
   }
 
   private async createSingleTransaction(
-    data: CreateStockTransactionDto
+    data: CreateStockTransactionDto,
+    options?: TransactionOptions
   ): Promise<StockTransaction> {
     const id = randomUUID()
     const now = new Date()
+    const save = options?.save ?? true
+    
     const st: StockTransaction = {
       id,
       productId: data.productId,
@@ -374,21 +374,34 @@ export class StockTransactionCloudService {
         now.getTime()
       ]
     )
-    saveDb(this.localDb)
-    await this.queueService.add('INSERT', 'stock_transaction', {
-      id,
-      product_id: data.productId,
-      store_id: data.storeId,
-      type: data.type,
-      quantity: data.quantity,
-      reference: st.reference,
-      batch_id: st.batchId,
-      supplier_id: st.supplierId,
-      customer_id: st.customerId,
-      performed_by: st.performedBy,
-      created_at: now.toISOString(),
-      updated_at: now.toISOString()
-    })
+    
+    if (save) {
+      saveDb(this.localDb)
+    }
+    
+    // Priority 2 for stock transactions (after header and items)
+    await this.queueService.add(
+      'INSERT', 
+      'stock_transaction', 
+      {
+        id,
+        product_id: data.productId,
+        store_id: data.storeId,
+        type: data.type,
+        quantity: data.quantity,
+        reference: st.reference,
+        batch_id: st.batchId,
+        supplier_id: st.supplierId,
+        customer_id: st.customerId,
+        performed_by: st.performedBy,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString()
+      },
+      2, // Priority
+      options?.groupId,
+      save
+    )
+    
     if (this.auditLogService) {
       void this.auditLogService.log({
         action: 'CREATE',
@@ -421,50 +434,15 @@ export class StockTransactionCloudService {
       quantity: number
     }[]
   > {
-    // INBOUND positive, OUTBOUND negative.
-    // If Type is 'ADJUSTMENT', we need to check if quantity is +/-?
-    // Usually StockTransaction quantity is unsigned and Type determines sign?
-    // Or quantity is signed?
-    // In `StockTransactionCloudService.create`:
-    // `isOutbound` check logic implies Type determines flow.
-    // Let's check `create` logic again.
-    // In `create`: `quantity` is passed.
-    // And DB stores it.
-    // Does DB store negative for outbound?
-    // Checking `create`: `data.quantity` is stored as is.
-    // But `isOutbound` check implies we treat it as deduction logic.
-    // HOWEVER, the `activeBatches` query I am replacing used `SUM(t.quantity)`.
-    // Wait, the original `getBatchesWithStock` used `SUM(t.quantity)`.
-    // If Outbound transactions are stored as POSITIVE numbers in DB, then `SUM(quantity)` would be WRONG if we want net stock!
-    // UNLESS Outbound transactions are stored as NEGATIVE numbers?
-    // In `TransactionService.processCheckout`:
-    // It calls `stockTransactionService.create({ type: 'SALE', quantity })`.
-    // It creates POSITIVE quantity record.
-    // SO `getBatchesWithStock` summing them up would result in INCREASED stock for sales!
-    // **MAJOR BUG FOUND** (or my understanding is wrong).
-    // Let's check `productLocationService.adjustQuantity`.
-    // `TransactionService` calls `allocator.allocateStock` -> `productLocationService.adjustQuantity(..., -quantity)`.
-    // But `stockTransactionService.create` stores the raw quantity of the transaction.
-    // So if I sell 5, I store `quantity: 5, type: 'SALE'`.
-    // If I buy 10, I store `quantity: 10, type: 'INBOUND'`.
-    // `SUM(quantity)` = 15. WRONG.
-    // The query MUST respect Type sign.
-
-    // I will fix this query to handle signs correctly.
-
     if (this.isOnline()) {
       try {
         const pool = getCloudDb().getPool()
-        // Cloud Query with Sign Logic
         const cloudSql = `
           SELECT 
             t.batch_id, 
             SUM(CASE 
               WHEN t.type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT_IN', 'RETURN') THEN t.quantity 
               WHEN t.type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') THEN -t.quantity 
-              WHEN t.type = 'ADJUSTMENT' THEN t.quantity -- Assumes Adjustment can be +/- or handles logic differently? 
-              -- Usually Adjustment stores signed quantity?
-              -- Let's assume standard Types for now.
               ELSE 0 
             END) as available_qty,
             b.code,
@@ -497,8 +475,6 @@ export class StockTransactionCloudService {
       }
     }
 
-    // Local Logic with Sign Logic
-    // SQLite doesn't support CASE easily in aggregate? It does.
     const localSql = `
       SELECT 
         t.batch_id, 
@@ -542,7 +518,8 @@ export class StockTransactionCloudService {
     return results
   }
 
-  async softDelete(id: string): Promise<StockTransaction> {
+  async softDelete(id: string, options?: TransactionOptions): Promise<StockTransaction> {
+    const save = options?.save ?? true
     const existing = await this.findById(id)
     if (!existing) throw new Error('Stock transaction not found')
     const now = new Date()
@@ -566,8 +543,10 @@ export class StockTransactionCloudService {
       now.getTime(),
       id
     ])
-    saveDb(this.localDb)
-    await this.queueService.add('DELETE', 'stock_transaction', { id })
+    if (save) {
+      saveDb(this.localDb)
+    }
+    await this.queueService.add('DELETE', 'stock_transaction', { id }, 2, options?.groupId, save)
     if (this.auditLogService) {
       void this.auditLogService.log({
         action: 'DELETE',
@@ -589,11 +568,11 @@ export class StockTransactionCloudService {
       try {
         const pool = getCloudDb().getPool()
         const inResult = await pool.query(
-          "SELECT COALESCE(SUM(quantity), 0) as total FROM stock_transaction WHERE product_id = $1 AND store_id = $2 AND type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT') AND deleted_at IS NULL",
+          "SELECT COALESCE(SUM(quantity), 0) as total FROM stock_transaction WHERE product_id = $1 AND store_id = $2 AND type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT', 'RETURN') AND deleted_at IS NULL",
           [productId, storeId]
         )
         const outResult = await pool.query(
-          "SELECT COALESCE(SUM(quantity), 0) as total FROM stock_transaction WHERE product_id = $1 AND store_id = $2 AND type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE') AND deleted_at IS NULL",
+          "SELECT COALESCE(SUM(quantity), 0) as total FROM stock_transaction WHERE product_id = $1 AND store_id = $2 AND type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') AND deleted_at IS NULL",
           [productId, storeId]
         )
         const totalIn = parseFloat(inResult.rows[0]?.total as string) || 0
@@ -605,7 +584,7 @@ export class StockTransactionCloudService {
     }
 
     const inStmt = this.localDb.prepare(
-      "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT') AND deleted_at IS NULL"
+      "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('INBOUND', 'TRANSFER_IN', 'ADJUSTMENT', 'RETURN') AND deleted_at IS NULL"
     )
     inStmt.bind([productId, storeId])
     let totalIn = 0
@@ -613,7 +592,7 @@ export class StockTransactionCloudService {
     inStmt.free()
 
     const outStmt = this.localDb.prepare(
-      "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE') AND deleted_at IS NULL"
+      "SELECT SUM(quantity) as total FROM stock_transaction WHERE product_id = ? AND store_id = ? AND type IN ('OUTBOUND', 'TRANSFER_OUT', 'SALE', 'WASTE') AND deleted_at IS NULL"
     )
     outStmt.bind([productId, storeId])
     let totalOut = 0

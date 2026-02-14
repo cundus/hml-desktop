@@ -14,6 +14,13 @@ export interface QueueItem {
   retryCount: number
   lastError: string | null
   status: QueueStatus
+  groupId?: string
+  priority: number
+}
+
+export interface QueueGroup {
+  groupId: string
+  items: QueueItem[]
 }
 
 /**
@@ -32,6 +39,7 @@ export class QueueService {
    * Ensure queue table exists
    */
   private ensureTableExists(): void {
+    // Original table creation
     this.db.run(`
       CREATE TABLE IF NOT EXISTS operation_queue (
         id TEXT PRIMARY KEY,
@@ -44,6 +52,20 @@ export class QueueService {
         status TEXT DEFAULT 'pending'
       )
     `)
+
+    // Add new columns if they don't exist
+    try {
+      this.db.run(`ALTER TABLE operation_queue ADD COLUMN group_id TEXT`)
+    } catch {
+      // Column likely exists
+    }
+
+    try {
+      this.db.run(`ALTER TABLE operation_queue ADD COLUMN priority INTEGER DEFAULT 0`)
+    } catch {
+      // Column likely exists
+    }
+
     saveDb(this.db)
   }
 
@@ -53,29 +75,85 @@ export class QueueService {
   async add(
     action: QueueAction,
     entity: string,
-    payload: Record<string, unknown>
+    payload: Record<string, unknown>,
+    priority: number = 0,
+    groupId?: string,
+    save: boolean = true
   ): Promise<string> {
     const id = randomUUID()
     const now = Date.now()
     const payloadJson = JSON.stringify(payload)
 
     this.db.run(
-      `INSERT INTO operation_queue (id, action, entity, payload, created_at, retry_count, status) 
-       VALUES (?, ?, ?, ?, ?, 0, 'pending')`,
-      [id, action, entity, payloadJson, now]
+      `INSERT INTO operation_queue (id, action, entity, payload, created_at, retry_count, status, priority, group_id) 
+       VALUES (?, ?, ?, ?, ?, 0, 'pending', ?, ?)`,
+      [id, action, entity, payloadJson, now, priority, groupId ?? null]
     )
-    saveDb(this.db)
+    
+    if (save) {
+      saveDb(this.db)
+    }
 
     console.log(`[Queue] Added: ${action} ${entity} (${id})`)
     return id
   }
 
+
+
   /**
-   * Get all pending items
+   * Add batch of operations to queue (grouped)
+   */
+  async addBatch(
+    groupId: string,
+    items: {
+      action: QueueAction
+      entity: string
+      payload: Record<string, unknown>
+      priority?: number
+    }[],
+    save: boolean = true
+  ): Promise<string[]> {
+    const now = Date.now()
+    const ids: string[] = []
+
+    // Sanitize groupId for savepoint name (remove dashes)
+    const savepointName = `sp_${groupId.replace(/-/g, '_')}`
+    
+    this.db.run(`SAVEPOINT ${savepointName}`)
+
+    try {
+      for (const item of items) {
+        const id = randomUUID()
+        ids.push(id)
+        const payloadJson = JSON.stringify(item.payload)
+        const priority = item.priority ?? 0
+
+        this.db.run(
+          `INSERT INTO operation_queue (id, action, entity, payload, created_at, retry_count, status, group_id, priority) 
+           VALUES (?, ?, ?, ?, ?, 0, 'pending', ?, ?)`,
+          [id, item.action, item.entity, payloadJson, now, groupId, priority]
+        )
+      }
+      this.db.run(`RELEASE SAVEPOINT ${savepointName}`)
+      
+      if (save) {
+        saveDb(this.db)
+      }
+      
+      console.log(`[Queue] Added batch group: ${groupId} (${items.length} items)`)
+      return ids
+    } catch (error) {
+      this.db.run(`ROLLBACK TO SAVEPOINT ${savepointName}`)
+      throw error
+    }
+  }
+
+  /**
+   * Get all pending items (ungrouped or all)
    */
   getPending(): QueueItem[] {
     const stmt = this.db.prepare(
-      `SELECT * FROM operation_queue WHERE status = 'pending' ORDER BY created_at ASC`
+      `SELECT * FROM operation_queue WHERE status = 'pending' ORDER BY priority ASC, created_at ASC`
     )
     const items: QueueItem[] = []
 
@@ -86,6 +164,78 @@ export class QueueService {
     stmt.free()
 
     return items
+  }
+
+  /**
+   * Get pending groups
+   */
+  getPendingGroups(): QueueGroup[] {
+    // Get all pending items that have a group_id
+    const stmt = this.db.prepare(
+      `SELECT * FROM operation_queue WHERE status = 'pending' AND group_id IS NOT NULL ORDER BY created_at ASC`
+    )
+    const groupsMap = new Map<string, QueueItem[]>()
+
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      const item = this.mapRowToItem(row)
+      if (item.groupId) {
+        if (!groupsMap.has(item.groupId)) {
+          groupsMap.set(item.groupId, [])
+        }
+        groupsMap.get(item.groupId)!.push(item)
+      }
+    }
+    stmt.free()
+
+    const groups: QueueGroup[] = []
+    for (const [groupId, items] of groupsMap.entries()) {
+      // Sort items by priority within group
+      items.sort((a, b) => a.priority - b.priority)
+      groups.push({ groupId, items })
+    }
+
+    return groups
+  }
+
+  /**
+   * Get pending count for specific entity (used to skip sync pull)
+   */
+  getPendingForEntity(entity: string): number {
+    const stmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM operation_queue WHERE entity = ? AND status IN ('pending', 'processing')`
+    )
+    stmt.bind([entity])
+    let count = 0
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      count = row.count as number
+    }
+    stmt.free()
+    return count
+  }
+
+  /**
+   * Recover stale 'processing' items (e.g. after crash)
+   */
+  recoverStaleProcessing(): number {
+    const stmt = this.db.prepare(
+      `SELECT COUNT(*) as count FROM operation_queue WHERE status = 'processing'`
+    )
+    let count = 0
+    if (stmt.step()) {
+      const row = stmt.getAsObject()
+      count = row.count as number
+    }
+    stmt.free()
+
+    if (count > 0) {
+      this.db.run(`UPDATE operation_queue SET status = 'pending' WHERE status = 'processing'`)
+      saveDb(this.db)
+      console.log(`[Queue] Recovered ${count} stale processing items`)
+    }
+
+    return count
   }
 
   /**
@@ -145,12 +295,29 @@ export class QueueService {
   }
 
   /**
+   * Mark group as processing
+   */
+  markGroupProcessing(groupId: string): void {
+    this.db.run(`UPDATE operation_queue SET status = 'processing' WHERE group_id = ?`, [groupId])
+    saveDb(this.db)
+  }
+
+  /**
    * Mark item as completed and remove
    */
   markComplete(id: string): void {
     this.db.run(`DELETE FROM operation_queue WHERE id = ?`, [id])
     saveDb(this.db)
     console.log(`[Queue] Completed: ${id}`)
+  }
+
+  /**
+   * Mark group as completed and remove
+   */
+  markGroupComplete(groupId: string): void {
+    this.db.run(`DELETE FROM operation_queue WHERE group_id = ?`, [groupId])
+    saveDb(this.db)
+    console.log(`[Queue] Completed group: ${groupId}`)
   }
 
   /**
@@ -170,6 +337,22 @@ export class QueueService {
   }
 
   /**
+   * Increment retry count and mark error for group
+   */
+  markGroupRetry(groupId: string, error: string): void {
+    this.db.run(
+      `UPDATE operation_queue SET 
+        status = 'pending', 
+        retry_count = retry_count + 1, 
+        last_error = ? 
+       WHERE group_id = ?`,
+      [error, groupId]
+    )
+    saveDb(this.db)
+    console.log(`[Queue] Retry scheduled group: ${groupId} - ${error}`)
+  }
+
+  /**
    * Mark item as failed (max retries exceeded)
    */
   markFailed(id: string, error: string): void {
@@ -182,12 +365,35 @@ export class QueueService {
   }
 
   /**
+   * Mark group as failed (max retries exceeded)
+   */
+  markGroupFailed(groupId: string, error: string): void {
+    this.db.run(`UPDATE operation_queue SET status = 'failed', last_error = ? WHERE group_id = ?`, [
+      error,
+      groupId
+    ])
+    saveDb(this.db)
+    console.log(`[Queue] Failed group: ${groupId} - ${error}`)
+  }
+
+  /**
    * Retry a failed item
    */
   retryFailed(id: string): void {
     this.db.run(`UPDATE operation_queue SET status = 'pending', last_error = NULL WHERE id = ?`, [
       id
     ])
+    saveDb(this.db)
+  }
+
+  /**
+   * Retry failed group
+   */
+  retryFailedGroup(groupId: string): void {
+    this.db.run(
+      `UPDATE operation_queue SET status = 'pending', last_error = NULL WHERE group_id = ?`,
+      [groupId]
+    )
     saveDb(this.db)
   }
 
@@ -219,7 +425,9 @@ export class QueueService {
       createdAt: row.created_at as number,
       retryCount: row.retry_count as number,
       lastError: row.last_error as string | null,
-      status: row.status as QueueStatus
+      status: row.status as QueueStatus,
+      groupId: row.group_id as string | undefined,
+      priority: (row.priority as number) || 0
     }
   }
 

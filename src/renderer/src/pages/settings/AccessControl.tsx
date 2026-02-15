@@ -17,6 +17,13 @@ import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
+import Accordion from '@mui/material/Accordion'
+import AccordionSummary from '@mui/material/AccordionSummary'
+import AccordionDetails from '@mui/material/AccordionDetails'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
+import SearchIcon from '@mui/icons-material/Search'
+import InputAdornment from '@mui/material/InputAdornment'
+import Chip from '@mui/material/Chip'
 
 export type PermissionDef = {
   key: string
@@ -39,6 +46,7 @@ export default function AccessControlPage(): React.JSX.Element {
   const [formName, setFormName] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formPermissions, setFormPermissions] = useState<string[]>([])
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     const load = async (): Promise<void> => {
@@ -107,6 +115,74 @@ export default function AccessControlPage(): React.JSX.Element {
     setFormPermissions((prev) =>
       prev.includes(key) ? prev.filter((p) => p !== key) : [...prev, key]
     )
+  }
+
+  const getCategoryFromKey = (key: string): string => {
+    const parts = key.split('.')
+    if (parts.length < 2) return 'General'
+    const prefix = parts[0]
+    switch (prefix) {
+      case 'sales':
+        return 'Sales'
+      case 'inventory':
+        return 'Inventory'
+      case 'purchasing':
+        return 'Purchasing'
+      case 'operations':
+        return 'Operations'
+      case 'pricing':
+        return 'Pricing'
+      case 'finance':
+        return 'Finance'
+      case 'master':
+        return 'Master Data'
+      case 'settings':
+        return 'Settings'
+      case 'dashboard':
+        return 'Dashboard'
+      case 'audit':
+        return 'Audit'
+      default:
+        return prefix.charAt(0).toUpperCase() + prefix.slice(1)
+    }
+  }
+
+  const groupedPermissions = permissions.reduce(
+    (acc, perm) => {
+      const category = getCategoryFromKey(perm.key)
+      if (!acc[category]) acc[category] = []
+      acc[category].push(perm)
+      return acc
+    },
+    {} as Record<string, PermissionDef[]>
+  )
+
+  const filteredCategories = Object.entries(groupedPermissions)
+    .map(([category, perms]) => {
+      const filtered = perms.filter(
+        (p) =>
+          p.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.key.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      return { category, permissions: filtered, totalInGroup: perms.length }
+    })
+    .filter((group) => group.permissions.length > 0)
+
+  const toggleCategory = (perms: PermissionDef[]): void => {
+    const groupKeys = perms.map((p) => p.key)
+    const allSelected = groupKeys.every((k) => formPermissions.includes(k))
+
+    if (allSelected) {
+      setFormPermissions((prev) => prev.filter((k) => !groupKeys.includes(k)))
+    } else {
+      setFormPermissions((prev) => {
+        const next = [...prev]
+        groupKeys.forEach((k) => {
+          if (!next.includes(k)) next.push(k)
+        })
+        return next
+      })
+    }
   }
 
   const allPermissionsSelected =
@@ -256,11 +332,12 @@ export default function AccessControlPage(): React.JSX.Element {
               fullWidth
             />
 
-            <Box>
-              <Typography variant="subtitle2" gutterBottom>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
+              <Typography variant="subtitle2" fontWeight={600}>
                 Permissions
               </Typography>
-              <Box sx={{ mb: 1 }}>
+
+              <Stack direction="row" spacing={2} alignItems="center">
                 <FormControlLabel
                   control={
                     <Checkbox
@@ -270,25 +347,121 @@ export default function AccessControlPage(): React.JSX.Element {
                       size="small"
                     />
                   }
-                  label="Select all permissions"
+                  label={
+                    <Typography variant="body2" fontWeight={500}>
+                      Select all permissions
+                    </Typography>
+                  }
                 />
-              </Box>
-              <Box sx={{ maxHeight: 260, overflowY: 'auto', pr: 1 }}>
-                <FormGroup>
-                  {permissions.map((perm) => (
-                    <FormControlLabel
-                      key={perm.key}
-                      control={
+                <TextField
+                  placeholder="Search permissions..."
+                  size="small"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  sx={{ flex: 1 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon fontSize="small" />
+                      </InputAdornment>
+                    )
+                  }}
+                />
+              </Stack>
+
+              <Box
+                sx={{
+                  maxHeight: 400,
+                  overflowY: 'auto',
+                  pr: 1,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 0.5,
+                  '& .MuiAccordion-root': {
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    '&:before': { display: 'none' },
+                    boxShadow: 'none'
+                  }
+                }}
+              >
+                {filteredCategories.map(({ category, permissions: categoryPerms }) => {
+                  const selectedInGroup = categoryPerms.filter((p) =>
+                    formPermissions.includes(p.key)
+                  ).length
+                  const allInGroupSelected = selectedInGroup === categoryPerms.length
+                  const someInGroupSelected = selectedInGroup > 0 && !allInGroupSelected
+
+                  return (
+                    <Accordion key={category} disableGutters defaultExpanded={!!searchQuery}>
+                      <AccordionSummary
+                        expandIcon={<ExpandMoreIcon sx={{ fontSize: '1rem' }} />}
+                        sx={{
+                          flexDirection: 'row-reverse',
+                          px: 1,
+                          minHeight: '40px !important',
+                          '& .MuiAccordionSummary-content': {
+                            m: '0 !important',
+                            alignItems: 'center',
+                            gap: 1
+                          }
+                        }}
+                      >
                         <Checkbox
-                          checked={formPermissions.includes(perm.key)}
-                          onChange={() => togglePermission(perm.key)}
                           size="small"
+                          checked={allInGroupSelected}
+                          indeterminate={someInGroupSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() => toggleCategory(categoryPerms)}
+                          sx={{ p: 0.5 }}
                         />
-                      }
-                      label={perm.label}
-                    />
-                  ))}
-                </FormGroup>
+                        <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                          {category}
+                        </Typography>
+                        <Chip
+                          label={`${selectedInGroup}/${categoryPerms.length}`}
+                          size="small"
+                          variant="outlined"
+                          sx={{ height: 20, fontSize: '0.7rem' }}
+                        />
+                      </AccordionSummary>
+                      <AccordionDetails sx={{ p: 1, pt: 0, pl: 5 }}>
+                        <FormGroup>
+                          {categoryPerms.map((perm) => (
+                            <FormControlLabel
+                              key={perm.key}
+                              control={
+                                <Checkbox
+                                  checked={formPermissions.includes(perm.key)}
+                                  onChange={() => togglePermission(perm.key)}
+                                  size="small"
+                                />
+                              }
+                              label={
+                                <Box>
+                                  <Typography variant="body2">{perm.label}</Typography>
+                                  {perm.description && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      {perm.description}
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                            />
+                          ))}
+                        </FormGroup>
+                      </AccordionDetails>
+                    </Accordion>
+                  )
+                })}
+
+                {filteredCategories.length === 0 && (
+                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      No permissions found matching "{searchQuery}"
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             </Box>
           </Box>

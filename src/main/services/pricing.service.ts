@@ -15,6 +15,7 @@ export interface AvailableCategoryPrice {
   priceCategoryName: string
   price: string
   source: 'store' | 'default'
+  sortOrder: number
 }
 
 export interface PriceCategory {
@@ -130,7 +131,7 @@ export class PricingService {
 
     // 1. Store-specific prices
     const storeStmt = this.db.prepare(
-      `SELECT sp.price_category_id AS id, pc.name AS name, sp.price AS price
+      `SELECT sp.price_category_id AS id, pc.name AS name, sp.price AS price, pc.sort_order AS sort_order
        FROM store_product_uom_price sp
        JOIN price_category pc ON pc.id = sp.price_category_id
        WHERE sp.product_id = ? AND sp.uom_id = ? AND sp.store_id = ?
@@ -148,13 +149,14 @@ export class PricingService {
         priceCategoryId: id,
         priceCategoryName: row.name as string,
         price: row.price as string,
-        source: 'store'
+        source: 'store',
+        sortOrder: Number(row.sort_order ?? 0)
       })
     }
     storeStmt.free()
 
     // 2. Default HQ prices for categories not overridden by store
-    let defaultQuery = `SELECT pucp.price_category_id AS id, pc.name AS name, pucp.price AS price
+    let defaultQuery = `SELECT pucp.price_category_id AS id, pc.name AS name, pucp.price AS price, pc.sort_order AS sort_order
        FROM product_uom_category_price pucp
        JOIN price_category pc ON pc.id = pucp.price_category_id
        WHERE pucp.product_id = ? AND pucp.uom_id = ? AND pucp.deleted_at IS NULL`
@@ -176,7 +178,8 @@ export class PricingService {
         priceCategoryId: id,
         priceCategoryName: row.name as string,
         price: row.price as string,
-        source: 'default'
+        source: 'default',
+        sortOrder: Number(row.sort_order ?? 0)
       })
     }
     defaultStmt.free()

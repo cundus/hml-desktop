@@ -41,6 +41,7 @@ export interface PriceCategory {
   price: number
   margin?: number // percentage
   source?: 'store' | 'default' // where the price comes from
+  sortOrder?: number
 }
 
 export interface ProductSelectResult {
@@ -265,10 +266,15 @@ export default function ProductSelectModal({
         // Filter out zero prices (except we handle MANUAL later explicitly)
         const validPrices = availablePrices.filter((ap) => Number(ap.price) > 0)
 
-        // Sort: RETAIL first, then alphabetical
+        // Sort: RETAIL first, then by sortOrder, then alphabetical
         const sortedPrices = [...validPrices].sort((a, b) => {
           if (a.priceCategoryId === 'RETAIL') return -1
           if (b.priceCategoryId === 'RETAIL') return 1
+          
+          if (a.sortOrder !== b.sortOrder) {
+            return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+          }
+          
           return a.priceCategoryName.localeCompare(b.priceCategoryName)
         })
 
@@ -276,7 +282,8 @@ export default function ProductSelectModal({
           id: ap.priceCategoryId,
           name: ap.priceCategoryName,
           price: Number(ap.price) || 0,
-          source: ap.source
+          source: ap.source,
+          sortOrder: ap.sortOrder
         }))
         categories.push(manualCategory)
         setPriceCategories(categories)

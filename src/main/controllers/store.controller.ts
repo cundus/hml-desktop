@@ -3,21 +3,31 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { StoreCloudService } from '../services/store-cloud.service'
 import { CreateStoreDto, UpdateStoreDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class StoreController {
-  constructor(private storeService: StoreCloudService) {}
+  constructor(
+    private db: Database,
+    private storeService: StoreCloudService
+  ) {}
 
   /**
    * Register all IPC handlers for store operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:stores:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:stores:getById', this.getById.bind(this))
-    ipcMain.handle('db:stores:getByCode', this.getByCode.bind(this))
-    ipcMain.handle('db:stores:create', this.create.bind(this))
-    ipcMain.handle('db:stores:update', this.update.bind(this))
-    ipcMain.handle('db:stores:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:stores:restore', this.restore.bind(this))
+    ipcMain.handle(
+      'db:stores:getAll',
+      requirePermission(this.db, 'master.store.view', this.getAll.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle('db:stores:getById', requirePermission(this.db, 'master.store.view', this.getById.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:getByCode', requirePermission(this.db, 'master.store.view', this.getByCode.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:create', requirePermission(this.db, 'master.store.create', this.create.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:update', requirePermission(this.db, 'master.store.edit', this.update.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:softDelete', requirePermission(this.db, 'master.store.delete', this.softDelete.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:restore', requirePermission(this.db, 'master.store.delete', this.restore.bind(this), { allowDuringSetup: true }))
   }
 
   /**

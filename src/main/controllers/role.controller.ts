@@ -3,19 +3,24 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { RoleCloudService } from '../services/role-cloud.service'
 import { ApiResponse } from '../types/response'
 import { CreateRoleDto, UpdateRoleDto } from '../types/dto'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class RoleController {
-  constructor(private roleService: RoleCloudService) {}
+  constructor(
+    private db: Database,
+    private roleService: RoleCloudService
+  ) {}
 
   /**
    * Register all IPC handlers for role operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:roles:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:roles:create', this.create.bind(this))
-    ipcMain.handle('db:roles:update', this.update.bind(this))
-    ipcMain.handle('db:roles:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:roles:restore', this.restore.bind(this))
+    ipcMain.handle('db:roles:getAll', requirePermission(this.db, 'settings.role.view', this.getAll.bind(this)))
+    ipcMain.handle('db:roles:create', requirePermission(this.db, 'settings.role.manage', this.create.bind(this)))
+    ipcMain.handle('db:roles:update', requirePermission(this.db, 'settings.role.manage', this.update.bind(this)))
+    ipcMain.handle('db:roles:softDelete', requirePermission(this.db, 'settings.role.manage', this.softDelete.bind(this)))
+    ipcMain.handle('db:roles:restore', requirePermission(this.db, 'settings.role.manage', this.restore.bind(this)))
   }
 
   /**

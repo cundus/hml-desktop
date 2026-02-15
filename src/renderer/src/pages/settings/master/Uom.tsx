@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
 
 const uomSchema = z.object({
   code: z.string().min(1, 'Kode wajib diisi').max(10, 'Kode maksimal 10 karakter'),
@@ -41,6 +42,11 @@ export default function UomPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Uom | null>(null)
+  const { hasPermission } = useAuth()
+
+  const canCreate = hasPermission('master.uom.create')
+  const canEdit = hasPermission('master.uom.edit')
+  const canDelete = hasPermission('master.uom.delete')
 
   const {
     register,
@@ -135,9 +141,11 @@ export default function UomPage(): React.JSX.Element {
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Satuan (UOM)</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Tambah Satuan
-        </Button>
+        {canCreate && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            Tambah Satuan
+          </Button>
+        )}
       </Stack>
 
       {error && (
@@ -168,12 +176,16 @@ export default function UomPage(): React.JSX.Element {
                   </TableCell>
                   <TableCell>{uom.name}</TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(uom)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(uom.id)}>
-                      <DeleteIcon />
-                    </IconButton>
+                    {canEdit && (
+                      <IconButton size="small" onClick={() => openEdit(uom)}>
+                        <EditIcon />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton size="small" onClick={() => handleDelete(uom.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

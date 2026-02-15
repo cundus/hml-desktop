@@ -1,112 +1,95 @@
-import { ipcMain } from 'electron'
+import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { CustomerCloudService } from '../services/customer-cloud.service'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
+import { ApiResponse } from '../types/response'
 
 export class CustomerController {
-  constructor(private customerService: CustomerCloudService) {}
+  constructor(
+    private db: Database,
+    private customerService: CustomerCloudService
+  ) {}
 
   registerHandlers(): void {
-    // Get all customers
-    ipcMain.handle('db:customers:getAll', async () => {
-      try {
-        const customers = await this.customerService.findAll()
-        return { success: true, data: customers }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+    ipcMain.handle('db:customers:getAll', requirePermission(this.db, 'master.customer.view', this.getAll.bind(this)))
+    ipcMain.handle('db:customers:getById', requirePermission(this.db, 'master.customer.view', this.getById.bind(this)))
+    ipcMain.handle('db:customers:search', requirePermission(this.db, 'master.customer.view', this.search.bind(this)))
+    ipcMain.handle('db:customers:getByCategory', requirePermission(this.db, 'master.customer.view', this.getByCategory.bind(this)))
+    ipcMain.handle('db:customers:create', requirePermission(this.db, 'master.customer.create', this.create.bind(this)))
+    ipcMain.handle('db:customers:update', requirePermission(this.db, 'master.customer.edit', this.update.bind(this)))
+    ipcMain.handle('db:customers:delete', requirePermission(this.db, 'master.customer.delete', this.delete.bind(this)))
+    ipcMain.handle('db:customers:restore', requirePermission(this.db, 'master.customer.delete', this.restore.bind(this)))
+  }
 
-    // Get customer by ID
-    ipcMain.handle('db:customers:getById', async (_, id: string) => {
-      try {
-        const customer = await this.customerService.findById(id)
-        return { success: true, data: customer }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getAll(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
+    try {
+      const customers = await this.customerService.findAll()
+      return { success: true, data: customers }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Search customers
-    ipcMain.handle('db:customers:search', async (_, query: string) => {
-      try {
-        const customers = await this.customerService.search(query)
-        return { success: true, data: customers }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getById(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+    try {
+      const customer = await this.customerService.findById(id)
+      return { success: true, data: customer }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Get customers by category
-    ipcMain.handle('db:customers:getByCategory', async (_, categoryId: string) => {
-      try {
-        const customers = await this.customerService.findByCategory(categoryId)
-        return { success: true, data: customers }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async search(_event: IpcMainInvokeEvent, query: string): Promise<ApiResponse> {
+    try {
+      const customers = await this.customerService.search(query)
+      return { success: true, data: customers }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Create customer
-    ipcMain.handle('db:customers:create', async (_, data) => {
-      try {
-        const customer = await this.customerService.create(data)
-        return { success: true, data: customer }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getByCategory(_event: IpcMainInvokeEvent, categoryId: string): Promise<ApiResponse> {
+    try {
+      const customers = await this.customerService.findByCategory(categoryId)
+      return { success: true, data: customers }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Update customer
-    ipcMain.handle('db:customers:update', async (_, id: string, data) => {
-      try {
-        const customer = await this.customerService.update(id, data)
-        return { success: true, data: customer }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async create(_event: IpcMainInvokeEvent, data: any): Promise<ApiResponse> {
+    try {
+      const customer = await this.customerService.create(data)
+      return { success: true, data: customer }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Soft delete customer
-    ipcMain.handle('db:customers:delete', async (_, id: string) => {
-      try {
-        const customer = await this.customerService.softDelete(id)
-        return { success: true, data: customer }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async update(_event: IpcMainInvokeEvent, id: string, data: any): Promise<ApiResponse> {
+    try {
+      const customer = await this.customerService.update(id, data)
+      return { success: true, data: customer }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    // Restore customer
-    ipcMain.handle('db:customers:restore', async (_, id: string) => {
-      try {
-        const customer = await this.customerService.restore(id)
-        return { success: true, data: customer }
-      } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async delete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+    try {
+      const customer = await this.customerService.softDelete(id)
+      return { success: true, data: customer }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async restore(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+    try {
+      const customer = await this.customerService.restore(id)
+      return { success: true, data: customer }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
   }
 }

@@ -3,19 +3,24 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { CategoryCloudService } from '../services/category-cloud.service'
 import { CreateCategoryDto, UpdateCategoryDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class CategoryController {
-  constructor(private categoryService: CategoryCloudService) {}
+  constructor(
+    private db: Database,
+    private categoryService: CategoryCloudService
+  ) {}
 
   /**
    * Register all IPC handlers for category operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:categories:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:categories:getById', this.getById.bind(this))
-    ipcMain.handle('db:categories:create', this.create.bind(this))
-    ipcMain.handle('db:categories:update', this.update.bind(this))
-    ipcMain.handle('db:categories:delete', this.delete.bind(this))
+    ipcMain.handle('db:categories:getAll', requirePermission(this.db, 'master.category.view', this.getAll.bind(this)))
+    ipcMain.handle('db:categories:getById', requirePermission(this.db, 'master.category.view', this.getById.bind(this)))
+    ipcMain.handle('db:categories:create', requirePermission(this.db, 'master.category.create', this.create.bind(this)))
+    ipcMain.handle('db:categories:update', requirePermission(this.db, 'master.category.edit', this.update.bind(this)))
+    ipcMain.handle('db:categories:delete', requirePermission(this.db, 'master.category.delete', this.delete.bind(this)))
   }
 
   /**

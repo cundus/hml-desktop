@@ -30,6 +30,7 @@ import StockAdjustmentsTab from './components/StockAdjustmentsTab'
 import StockAdjustmentDialog from './components/StockAdjustmentDialog'
 import BatchesPage from './Batches'
 import useBranchConfig from '@renderer/hooks/useBranchConfig'
+import useAuth from '@renderer/hooks/useAuth'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -61,6 +62,7 @@ function a11yProps(index: number): Record<string, string> {
 }
 
 export default function InventoryPage(): React.ReactElement {
+  const { hasPermission } = useAuth()
   const [tabValue, setTabValue] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -211,9 +213,11 @@ export default function InventoryPage(): React.ReactElement {
               </Select>
             </FormControl>
           )}
-          <Button variant="contained" onClick={() => setAdjustmentDialogOpen(true)}>
-            Penyesuaian Stok
-          </Button>
+          {hasPermission('inventory.stock.adjust') && (
+            <Button variant="contained" onClick={() => setAdjustmentDialogOpen(true)}>
+              Penyesuaian Stok
+            </Button>
+          )}
           <IconButton onClick={loadData} title="Refresh">
             <RefreshIcon />
           </IconButton>

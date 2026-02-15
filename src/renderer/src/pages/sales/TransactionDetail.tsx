@@ -120,7 +120,7 @@ export default function TransactionDetailPage(): React.JSX.Element {
   // Profit Detail State (Admin/Owner)
   const { hasPermission } = useAuth()
   const [profitDetail, setProfitDetail] = useState<any[]>([])
-  const canViewProfit = hasPermission('sales.profit-detail')
+  const canViewProfit = hasPermission('sales.transaction.view-profit')
 
   useEffect(() => {
     if (transactionId && canViewProfit) {

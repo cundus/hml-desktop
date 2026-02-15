@@ -3,23 +3,33 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { UserCloudService } from '../services/user-cloud.service'
 import { CreateUserDto, UpdateUserDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class UserController {
-  constructor(private userService: UserCloudService) {}
+  constructor(
+    private db: Database,
+    private userService: UserCloudService
+  ) {}
 
   /**
    * Register all IPC handlers for user operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:users:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:users:getById', this.getById.bind(this))
-    ipcMain.handle('db:users:create', this.create.bind(this))
-    ipcMain.handle('db:users:update', this.update.bind(this))
-    ipcMain.handle('db:users:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:users:delete', this.softDelete.bind(this))
-    ipcMain.handle('db:users:restore', this.restore.bind(this))
-    ipcMain.handle('db:users:updatePin', this.updatePin.bind(this))
-    ipcMain.handle('db:users:hasPin', this.hasPin.bind(this))
+    ipcMain.handle(
+      'db:users:getAll',
+      requirePermission(this.db, 'master.user.view', this.getAll.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle('db:users:getById', requirePermission(this.db, 'master.user.view', this.getById.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:create', requirePermission(this.db, 'master.user.create', this.create.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:update', requirePermission(this.db, 'master.user.edit', this.update.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:softDelete', requirePermission(this.db, 'master.user.delete', this.softDelete.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:delete', requirePermission(this.db, 'master.user.delete', this.softDelete.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:restore', requirePermission(this.db, 'master.user.delete', this.restore.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:updatePin', requirePermission(this.db, 'master.user.reset-password', this.updatePin.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:users:hasPin', requirePermission(this.db, 'master.user.view', this.hasPin.bind(this), { allowDuringSetup: true }))
   }
 
   /**

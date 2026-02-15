@@ -25,6 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
 
 const expenseCategorySchema = z.object({
   code: z.string().min(1, 'Kode wajib diisi').max(20, 'Kode maksimal 20 karakter'),
@@ -47,6 +48,11 @@ export default function ExpenseCategoryPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<ExpenseCategory | null>(null)
+  const { hasPermission } = useAuth()
+
+  const canCreate = hasPermission('master.expense-category.create')
+  const canEdit = hasPermission('master.expense-category.edit')
+  const canDelete = hasPermission('master.expense-category.delete')
 
   const {
     register,
@@ -145,9 +151,11 @@ export default function ExpenseCategoryPage(): React.JSX.Element {
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Kategori Pengeluaran</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Tambah Kategori
-        </Button>
+        {canCreate && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            Tambah Kategori
+          </Button>
+        )}
       </Stack>
 
       {error && (
@@ -195,12 +203,16 @@ export default function ExpenseCategoryPage(): React.JSX.Element {
                     />
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(item)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(item.id)}>
-                      <DeleteIcon />
-                    </IconButton>
+                    {canEdit && (
+                      <IconButton size="small" onClick={() => openEdit(item)}>
+                        <EditIcon />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton size="small" onClick={() => handleDelete(item.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

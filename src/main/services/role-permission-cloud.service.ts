@@ -1,5 +1,4 @@
 import { Database } from 'sql.js'
-import { randomUUID } from 'crypto'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
@@ -89,9 +88,11 @@ export class RolePermissionCloudService {
           [now, now, roleId]
         )
         for (const permissionId of permissionIds) {
-          const id = randomUUID()
+          const id = `${roleId}:${permissionId}`
           await pool.query(
-            'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at, deleted_at) ' +
+              'VALUES ($1, $2, $3, $4, $5, NULL) ' +
+              'ON CONFLICT (id) DO UPDATE SET deleted_at = NULL, updated_at = $5',
             [id, roleId, permissionId, now, now]
           )
         }
@@ -106,9 +107,9 @@ export class RolePermissionCloudService {
       [now.getTime(), now.getTime(), roleId]
     )
     for (const permissionId of permissionIds) {
-      const id = randomUUID()
+      const id = `${roleId}:${permissionId}`
       this.localDb.run(
-        'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT OR REPLACE INTO role_permission (id, role_id, permission_id, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, NULL)',
         [id, roleId, permissionId, now.getTime(), now.getTime()]
       )
     }

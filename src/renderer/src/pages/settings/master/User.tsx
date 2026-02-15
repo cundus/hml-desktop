@@ -25,6 +25,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
 
 const userSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -69,6 +70,11 @@ export default function UserPage(): React.JSX.Element {
   const [editing, setEditing] = useState<User | null>(null)
   const [stores, setStores] = useState<Store[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  // Permissions
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('master.user.create')
+  const canEdit = hasPermission('master.user.edit')
+  const canDelete = hasPermission('master.user.delete')
 
   const {
     register,
@@ -334,9 +340,11 @@ export default function UserPage(): React.JSX.Element {
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Master Pengguna</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Tambah Pengguna
-        </Button>
+        {canCreate && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
+            Tambah Pengguna
+          </Button>
+        )}
       </Stack>
 
       {error && (
@@ -390,19 +398,24 @@ export default function UserPage(): React.JSX.Element {
                         label={user.hasPin ? 'Aktif' : 'Belum'}
                         color={user.hasPin ? 'success' : 'default'}
                         variant="outlined"
+                        sx={{ fontStyle: user.hasPin ? 'normal' : 'italic' }}
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" onClick={() => openEdit(user)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => void handleDelete(user)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canEdit && (
+                        <IconButton size="small" onClick={() => openEdit(user)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canDelete && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => void handleDelete(user)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))

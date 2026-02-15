@@ -1,5 +1,4 @@
 import { Database } from 'sql.js'
-import { randomUUID } from 'crypto'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
@@ -91,9 +90,11 @@ export class UserRoleCloudService {
         )
         // Insert new
         for (const roleId of roleIds) {
-          const id = randomUUID()
+          const id = `${userId}:${roleId}`
           await pool.query(
-            'INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO user_role (id, user_id, role_id, created_at, updated_at, deleted_at) ' +
+              'VALUES ($1, $2, $3, $4, $5, NULL) ' +
+              'ON CONFLICT (id) DO UPDATE SET deleted_at = NULL, updated_at = $5',
             [id, userId, roleId, now, now]
           )
         }
@@ -109,9 +110,9 @@ export class UserRoleCloudService {
       [now.getTime(), now.getTime(), userId]
     )
     for (const roleId of roleIds) {
-      const id = randomUUID()
+      const id = `${userId}:${roleId}`
       this.localDb.run(
-        'INSERT INTO user_role (id, user_id, role_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+        'INSERT OR REPLACE INTO user_role (id, user_id, role_id, created_at, updated_at, deleted_at) VALUES (?, ?, ?, ?, ?, NULL)',
         [id, userId, roleId, now.getTime(), now.getTime()]
       )
     }

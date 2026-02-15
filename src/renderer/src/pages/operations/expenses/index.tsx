@@ -25,6 +25,7 @@ import {
   useTheme
 } from '@mui/material'
 import { useShift } from '@renderer/hooks/useShift'
+import useAuth from '@renderer/hooks/useAuth'
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import { formatCurrency } from '../../../utils/currency'
 import Kbd from '../../../components/Kbd'
@@ -47,6 +48,7 @@ interface Expense {
 
 export default function ExpensesPage(): React.JSX.Element {
   const { currentShift } = useShift()
+  const { hasPermission } = useAuth()
   const theme = useTheme()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -290,25 +292,27 @@ export default function ExpensesPage(): React.JSX.Element {
             </Typography>
           </Box>
           <Stack direction="row" spacing={2}>
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<AddIcon />}
-              onClick={handleAddExpense}
-              disabled={loading}
-              size="medium"
-              sx={{
-                borderRadius: 2,
-                px: 3,
-                py: 1.5,
-                boxShadow: theme.shadows[4]
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography sx={{ fontSize: '0.875rem' }}>Tambah Pengeluaran</Typography>
-                <Kbd keys={['Ctrl', 'N']} size="small" />
-              </Box>
-            </Button>
+            {hasPermission('operations.expense.create') && (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<AddIcon />}
+                onClick={handleAddExpense}
+                disabled={loading}
+                size="medium"
+                sx={{
+                  borderRadius: 2,
+                  px: 3,
+                  py: 1.5,
+                  boxShadow: theme.shadows[4]
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '0.875rem' }}>Tambah Pengeluaran</Typography>
+                  <Kbd keys={['Ctrl', 'N']} size="small" />
+                </Box>
+              </Button>
+            )}
             <Button
               variant="outlined"
               startIcon={<PrintIcon />}
@@ -509,6 +513,8 @@ export default function ExpensesPage(): React.JSX.Element {
             expenses={filteredExpenses}
             onEdit={handleEditExpense}
             onDelete={handleDeleteExpense}
+            canEdit={hasPermission('operations.expense.create')}
+            canDelete={hasPermission('operations.expense.delete')}
             loading={loading}
           />
         )}

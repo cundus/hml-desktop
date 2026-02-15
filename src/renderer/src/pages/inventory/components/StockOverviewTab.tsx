@@ -1,21 +1,22 @@
-import { useState, useMemo } from 'react'
+import {
+  Edit as EditIcon,
+  InfoOutlined as InfoIcon,
+  Search as SearchIcon,
+  Warning as WarningIcon
+} from '@mui/icons-material'
 import {
   Box,
-  Typography,
-  TextField,
-  InputAdornment,
   Chip,
   IconButton,
-  Tooltip
+  InputAdornment,
+  TextField,
+  Tooltip,
+  Typography
 } from '@mui/material'
 import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
+import useAuth from '@renderer/hooks/useAuth'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Search as SearchIcon,
-  Warning as WarningIcon,
-  Add as AddIcon,
-  InfoOutlined as InfoIcon
-} from '@mui/icons-material'
 import { StockOverviewItem } from 'src/preload/api/inventory'
 import { ProductUom } from 'src/preload/api/pricing'
 
@@ -32,6 +33,7 @@ export default function StockOverviewTab({
   uoms,
   onQuickAdjust
 }: StockOverviewTabProps): React.ReactElement {
+  const { hasPermission } = useAuth()
   const [searchText, setSearchText] = useState('')
   const [loading] = useState(false)
   const navigate = useNavigate()
@@ -56,9 +58,7 @@ export default function StockOverviewTab({
     navigate(`/inventory/product/${item.productId}?storeId=${item.storeId}`)
   }
 
-  const handleQuickAdjust = async (item: StockOverviewItem): Promise<void> => {
-    onQuickAdjust(item.productId, item.storeId)
-  }
+  // Removed handleQuickAdjust as onQuickAdjust is now called directly in renderCell
 
   const formatSmartStock = (qty: number, productId: string, baseUnit: string): string => {
     if (qty === 0) return `0 ${baseUnit}`
@@ -67,7 +67,7 @@ export default function StockOverviewTab({
     const productUoms = uoms
       .filter((u) => u.productId === productId && u.conversionFactor > 1)
       .sort((a, b) => b.conversionFactor - a.conversionFactor)
-      
+    
     if (productUoms.length === 0) return `${qty} ${baseUnit}`
     
     let remainingQty = qty
@@ -170,11 +170,17 @@ export default function StockOverviewTab({
               <InfoIcon />
             </IconButton>
           </Tooltip>
-          <Tooltip title="Penyesuaian Cepat">
-            <IconButton size="small" onClick={() => handleQuickAdjust(params.row)}>
-              <AddIcon />
-            </IconButton>
-          </Tooltip>
+          {hasPermission('inventory.stock.adjust') && (
+            <Tooltip title="Quick Adjust">
+              <IconButton
+                size="small"
+                color="primary"
+                onClick={() => onQuickAdjust(params.row.productId, params.row.storeId)}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       )
     }

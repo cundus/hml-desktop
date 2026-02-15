@@ -39,19 +39,19 @@ const menus: MenuItem[] = [
     key: 'sales',
     label: 'Penjualan',
     icon: <ShoppingBasketIcon fontSize="small" />,
-    permissions: ['sales.view'],
+    permissions: ['sales.pos.view', 'sales.transaction.view'],
     children: [
       {
         key: 'sales-pos',
         label: 'Kasir',
         path: '/sales/pos',
-        permissions: ['sales.pos']
+        permissions: ['sales.pos.view']
       },
       {
         key: 'sales-reports',
         label: 'Laporan Penjualan',
         path: '/sales/reports',
-        permissions: ['sales.reports']
+        permissions: ['sales.transaction.view']
       }
     ]
   },
@@ -59,19 +59,19 @@ const menus: MenuItem[] = [
     key: 'inventory',
     label: 'Inventori',
     icon: <InventoryIcon fontSize="small" />,
-    permissions: ['inventory.manage'],
+    permissions: ['inventory.dashboard.view', 'inventory.stock.view'],
     children: [
       {
         key: 'inventory-management',
         label: 'Inventory Management',
         path: '/inventory',
-        permissions: ['inventory.manage']
+        permissions: ['inventory.dashboard.view']
       },
       {
         key: 'inventory-adjustments',
         label: 'Penyesuaian Stok Massal',
         path: '/inventory/adjustments',
-        permissions: ['inventory.manage']
+        permissions: ['inventory.stock.adjust']
       }
     ]
   },
@@ -79,19 +79,19 @@ const menus: MenuItem[] = [
     key: 'purchasing',
     label: 'Pembelian',
     icon: <LocalShippingIcon fontSize="small" />,
-    permissions: ['purchasing.manage'],
+    permissions: ['purchasing.order.view'],
     children: [
       {
         key: 'purchasing-orders',
         label: 'Pesanan Pembelian',
         path: '/purchasing/orders',
-        permissions: ['purchasing.manage']
+        permissions: ['purchasing.order.view']
       },
       {
         key: 'purchasing-create',
         label: 'Buat PO',
         path: '/purchasing/order-form',
-        permissions: ['purchasing.manage']
+        permissions: ['purchasing.order.create']
       }
     ]
   },
@@ -99,31 +99,31 @@ const menus: MenuItem[] = [
     key: 'operations',
     label: 'Operasional',
     icon: <ReceiptIcon fontSize="small" />,
-    permissions: ['operations.expenses', 'operations.shift_history'],
+    permissions: ['operations.expense.view', 'operations.shift.view', 'operations.operational-expense.view'],
     children: [
       {
         key: 'operations-expenses',
         label: 'Pengeluaran Harian',
         path: '/operations/expenses',
-        permissions: ['operations.expenses']
+        permissions: ['operations.expense.view']
       },
       {
         key: 'operations-operational-expenses',
         label: 'Pengeluaran Operasional',
         path: '/operations/operational-expenses',
-        permissions: ['operations.operational_expenses']
+        permissions: ['operations.operational-expense.view']
       },
       {
         key: 'operations-shifts',
         label: 'Riwayat Shift',
         path: '/operations/shifts',
-        permissions: ['operations.shift_history']
+        permissions: ['operations.shift.view']
       },
       {
         key: 'operations-damaged-goods',
         label: 'Barang Rusak',
         path: '/operations/damaged-goods',
-        permissions: ['operations.damaged_goods']
+        permissions: ['inventory.damaged-goods.view']
       }
     ]
   },
@@ -131,25 +131,25 @@ const menus: MenuItem[] = [
     key: 'product-management',
     label: 'Manajemen Produk',
     icon: <LocalOfferIcon fontSize="small" />,
-    permissions: ['master.product.manage', 'pricing.manage'],
+    permissions: ['master.product.view', 'pricing.category.view', 'pricing.product.view'],
     children: [
       {
         key: 'product-dashboard',
         label: 'Dashboard Produk',
         path: '/products',
-        permissions: ['master.product.manage']
+        permissions: ['master.product.view']
       },
       // {
       //   key: 'pricing-products',
       //   label: 'Harga Produk',
       //   path: '/pricing/products',
-      //   permissions: ['pricing.products']
+      //   permissions: ['pricing.product.view']
       // },
       {
         key: 'pricing-categories',
         label: 'Kategori Harga',
         path: '/pricing/categories',
-        permissions: ['pricing.categories']
+        permissions: ['pricing.category.view']
       }
     ]
   },
@@ -157,25 +157,25 @@ const menus: MenuItem[] = [
     key: 'finance',
     label: 'Keuangan',
     icon: <AccountBalanceIcon fontSize="small" />,
-    permissions: ['finance.view'],
+    permissions: ['finance.cashflow.view', 'finance.profit-loss.view'],
     children: [
       {
         key: 'finance-cashflow',
         label: 'Arus Kas',
         path: '/finance/cashflow',
-        permissions: ['finance.cashflow']
+        permissions: ['finance.cashflow.view']
       },
       // {
       //   key: 'finance-reports',
       //   label: 'Laporan Keuangan',
       //   path: '/finance/reports',
-      //   permissions: ['finance.reports']
+      //   permissions: ['finance.reports.view']
       // },
       {
         key: 'finance-profit-loss',
         label: 'Laporan Laba Rugi',
         path: '/finance/profit-loss',
-        permissions: ['finance.profit-loss']
+        permissions: ['finance.profit-loss.view']
       }
     ]
   },
@@ -183,7 +183,7 @@ const menus: MenuItem[] = [
     key: 'settings-group',
     label: 'Menu Pengaturan',
     icon: <SettingsIcon fontSize="small" />,
-    permissions: ['settings.view'],
+    permissions: ['settings.view', 'settings.role.view'],
     children: [
       {
         key: 'settings',
@@ -194,67 +194,67 @@ const menus: MenuItem[] = [
       {
         key: 'master',
         label: 'Data Master',
-        permissions: ['settings.view'],
+        permissions: ['settings.view', 'master.store.view', 'master.user.view'],
         children: [
           {
             key: 'master-store',
             label: 'Toko / Cabang',
             path: '/master-store',
-            permissions: ['master.store.manage']
+            permissions: ['master.store.view']
           },
           {
             key: 'master-user',
             label: 'Master Pengguna',
             path: '/master-user',
-            permissions: ['master.user.manage']
+            permissions: ['master.user.view']
           },
           {
             key: 'master-category',
             label: 'Kategori Produk',
             path: '/master-category',
-            permissions: ['master.category.manage']
+            permissions: ['master.category.view']
           },
           {
             key: 'master-supplier',
             label: 'Supplier',
             path: '/master-supplier',
-            permissions: ['master.supplier.manage']
+            permissions: ['master.supplier.view']
           },
           {
             key: 'master-customer',
             label: 'Pelanggan',
             path: '/master-customer',
-            permissions: ['master.customer.manage']
+            permissions: ['master.customer.view']
           },
           {
             key: 'master-customer-category',
             label: 'Kategori Pelanggan',
             path: '/master-customer-category',
-            permissions: ['master.customer-category.manage']
+            permissions: ['master.customer-category.view']
           },
           {
             key: 'master-uom',
             label: 'Satuan (UOM)',
             path: '/master-uom',
-            permissions: ['master.uom.manage']
+            permissions: ['master.uom.view']
           },
           {
             key: 'master-payment-method',
             label: 'Metode Pembayaran',
             path: '/master-payment-method',
-            permissions: ['settings.view']
+            permissions: ['master.payment-method.view']
           },
           {
             key: 'master-sales-person',
             label: 'Sales Person',
             path: '/master-sales-person',
-            permissions: ['settings.view']
+            permissions: ['master.sales-person.view']
           },
           {
             key: 'master-expense-category',
             label: 'Kategori Pengeluaran',
             path: '/master-expense-category',
-            permissions: ['master.expense-category.manage']
+            permissions: ['master.expense-category.view']
           }
         ]
       },
@@ -262,26 +262,26 @@ const menus: MenuItem[] = [
         key: 'access-control',
         label: 'Peran & Izin',
         path: '/access-control',
-        permissions: ['settings.access-control.manage']
+        permissions: ['settings.role.view']
       },
 
       {
         key: 'printer',
         label: 'Pengaturan Printer',
         path: '/settings/printer',
-        permissions: ['settings.printer.manage']
+        permissions: ['settings.config.view']
       },
       {
         key: 'points',
         label: 'Member Points',
         path: '/settings/points',
-        permissions: ['settings.points.manage']
+        permissions: ['settings.point.view']
       },
       {
         key: 'audit-logs',
         label: 'Audit Log',
         path: '/settings/audit-logs',
-        permissions: ['audit.view']
+        permissions: ['system.audit.view']
       }
     ]
   },

@@ -22,6 +22,7 @@ import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
 
 const customerSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -48,6 +49,11 @@ type CustomerCategory = {
 }
 
 export default function CustomerPage(): React.JSX.Element {
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('master.customer.create')
+  const canEdit = hasPermission('master.customer.edit')
+  const canDelete = hasPermission('master.customer.delete')
+
   const [items, setItems] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -216,9 +222,16 @@ export default function CustomerPage(): React.JSX.Element {
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Master Pelanggan</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate} disabled={loading}>
-          Tambah Pelanggan
-        </Button>
+        {canCreate && (
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={openCreate}
+            disabled={loading}
+          >
+            Tambah Pelanggan
+          </Button>
+        )}
       </Stack>
 
       {error && (
@@ -268,16 +281,20 @@ export default function CustomerPage(): React.JSX.Element {
                   filterable: false,
                   renderCell: (params: GridRenderCellParams<Customer>) => (
                     <Stack direction="row" spacing={0.5}>
-                      <IconButton size="small" onClick={() => openEdit(params.row)}>
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => void handleDelete(params.row)}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                      {canEdit && (
+                        <IconButton size="small" onClick={() => openEdit(params.row)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      )}
+                      {canDelete && (
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => void handleDelete(params.row)}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      )}
                     </Stack>
                   )
                 }

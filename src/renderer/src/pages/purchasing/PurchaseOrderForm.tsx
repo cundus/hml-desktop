@@ -21,6 +21,7 @@ import Typography from '@mui/material/Typography'
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { globalAlert } from '../../lib/globalAlert'
+import useAuth from '../../hooks/useAuth'
 
 type PurchaseOrderStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED'
 
@@ -53,6 +54,7 @@ interface POItem {
 
 export default function PurchaseOrderFormPage(): React.JSX.Element {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
   const [searchParams] = useSearchParams()
   const poId = searchParams.get('id')
 
@@ -458,25 +460,30 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
           </Button>
           {status !== 'RECEIVED' && (
             <>
-              <Button
-                variant="outlined"
-                startIcon={<SaveIcon />}
-                onClick={() => handleSave('DRAFT')}
-                disabled={saving}
-              >
-                Simpan sebagai Draft
-              </Button>
-              <Button
-                variant="contained"
-                startIcon={<SaveIcon />}
-                onClick={() => handleSave('ORDERED')}
-                disabled={saving}
-              >
-                {saving ? 'Menyimpan...' : 'Kirim Pesanan'}
-              </Button>
+              {((!poId && hasPermission('purchasing.order.create')) ||
+                (poId && hasPermission('purchasing.order.edit'))) && (
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<SaveIcon />}
+                    onClick={() => handleSave('DRAFT')}
+                    disabled={saving}
+                  >
+                    Simpan sebagai Draft
+                  </Button>
+                  <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={() => handleSave('ORDERED')}
+                    disabled={saving}
+                  >
+                    {saving ? 'Menyimpan...' : 'Kirim Pesanan'}
+                  </Button>
+                </>
+              )}
             </>
           )}
-          {status === 'ORDERED' && (
+          {status === 'ORDERED' && hasPermission('purchasing.order.edit') && (
             <Button variant="contained" color="success" onClick={handleReceive} disabled={saving}>
               {saving ? 'Memproses...' : 'Terima Barang'}
             </Button>

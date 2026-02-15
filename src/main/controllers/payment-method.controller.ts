@@ -1,88 +1,77 @@
-import { ipcMain } from 'electron'
+import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { PaymentMethodService } from '../services/payment-method.service'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
+import { ApiResponse } from '../types/response'
 
 export class PaymentMethodController {
-  constructor(private paymentMethodService: PaymentMethodService) {
+  constructor(
+    private db: Database,
+    private paymentMethodService: PaymentMethodService
+  ) {
     this.registerHandlers()
   }
 
   private registerHandlers(): void {
-    ipcMain.handle('paymentMethods:getAll', async () => {
-      try {
-        const data = await this.paymentMethodService.findAll()
-        return { success: true, data }
-      } catch (error) {
-        console.error('Error fetching payment methods:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+    ipcMain.handle('paymentMethods:getAll', requirePermission(this.db, 'master.payment-method.view', this.getAll.bind(this)))
+    ipcMain.handle('paymentMethods:getActive', requirePermission(this.db, 'master.payment-method.view', this.getActive.bind(this)))
+    ipcMain.handle('paymentMethods:getById', requirePermission(this.db, 'master.payment-method.view', this.getById.bind(this)))
+    ipcMain.handle('paymentMethods:create', requirePermission(this.db, 'master.payment-method.manage', this.create.bind(this)))
+    ipcMain.handle('paymentMethods:update', requirePermission(this.db, 'master.payment-method.manage', this.update.bind(this)))
+    ipcMain.handle('paymentMethods:delete', requirePermission(this.db, 'master.payment-method.manage', this.delete.bind(this)))
+  }
 
-    ipcMain.handle('paymentMethods:getActive', async () => {
-      try {
-        const data = await this.paymentMethodService.findActive()
-        return { success: true, data }
-      } catch (error) {
-        console.error('Error fetching active payment methods:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getAll(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
+    try {
+      const data = await this.paymentMethodService.findAll()
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    ipcMain.handle('paymentMethods:getById', async (_, id: string) => {
-      try {
-        const data = await this.paymentMethodService.findById(id)
-        return { success: true, data }
-      } catch (error) {
-        console.error('Error fetching payment method:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getActive(_event: IpcMainInvokeEvent): Promise<ApiResponse> {
+    try {
+      const data = await this.paymentMethodService.findActive()
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    ipcMain.handle('paymentMethods:create', async (_, data) => {
-      try {
-        const created = await this.paymentMethodService.create(data)
-        return { success: true, data: created }
-      } catch (error) {
-        console.error('Error creating payment method:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async getById(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+    try {
+      const data = await this.paymentMethodService.findById(id)
+      return { success: true, data }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    ipcMain.handle('paymentMethods:update', async (_, id: string, data) => {
-      try {
-        const updated = await this.paymentMethodService.update(id, data)
-        return { success: true, data: updated }
-      } catch (error) {
-        console.error('Error updating payment method:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async create(_event: IpcMainInvokeEvent, data: any): Promise<ApiResponse> {
+    try {
+      const created = await this.paymentMethodService.create(data)
+      return { success: true, data: created }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
 
-    ipcMain.handle('paymentMethods:delete', async (_, id: string) => {
-      try {
-        const deleted = await this.paymentMethodService.softDelete(id)
-        return { success: true, data: deleted }
-      } catch (error) {
-        console.error('Error deleting payment method:', error)
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error'
-        }
-      }
-    })
+  private async update(_event: IpcMainInvokeEvent, id: string, data: any): Promise<ApiResponse> {
+    try {
+      const updated = await this.paymentMethodService.update(id, data)
+      return { success: true, data: updated }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+  }
+
+  private async delete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
+    try {
+      const deleted = await this.paymentMethodService.softDelete(id)
+      return { success: true, data: deleted }
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
   }
 }

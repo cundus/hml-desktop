@@ -23,6 +23,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
 
 const supplierSchema = z.object({
   name: z.string().min(1, 'Nama wajib diisi'),
@@ -37,6 +38,11 @@ type Supplier = SupplierFormValues & {
 }
 
 export default function SupplierPage(): React.JSX.Element {
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('master.supplier.create')
+  const canEdit = hasPermission('master.supplier.edit')
+  const canDelete = hasPermission('master.supplier.delete')
+
   const [items, setItems] = useState<Supplier[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -137,9 +143,11 @@ export default function SupplierPage(): React.JSX.Element {
     <>
       <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
         <Typography variant="h5">Pemasok</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Tambah Pemasok
-        </Button>
+        {canCreate && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            Tambah Pemasok
+          </Button>
+        )}
       </Stack>
 
       {error && (
@@ -170,12 +178,16 @@ export default function SupplierPage(): React.JSX.Element {
                   <TableCell>{supplier.phone || '-'}</TableCell>
                   <TableCell>{supplier.address || '-'}</TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEdit(supplier)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton size="small" onClick={() => handleDelete(supplier.id)}>
-                      <DeleteIcon />
-                    </IconButton>
+                    {canEdit && (
+                      <IconButton size="small" onClick={() => openEdit(supplier)}>
+                        <EditIcon />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton size="small" onClick={() => handleDelete(supplier.id)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

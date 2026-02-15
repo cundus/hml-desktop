@@ -5,6 +5,8 @@ import { QueueProcessorService } from '../services/queue-processor.service'
 import { AppConfigService } from '../services/app-config.service'
 import { ApiResponse } from '../types/response'
 import { getPeriodicSync } from '../services/periodic-sync.service'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 interface SyncStatus {
   isCloudConnected: boolean
@@ -30,18 +32,57 @@ interface SyncResult {
  */
 export class CloudController {
   constructor(
+    private db: Database,
     private queueProcessor: QueueProcessorService,
     private appConfigService?: AppConfigService
   ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('sync:connect', this.connectToCloud.bind(this))
-    ipcMain.handle('sync:disconnect', this.disconnect.bind(this))
-    ipcMain.handle('sync:full', this.processQueue.bind(this))
-    ipcMain.handle('sync:pull', this.pullFromCloud.bind(this))
-    ipcMain.handle('sync:push', this.processQueue.bind(this))
-    ipcMain.handle('sync:initial', this.initialSync.bind(this))
-    ipcMain.handle('sync:status', this.getStatus.bind(this))
+    // Connection and Full/Initial Sync are sensitive
+    ipcMain.handle(
+      'sync:connect',
+      requirePermission(this.db, 'settings.config.edit', this.connectToCloud.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle(
+      'sync:disconnect',
+      requirePermission(this.db, 'settings.config.edit', this.disconnect.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle(
+      'sync:full',
+      requirePermission(this.db, 'settings.config.edit', this.processQueue.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle(
+      'sync:pull',
+      requirePermission(this.db, 'settings.config.edit', this.pullFromCloud.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle(
+      'sync:push',
+      requirePermission(this.db, 'settings.config.edit', this.processQueue.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+    ipcMain.handle(
+      'sync:initial',
+      requirePermission(this.db, 'settings.config.edit', this.initialSync.bind(this), {
+        allowDuringSetup: true
+      })
+    )
+
+    // Status is viewable by anyone with config view
+    ipcMain.handle(
+      'sync:status',
+      requirePermission(this.db, 'settings.config.view', this.getStatus.bind(this), {
+        allowDuringSetup: true
+      })
+    )
   }
 
   /**
@@ -62,7 +103,6 @@ export class CloudController {
       // Save cloudDbUrl to app config for persistence across app restarts/updates
       if (this.appConfigService) {
         await this.appConfigService.setCloudDbUrl(cloudDatabaseUrl)
-        console.log('[CloudController] Saved cloud database URL to configuration')
       }
 
       return {

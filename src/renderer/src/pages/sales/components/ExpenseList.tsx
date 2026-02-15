@@ -12,6 +12,7 @@ import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import DeleteIcon from '@mui/icons-material/Delete'
 import EditIcon from '@mui/icons-material/Edit'
+import Tooltip from '@mui/material/Tooltip'
 import { formatCurrency } from '../../../utils/currency'
 
 // Define Expense type locally to avoid import issues
@@ -33,15 +34,19 @@ export interface ExpenseListProps {
   onEdit: (expense: Expense) => void
   onDelete: (expenseId: string) => void
   loading?: boolean
+  canEdit?: boolean
+  canDelete?: boolean
 }
 
 export const ExpenseList: React.FC<ExpenseListProps> = ({
   expenses,
   onEdit,
   onDelete,
-  loading = false
+  loading = false,
+  canEdit = true,
+  canDelete = true
 }) => {
-  const totalExpenses = expenses.reduce((sum, expense) => sum + parseFloat(expense.total), 0)
+  const totalExpenses = (expenses || []).reduce((sum, expense) => sum + parseFloat(expense.total), 0)
 
   const formatDate = (date: Date): string => {
     return new Intl.DateTimeFormat('id-ID', {
@@ -53,7 +58,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
     }).format(date)
   }
 
-  if (expenses.length === 0) {
+  if (!expenses || expenses.length === 0) {
     return (
       <Box sx={{ p: 3, textAlign: 'center' }}>
         <Typography variant="body2" color="text.secondary">
@@ -129,22 +134,30 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({
                 </TableCell>
                 <TableCell align="center">
                   <Stack direction="row" spacing={1} justifyContent="center">
-                    <IconButton
-                      size="small"
-                      onClick={() => onEdit(expense)}
-                      disabled={loading}
-                      color="primary"
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => onDelete(expense.id)}
-                      disabled={loading}
-                      color="error"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    {canEdit && (
+                      <Tooltip title="Ubah">
+                        <IconButton
+                          size="small"
+                          onClick={() => onEdit(expense)}
+                          disabled={loading}
+                          color="primary"
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    {canDelete && (
+                      <Tooltip title="Hapus">
+                        <IconButton
+                          size="small"
+                          onClick={() => onDelete(expense.id)}
+                          disabled={loading}
+                          color="error"
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
                   </Stack>
                 </TableCell>
               </TableRow>

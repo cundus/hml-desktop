@@ -1,17 +1,19 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { ReturnService, ReturnDto } from '../services/return.service'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class ReturnController {
-  constructor(private returnService: ReturnService) {}
+  constructor(
+    private db: Database,
+    private returnService: ReturnService
+  ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('db:returns:create', this.createReturn.bind(this))
-    ipcMain.handle('db:returns:getByTransactionId', this.getReturnsByTransactionId.bind(this))
-    ipcMain.handle(
-      'db:returns:getSummaryByDateRange',
-      this.getSummaryByDateRange.bind(this)
-    )
+    ipcMain.handle('db:returns:create', requirePermission(this.db, 'sales.return.create', this.createReturn.bind(this)))
+    ipcMain.handle('db:returns:getByTransactionId', requirePermission(this.db, 'sales.return.view', this.getReturnsByTransactionId.bind(this)))
+    ipcMain.handle('db:returns:getSummaryByDateRange', requirePermission(this.db, 'sales.return.view', this.getSummaryByDateRange.bind(this)))
   }
 
   private async createReturn(_event: IpcMainInvokeEvent, data: ReturnDto): Promise<ApiResponse> {

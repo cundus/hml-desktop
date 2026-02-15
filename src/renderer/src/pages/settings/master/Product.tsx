@@ -1,34 +1,35 @@
-import { useEffect, useState } from 'react'
-import { globalAlert } from '../../../lib/globalAlert'
+import { zodResolver } from '@hookform/resolvers/zod'
+import AddIcon from '@mui/icons-material/Add'
+import DeleteIcon from '@mui/icons-material/Delete'
+import DescriptionIcon from '@mui/icons-material/Description'
+import EditIcon from '@mui/icons-material/Edit'
+import FileDownloadIcon from '@mui/icons-material/FileDownload'
+import FileUploadIcon from '@mui/icons-material/FileUpload'
+import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import Chip from '@mui/material/Chip'
+import CircularProgress from '@mui/material/CircularProgress'
 import Dialog from '@mui/material/Dialog'
-import DialogTitle from '@mui/material/DialogTitle'
-import DialogContent from '@mui/material/DialogContent'
 import DialogActions from '@mui/material/DialogActions'
+import DialogContent from '@mui/material/DialogContent'
+import DialogTitle from '@mui/material/DialogTitle'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import IconButton from '@mui/material/IconButton'
+import Menu from '@mui/material/Menu'
+import MenuItem from '@mui/material/MenuItem'
+import Paper from '@mui/material/Paper'
+import Snackbar from '@mui/material/Snackbar'
+import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import Paper from '@mui/material/Paper'
-import IconButton from '@mui/material/IconButton'
-import Stack from '@mui/material/Stack'
-import CircularProgress from '@mui/material/CircularProgress'
-import MenuItem from '@mui/material/MenuItem'
-import Checkbox from '@mui/material/Checkbox'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Chip from '@mui/material/Chip'
-import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
-import FileUploadIcon from '@mui/icons-material/FileUpload'
-import FileDownloadIcon from '@mui/icons-material/FileDownload'
-import DescriptionIcon from '@mui/icons-material/Description'
-import Menu from '@mui/material/Menu'
-import Snackbar from '@mui/material/Snackbar'
-import Alert from '@mui/material/Alert'
-import { DataGrid, GridColDef, GridRenderCellParams } from '@mui/x-data-grid'
+import { DataGrid, GridRenderCellParams } from '@mui/x-data-grid'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
+import useAuth from '../../../hooks/useAuth'
+import { globalAlert } from '../../../lib/globalAlert'
 import ProductImportDialog from '../../products/components/ProductImportDialog'
 
 const productSchema = z.object({
@@ -77,6 +78,11 @@ type Uom = {
 }
 
 export default function ProductPage(): React.JSX.Element {
+  const { hasPermission } = useAuth()
+  const canCreate = hasPermission('master.product.create')
+  const canEdit = hasPermission('master.product.edit')
+  const canDelete = hasPermission('master.product.delete')
+
   const [items, setItems] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -436,14 +442,16 @@ export default function ProductPage(): React.JSX.Element {
               Download Template
             </MenuItem>
           </Menu>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={openCreate}
-            disabled={loading}
-          >
-            Tambah Produk
-          </Button>
+          {canCreate && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={openCreate}
+              disabled={loading}
+            >
+              Tambah Produk
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -461,48 +469,50 @@ export default function ProductPage(): React.JSX.Element {
         <Paper sx={{ height: 600 }}>
           <DataGrid
             rows={items}
-            columns={
-              [
-                { field: 'sku', headerName: 'SKU', width: 120 },
-                { field: 'name', headerName: 'Nama', flex: 1, minWidth: 200 },
-                { field: 'categoryName', headerName: 'Kategori', width: 150 },
-                { field: 'supplierName', headerName: 'Supplier', width: 150 },
-                {
-                  field: 'isService',
-                  headerName: 'Tipe',
-                  width: 100,
-                  renderCell: (params: GridRenderCellParams<Product>) => (
-                    <Chip
-                      size="small"
-                      label={params.value ? 'Jasa' : 'Produk'}
-                      color={params.value ? 'info' : 'default'}
-                      variant="outlined"
-                    />
-                  )
-                },
-                {
-                  field: 'isActive',
-                  headerName: 'Status',
-                  width: 100,
-                  renderCell: (params: GridRenderCellParams<Product>) => (
-                    <Chip
-                      size="small"
-                      label={params.value ? 'Aktif' : 'Nonaktif'}
-                      color={params.value ? 'success' : 'default'}
-                    />
-                  )
-                },
-                {
-                  field: 'actions',
-                  headerName: 'Aksi',
-                  width: 100,
-                  sortable: false,
-                  filterable: false,
-                  renderCell: (params: GridRenderCellParams<Product>) => (
-                    <Stack direction="row" spacing={0.5}>
+            columns={[
+              { field: 'sku', headerName: 'SKU', width: 120 },
+              { field: 'name', headerName: 'Nama', flex: 1, minWidth: 200 },
+              { field: 'categoryName', headerName: 'Kategori', width: 150 },
+              { field: 'supplierName', headerName: 'Supplier', width: 150 },
+              {
+                field: 'isService',
+                headerName: 'Tipe',
+                width: 100,
+                renderCell: (params: GridRenderCellParams<Product>) => (
+                  <Chip
+                    size="small"
+                    label={params.value ? 'Jasa' : 'Produk'}
+                    color={params.value ? 'info' : 'default'}
+                    variant="outlined"
+                  />
+                )
+              },
+              {
+                field: 'isActive',
+                headerName: 'Status',
+                width: 100,
+                renderCell: (params: GridRenderCellParams<Product>) => (
+                  <Chip
+                    size="small"
+                    label={params.value ? 'Aktif' : 'Nonaktif'}
+                    color={params.value ? 'success' : 'default'}
+                  />
+                )
+              },
+              {
+                field: 'actions',
+                headerName: 'Aksi',
+                width: 100,
+                sortable: false,
+                filterable: false,
+                renderCell: (params: GridRenderCellParams<Product>) => (
+                  <Stack direction="row" spacing={0.5}>
+                    {canEdit && (
                       <IconButton size="small" onClick={() => openEdit(params.row)}>
                         <EditIcon fontSize="small" />
                       </IconButton>
+                    )}
+                    {canDelete && (
                       <IconButton
                         size="small"
                         color="error"
@@ -510,11 +520,11 @@ export default function ProductPage(): React.JSX.Element {
                       >
                         <DeleteIcon fontSize="small" />
                       </IconButton>
-                    </Stack>
-                  )
-                }
-              ] as GridColDef[]
-            }
+                    )}
+                  </Stack>
+                )
+              }
+            ]}
             pageSizeOptions={[10, 25, 50, 100]}
             initialState={{
               pagination: { paginationModel: { pageSize: 25 } }

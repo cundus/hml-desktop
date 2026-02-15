@@ -9,6 +9,8 @@ import { ProductLocationCloudService } from '../services/product-location-cloud.
 import { StockTransactionCloudService } from '../services/stock-transaction-cloud.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 // Excel column configuration for products
 const PRODUCT_EXCEL_COLUMNS: ExcelColumn[] = [
@@ -25,6 +27,7 @@ export class ProductController {
   private excelService: ExcelService
 
   constructor(
+    private db: Database,
     private productService: ProductCloudService,
     private categoryService: CategoryCloudService,
     private pricingService: PricingCloudService,
@@ -39,18 +42,18 @@ export class ProductController {
    * Register all IPC handlers for product operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:products:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:products:getActive', this.getActive.bind(this))
-    ipcMain.handle('db:products:getById', this.getById.bind(this))
-    ipcMain.handle('db:products:search', this.search.bind(this))
-    ipcMain.handle('db:products:create', this.create.bind(this))
-    ipcMain.handle('db:products:update', this.update.bind(this))
-    ipcMain.handle('db:products:delete', this.delete.bind(this))
-    ipcMain.handle('db:products:toggleActive', this.toggleActive.bind(this))
-    ipcMain.handle('db:products:exportExcel', this.exportExcel.bind(this))
-    ipcMain.handle('db:products:importBatch', this.importBatch.bind(this))
-    ipcMain.handle('db:products:downloadTemplate', this.downloadTemplate.bind(this))
-    ipcMain.handle('db:products:deleteBatch', this.deleteBatch.bind(this))
+    ipcMain.handle('db:products:getAll', requirePermission(this.db, 'master.product.view', this.getAll.bind(this)))
+    ipcMain.handle('db:products:getActive', requirePermission(this.db, 'master.product.view', this.getActive.bind(this)))
+    ipcMain.handle('db:products:getById', requirePermission(this.db, 'master.product.view', this.getById.bind(this)))
+    ipcMain.handle('db:products:search', requirePermission(this.db, 'master.product.view', this.search.bind(this)))
+    ipcMain.handle('db:products:create', requirePermission(this.db, 'master.product.create', this.create.bind(this)))
+    ipcMain.handle('db:products:update', requirePermission(this.db, 'master.product.edit', this.update.bind(this)))
+    ipcMain.handle('db:products:delete', requirePermission(this.db, 'master.product.delete', this.delete.bind(this)))
+    ipcMain.handle('db:products:toggleActive', requirePermission(this.db, 'master.product.edit', this.toggleActive.bind(this)))
+    ipcMain.handle('db:products:exportExcel', requirePermission(this.db, 'master.product.export', this.exportExcel.bind(this)))
+    ipcMain.handle('db:products:importBatch', requirePermission(this.db, 'master.product.import', this.importBatch.bind(this)))
+    ipcMain.handle('db:products:downloadTemplate', requirePermission(this.db, 'master.product.import', this.downloadTemplate.bind(this)))
+    ipcMain.handle('db:products:deleteBatch', requirePermission(this.db, 'master.product.delete', this.deleteBatch.bind(this)))
   }
 
   /**
@@ -441,7 +444,6 @@ export class ProductController {
           }
 
           // Handle Stock
-          console.log('row.stock', JSON.stringify(row.stock, null, 2))
           if (row.stock && Number(row.stock) > 0) {
             await this.stockTransactionService.create({
               productId: product.id,

@@ -2,12 +2,17 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { PermissionCloudService } from '../services/permission-cloud.service'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class PermissionController {
-  constructor(private permissionService: PermissionCloudService) {}
+  constructor(
+    private db: Database,
+    private permissionService: PermissionCloudService
+  ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('db:permissions:getAll', this.getAll.bind(this))
+    ipcMain.handle('db:permissions:getAll', requirePermission(this.db, 'settings.role.view', this.getAll.bind(this)))
   }
 
   private async getAll(_event: IpcMainInvokeEvent): Promise<ApiResponse> {

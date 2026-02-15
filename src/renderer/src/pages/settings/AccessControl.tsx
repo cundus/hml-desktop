@@ -7,7 +7,6 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import FormControlLabel from '@mui/material/FormControlLabel'
-import FormGroup from '@mui/material/FormGroup'
 import Paper from '@mui/material/Paper'
 import Stack from '@mui/material/Stack'
 import Table from '@mui/material/Table'
@@ -315,74 +314,79 @@ export default function AccessControlPage(): React.JSX.Element {
         </Table>
       </Paper>
 
-      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="sm">
-        <DialogTitle>{editingGroup ? 'Edit group' : 'New group'}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-            <TextField
-              label="Group name"
-              value={formName}
-              onChange={(e) => setFormName(e.target.value)}
-              fullWidth
-            />
-            <TextField
-              label="Description"
-              value={formDescription}
-              onChange={(e) => setFormDescription(e.target.value)}
-              fullWidth
-            />
+      <Dialog open={dialogOpen} onClose={closeDialog} fullWidth maxWidth="md">
+        <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider', px: 3, py: 2 }}>
+          {editingGroup ? 'Edit Group' : 'New Group'}
+        </DialogTitle>
+        <DialogContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 3 }}>
+              <TextField
+                label="Group Name"
+                placeholder="e.g. Store Manager"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                fullWidth
+                variant="outlined"
+              />
+              <TextField
+                label="Description"
+                placeholder="Briefly describe this role's responsibilities"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                fullWidth
+                variant="outlined"
+              />
+            </Box>
 
-            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1.5, minHeight: 0 }}>
-              <Typography variant="subtitle2" fontWeight={600}>
-                Permissions
-              </Typography>
-
-              <Stack direction="row" spacing={2} alignItems="center">
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={allPermissionsSelected}
-                      indeterminate={somePermissionsSelected}
-                      onChange={toggleAllPermissions}
-                      size="small"
-                    />
-                  }
-                  label={
-                    <Typography variant="body2" fontWeight={500}>
-                      Select all permissions
-                    </Typography>
-                  }
-                />
-                <TextField
-                  placeholder="Search permissions..."
-                  size="small"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  sx={{ flex: 1 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon fontSize="small" />
-                      </InputAdornment>
-                    )
-                  }}
-                />
-              </Stack>
+            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minHeight: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Typography variant="subtitle1" fontWeight={600}>
+                  Permissions
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={allPermissionsSelected}
+                        indeterminate={somePermissionsSelected}
+                        onChange={toggleAllPermissions}
+                        size="small"
+                      />
+                    }
+                    label={
+                      <Typography variant="body2" color="text.secondary">
+                        Select all
+                      </Typography>
+                    }
+                    sx={{ mr: 0 }}
+                  />
+                  <TextField
+                    placeholder="Search permissions..."
+                    size="small"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    sx={{ width: 250 }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon fontSize="small" color="action" />
+                        </InputAdornment>
+                      )
+                    }}
+                  />
+                </Box>
+              </Box>
 
               <Box
                 sx={{
-                  maxHeight: 400,
+                  flex: 1,
                   overflowY: 'auto',
                   pr: 1,
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 0.5,
-                  '& .MuiAccordion-root': {
-                    border: '1px solid',
-                    borderColor: 'divider',
-                    '&:before': { display: 'none' },
-                    boxShadow: 'none'
-                  }
+                  gap: 1, // Space between accordions
+                  mt: 1
                 }}
               >
                 {filteredCategories.map(({ category, permissions: categoryPerms }) => {
@@ -393,17 +397,37 @@ export default function AccessControlPage(): React.JSX.Element {
                   const someInGroupSelected = selectedInGroup > 0 && !allInGroupSelected
 
                   return (
-                    <Accordion key={category} disableGutters defaultExpanded={!!searchQuery}>
+                    <Accordion
+                      key={category}
+                      disableGutters
+                      defaultExpanded={!!searchQuery}
+                      sx={{
+                        border: '1px solid',
+                        borderColor: 'divider',
+                        borderRadius: 1,
+                        '&:before': { display: 'none' },
+                        boxShadow: 'none',
+                        '&.Mui-expanded': {
+                          margin: 0 // Prevent default margin expansion
+                        },
+                        overflow: 'hidden' // For rounded corners
+                      }}
+                    >
                       <AccordionSummary
-                        expandIcon={<ExpandMoreIcon sx={{ fontSize: '1rem' }} />}
+                        expandIcon={<ExpandMoreIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />}
                         sx={{
                           flexDirection: 'row-reverse',
-                          px: 1,
-                          minHeight: '40px !important',
+                          px: 2,
+                          py: 0.5,
+                          minHeight: '48px !important',
+                          bgcolor: 'background.default',
                           '& .MuiAccordionSummary-content': {
                             m: '0 !important',
                             alignItems: 'center',
-                            gap: 1
+                            gap: 1.5
+                          },
+                           '&:hover': {
+                            bgcolor: 'action.hover'
                           }
                         }}
                       >
@@ -415,18 +439,24 @@ export default function AccessControlPage(): React.JSX.Element {
                           onChange={() => toggleCategory(categoryPerms)}
                           sx={{ p: 0.5 }}
                         />
-                        <Typography variant="body2" fontWeight={600} sx={{ flex: 1 }}>
+                        <Typography variant="subtitle2" fontWeight={600} sx={{ flex: 1 }}>
                           {category}
                         </Typography>
                         <Chip
                           label={`${selectedInGroup}/${categoryPerms.length}`}
                           size="small"
-                          variant="outlined"
-                          sx={{ height: 20, fontSize: '0.7rem' }}
+                          variant={selectedInGroup > 0 ? 'filled' : 'outlined'}
+                          color={selectedInGroup > 0 ? 'primary' : 'default'}
+                          sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            borderRadius: 1
+                          }}
                         />
                       </AccordionSummary>
-                      <AccordionDetails sx={{ p: 1, pt: 0, pl: 5 }}>
-                        <FormGroup>
+                      <AccordionDetails sx={{ p: 0 }}>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1, p: 2, bgcolor: 'background.paper' }}>
                           {categoryPerms.map((perm) => (
                             <FormControlLabel
                               key={perm.key}
@@ -435,28 +465,36 @@ export default function AccessControlPage(): React.JSX.Element {
                                   checked={formPermissions.includes(perm.key)}
                                   onChange={() => togglePermission(perm.key)}
                                   size="small"
+                                  sx={{ py: 0.5 }}
                                 />
                               }
                               label={
-                                <Box>
-                                  <Typography variant="body2">{perm.label}</Typography>
+                                <Box sx={{ py: 0.5 }}>
+                                  <Typography variant="body2" fontWeight={500}>{perm.label}</Typography>
                                   {perm.description && (
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2 }}>
                                       {perm.description}
                                     </Typography>
                                   )}
                                 </Box>
                               }
+                              sx={{
+                                alignItems: 'flex-start',
+                                m: 0,
+                                p: 0.5,
+                                borderRadius: 1,
+                                '&:hover': { bgcolor: 'action.hover' }
+                              }}
                             />
                           ))}
-                        </FormGroup>
+                        </Box>
                       </AccordionDetails>
                     </Accordion>
                   )
                 })}
 
                 {filteredCategories.length === 0 && (
-                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                  <Box sx={{ p: 4, textAlign: 'center', border: '1px dashed', borderColor: 'divider', borderRadius: 2 }}>
                     <Typography variant="body2" color="text.secondary">
                       No permissions found matching "{searchQuery}"
                     </Typography>
@@ -466,10 +504,10 @@ export default function AccessControlPage(): React.JSX.Element {
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="contained" onClick={() => void handleSave()}>
-            Save
+        <DialogActions sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider' }}>
+          <Button onClick={closeDialog} color="inherit">Cancel</Button>
+          <Button variant="contained" onClick={() => void handleSave()} sx={{ px: 4 }}>
+            Save Group
           </Button>
         </DialogActions>
       </Dialog>

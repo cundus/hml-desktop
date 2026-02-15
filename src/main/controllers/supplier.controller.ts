@@ -3,20 +3,25 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { SupplierCloudService } from '../services/supplier-cloud.service'
 import { CreateSupplierDto, UpdateSupplierDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class SupplierController {
-  constructor(private supplierService: SupplierCloudService) {}
+  constructor(
+    private db: Database,
+    private supplierService: SupplierCloudService
+  ) {}
 
   /**
    * Register all IPC handlers for supplier operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:suppliers:getAll', this.getAll.bind(this))
-    ipcMain.handle('db:suppliers:getById', this.getById.bind(this))
-    ipcMain.handle('db:suppliers:create', this.create.bind(this))
-    ipcMain.handle('db:suppliers:update', this.update.bind(this))
-    ipcMain.handle('db:suppliers:softDelete', this.softDelete.bind(this))
-    ipcMain.handle('db:suppliers:restore', this.restore.bind(this))
+    ipcMain.handle('db:suppliers:getAll', requirePermission(this.db, 'master.supplier.view', this.getAll.bind(this)))
+    ipcMain.handle('db:suppliers:getById', requirePermission(this.db, 'master.supplier.view', this.getById.bind(this)))
+    ipcMain.handle('db:suppliers:create', requirePermission(this.db, 'master.supplier.create', this.create.bind(this)))
+    ipcMain.handle('db:suppliers:update', requirePermission(this.db, 'master.supplier.edit', this.update.bind(this)))
+    ipcMain.handle('db:suppliers:softDelete', requirePermission(this.db, 'master.supplier.delete', this.softDelete.bind(this)))
+    ipcMain.handle('db:suppliers:restore', requirePermission(this.db, 'master.supplier.delete', this.restore.bind(this)))
   }
 
   /**

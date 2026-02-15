@@ -22,9 +22,9 @@ export default function ProductManagementPage(): React.JSX.Element {
   const [selectedIndex, setSelectedIndex] = useState(-1)
 
   // Permissions
-  const canViewInfo = hasPermission('master.product.manage')
-  const canViewPricing = hasPermission('pricing.products')
-  const canViewStock = hasPermission('inventory.manage')
+  const canViewInfo = hasPermission('master.product.view')
+  const canViewPricing = hasPermission('pricing.product.view')
+  const canViewStock = hasPermission('inventory.stock.view')
 
   // Load products
   useEffect(() => {

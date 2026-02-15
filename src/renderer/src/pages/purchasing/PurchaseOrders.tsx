@@ -24,6 +24,7 @@ import DeleteIcon from '@mui/icons-material/Delete'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import FilterListIcon from '@mui/icons-material/FilterList'
 import useBranchConfig from '../../hooks/useBranchConfig'
+import useAuth from '../../hooks/useAuth'
 
 type PurchaseOrderStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED'
 
@@ -57,6 +58,7 @@ interface Store {
 
 export default function PurchaseOrdersPage(): React.JSX.Element {
   const navigate = useNavigate()
+  const { hasPermission } = useAuth()
   const { storeId: branchStoreId } = useBranchConfig()
   const [items, setItems] = useState<PurchaseOrder[]>([])
   const [filteredItems, setFilteredItems] = useState<PurchaseOrder[]>([])
@@ -249,13 +251,15 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
           >
             Filter
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate('/purchasing/order-form')}
-          >
-            Buat PO
-          </Button>
+          {hasPermission('purchasing.order.create') && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate('/purchasing/order-form')}
+            >
+              Buat PO
+            </Button>
+          )}
         </Stack>
       </Stack>
 
@@ -343,7 +347,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
                 <TableCell align="center">
                   <Stack direction="row" spacing={1} justifyContent="center">
                     {/* Primary Action Breakdown */}
-                    {po.status === 'DRAFT' && (
+                    {po.status === 'DRAFT' && hasPermission('purchasing.order.edit') && (
                       <Tooltip title="Edit / Kirim">
                         <IconButton
                           size="small"
@@ -355,7 +359,7 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
                       </Tooltip>
                     )}
 
-                    {po.status === 'ORDERED' && (
+                    {po.status === 'ORDERED' && hasPermission('purchasing.order.edit') && (
                       <>
                         <Tooltip title="Terima Barang">
                           <IconButton
@@ -388,13 +392,15 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
                       </Tooltip>
                     )}
 
-                    <Tooltip title="Ubah Status">
-                      <IconButton size="small" onClick={(e) => handleMenuOpen(e, po)}>
-                        <MoreVertIcon />
-                      </IconButton>
-                    </Tooltip>
+                    {hasPermission('purchasing.order.edit') && (
+                      <Tooltip title="Ubah Status">
+                        <IconButton size="small" onClick={(e) => handleMenuOpen(e, po)}>
+                          <MoreVertIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
 
-                    {po.status !== 'RECEIVED' && (
+                    {po.status !== 'RECEIVED' && hasPermission('purchasing.order.delete') && (
                       <Tooltip title="Hapus">
                         <IconButton size="small" color="error" onClick={() => handleDelete(po.id)}>
                           <DeleteIcon />

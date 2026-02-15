@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { globalAlert } from '../../lib/globalAlert'
+import useAuth from '../../hooks/useAuth'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
@@ -20,10 +21,13 @@ import CircularProgress from '@mui/material/CircularProgress'
 import MenuItem from '@mui/material/MenuItem'
 import Chip from '@mui/material/Chip'
 import Alert from '@mui/material/Alert'
-import AddIcon from '@mui/icons-material/Add'
-import EditIcon from '@mui/icons-material/Edit'
-import DeleteIcon from '@mui/icons-material/Delete'
-import WarningIcon from '@mui/icons-material/Warning'
+import Tooltip from '@mui/material/Tooltip'
+import {
+  Add as AddIcon,
+  Edit as EditIcon,
+  Delete as DeleteIcon,
+  Warning as WarningIcon
+} from '@mui/icons-material'
 import { useForm, Controller } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -49,6 +53,7 @@ interface Product {
 }
 
 export default function BatchesPage(): React.JSX.Element {
+  const { hasPermission } = useAuth()
   const [items, setItems] = useState<Batch[]>([])
   const [products, setProducts] = useState<Product[]>([])
   const [expiringBatches, setExpiringBatches] = useState<Batch[]>([])
@@ -230,9 +235,11 @@ export default function BatchesPage(): React.JSX.Element {
     <Box p={3}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Manajemen Batch</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
-          Tambah Batch
-        </Button>
+        {hasPermission('inventory.batch.create') && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            Tambah Batch
+          </Button>
+        )}
       </Stack>
 
       {expiringBatches.length > 0 && (
@@ -274,13 +281,25 @@ export default function BatchesPage(): React.JSX.Element {
                     <Chip label="Valid" color="success" size="small" />
                   )}
                 </TableCell>
-                <TableCell align="right">
-                  <IconButton size="small" onClick={() => openEdit(batch)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDelete(batch.id)}>
-                    <DeleteIcon />
-                  </IconButton>
+                 <TableCell align="right">
+                  {(hasPermission('inventory.batch.edit') || hasPermission('inventory.batch.delete')) && (
+                    <Stack direction="row" spacing={1} justifyContent="flex-end">
+                      {hasPermission('inventory.batch.edit') && (
+                        <Tooltip title="Ubah Batch">
+                          <IconButton size="small" onClick={() => openEdit(batch)}>
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                      {hasPermission('inventory.batch.delete') && (
+                        <Tooltip title="Hapus Batch">
+                          <IconButton size="small" onClick={() => handleDelete(batch.id)}>
+                            <DeleteIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+                    </Stack>
+                  )}
                 </TableCell>
               </TableRow>
             ))}

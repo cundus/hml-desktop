@@ -9,9 +9,12 @@ import { ProductCloudService } from '../services/product-cloud.service'
 import { StoreCloudService } from '../services/store-cloud.service'
 import { PurchaseOrderCloudService } from '../services/purchase-order-cloud.service'
 import { ApiResponse } from '../types/response'
+import { requirePermission } from '../utils/auth-guard'
+import { Database } from 'sql.js'
 
 export class InventoryController {
   constructor(
+    private db: Database,
     private productLocationService: ProductLocationCloudService,
     private stockTransactionService: StockTransactionCloudService,
     private stockAdjustmentService: StockAdjustmentCloudService,
@@ -21,15 +24,15 @@ export class InventoryController {
   ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('inventory:stock-overview', this.getStockOverview.bind(this))
-    ipcMain.handle('inventory:stock-transactions', this.getStockTransactions.bind(this))
-    ipcMain.handle('inventory:stock-adjustments', this.getStockAdjustments.bind(this))
-    ipcMain.handle('inventory:create-adjustment', this.createAdjustment.bind(this))
-    ipcMain.handle('inventory:low-stock', this.getLowStock.bind(this))
-    ipcMain.handle('inventory:bulk-create-adjustments', this.bulkCreateAdjustments.bind(this))
-    ipcMain.handle('inventory:product-details', this.getProductStockDetails.bind(this))
-    ipcMain.handle('inventory:reserve-stock', this.reserveStock.bind(this))
-    ipcMain.handle('inventory:release-stock', this.releaseStock.bind(this))
+    ipcMain.handle('inventory:stock-overview', requirePermission(this.db, 'inventory.stock.view', this.getStockOverview.bind(this)))
+    ipcMain.handle('inventory:stock-transactions', requirePermission(this.db, 'inventory.stock.view', this.getStockTransactions.bind(this)))
+    ipcMain.handle('inventory:stock-adjustments', requirePermission(this.db, 'inventory.stock.view', this.getStockAdjustments.bind(this)))
+    ipcMain.handle('inventory:create-adjustment', requirePermission(this.db, 'inventory.stock.adjust', this.createAdjustment.bind(this)))
+    ipcMain.handle('inventory:low-stock', requirePermission(this.db, 'inventory.stock.view', this.getLowStock.bind(this)))
+    ipcMain.handle('inventory:bulk-create-adjustments', requirePermission(this.db, 'inventory.stock.adjust', this.bulkCreateAdjustments.bind(this)))
+    ipcMain.handle('inventory:product-details', requirePermission(this.db, 'inventory.stock.view', this.getProductStockDetails.bind(this)))
+    ipcMain.handle('inventory:reserve-stock', requirePermission(this.db, 'sales.pos.create', this.reserveStock.bind(this)))
+    ipcMain.handle('inventory:release-stock', requirePermission(this.db, 'sales.pos.create', this.releaseStock.bind(this)))
   }
 
   private async getStockOverview(

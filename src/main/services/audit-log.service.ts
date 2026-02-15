@@ -229,7 +229,6 @@ export class AuditLogService {
       .where(lte(auditLogs.createdAt, cutoffDate))
       .returning({ id: auditLogs.id })
 
-    console.log(`[AuditLog] Cleanup: Deleted ${result.length} records older than ${retentionDays} days`)
     return result.length
   }
 }

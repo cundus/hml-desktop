@@ -34,9 +34,11 @@ import {
   seedPriceCategories,
   backfillProductUomsAndStorePrices,
   seedPermissions,
+  seedRoles,
   seedPointSettings,
   seedReturnTables,
   seedExpenseCategories
+  // resetAndReseedPermissions
 } from './seed'
 import { ReceiptService, TransactionService } from './services'
 import { AppConfigService } from './services/app-config.service'
@@ -95,8 +97,9 @@ export async function bootstrap(): Promise<void> {
   const db = await getDb()
 
   // Seed static reference data
-  // await resetAndReseedPermissions(db) // TEMPORARY: Use reset to fix duplicates
+  // await resetAndReseedPermissions(db) // TEMPORARY: Reset to fix setup state
   await seedPermissions(db)
+  await seedRoles(db)
   await seedAdmin(db)
   await seedUoms(db)
   await seedPriceCategories(db)
@@ -121,6 +124,9 @@ export async function bootstrap(): Promise<void> {
   const customerService = new CustomerCloudService(db, queueService)
   const uomService = new UomCloudService(db, queueService)
 
+  // Initialize AppConfigService early (needed for Auth persistence)
+  const appConfigService = new AppConfigService(db)
+
   // Initialize core entity services
   // Initialize Audit Log Service FIRST
   const auditLogService = new AuditLogService()
@@ -131,7 +137,7 @@ export async function bootstrap(): Promise<void> {
   const userRoleService = new UserRoleCloudService(db, queueService)
   const permissionService = new PermissionCloudService(db)
   const rolePermissionService = new RolePermissionCloudService(db, queueService)
-  const authService = new AuthCloudService(db, auditLogService)
+  const authService = new AuthCloudService(db, appConfigService, auditLogService)
 
   // Initialize inventory services
   const productPriceService = new ProductPriceCloudService(db, queueService)
@@ -182,8 +188,8 @@ export async function bootstrap(): Promise<void> {
   // Initialize shift service
   const shiftService = new ShiftService(db, expenseService, queueService, auditLogService)
 
-  // Initialize app config service
-  const appConfigService = new AppConfigService(db)
+  // Initialize app config service (moved up)
+  // const appConfigService = new AppConfigService(db) 
 
   // Initialize printer config service (uses local JSON file, not database)
   const printerConfigService = new PrinterConfigService()
@@ -250,13 +256,14 @@ export async function bootstrap(): Promise<void> {
   setAppServices(shiftService, queueService)
 
   // Initialize controllers
-  const categoryController = new CategoryController(categoryService)
-  const supplierController = new SupplierController(supplierService)
-  const storeController = new StoreController(storeService)
-  const customerCategoryController = new CustomerCategoryController(customerCategoryService)
-  const customerController = new CustomerController(customerService)
-  const userController = new UserController(userService)
+  const categoryController = new CategoryController(db, categoryService)
+  const supplierController = new SupplierController(db, supplierService)
+  const storeController = new StoreController(db, storeService)
+  const customerCategoryController = new CustomerCategoryController(db, customerCategoryService)
+  const customerController = new CustomerController(db, customerService)
+  const userController = new UserController(db, userService)
   const productController = new ProductController(
+    db,
     productService,
     categoryService,
     pricingService,
@@ -268,23 +275,23 @@ export async function bootstrap(): Promise<void> {
   const productLocationController = new ProductLocationController(productLocationService)
   const batchController = new BatchController(batchService)
   const stockTransactionController = new StockTransactionController(stockTransactionService)
-  const transactionController = new TransactionController(transactionService)
+  const transactionController = new TransactionController(db, transactionService)
   const purchaseOrderController = new PurchaseOrderController(purchaseOrderService)
-  const roleController = new RoleController(roleService)
+  const roleController = new RoleController(db, roleService)
   const userRoleController = new UserRoleController(userRoleService)
-  const permissionController = new PermissionController(permissionService)
+  const permissionController = new PermissionController(db, permissionService)
   const rolePermissionController = new RolePermissionController(rolePermissionService)
   const authController = new AuthController(authService)
-  const uomController = new UomController(uomService)
+  const uomController = new UomController(db, uomService)
   const receiptController = new ReceiptController(receiptService)
-  const expenseController = new ExpenseController(expenseService)
-  const pricingController = new PricingController(pricingService)
+  const expenseController = new ExpenseController(db, expenseService)
+  const pricingController = new PricingController(db, pricingService)
   const priceCategoryController = new PriceCategoryController(priceCategoryService)
-  new PaymentMethodController(paymentMethodService)
-  const salesPersonController = new SalesPersonController(salesPersonService)
+  new PaymentMethodController(db, paymentMethodService)
+  const salesPersonController = new SalesPersonController(db, salesPersonService)
 
   // Initialize damaged goods controller
-  const damagedGoodsController = new DamagedGoodsController(damagedGoodsService)
+  const damagedGoodsController = new DamagedGoodsController(db, damagedGoodsService)
 
   // Register IPC handlers
   categoryController.registerHandlers()
@@ -318,7 +325,7 @@ export async function bootstrap(): Promise<void> {
   damagedGoodsController.registerHandlers()
 
   // Register point controller
-  const pointController = new PointController(pointService)
+  const pointController = new PointController(db, pointService)
   pointController.registerHandlers()
 
   // Register queue controller
@@ -326,7 +333,7 @@ export async function bootstrap(): Promise<void> {
   queueController.registerHandlers()
 
   // Register cloud controller (handles sync:* IPC)
-  const cloudController = new CloudController(queueProcessor, appConfigService)
+  const cloudController = new CloudController(db, queueProcessor, appConfigService)
   cloudController.registerHandlers()
 
   // Initialize and register Return Service/Controller
@@ -336,10 +343,11 @@ export async function bootstrap(): Promise<void> {
     stockTransactionService,
     productLocationService
   )
-  const returnController = new ReturnController(returnService)
+  const returnController = new ReturnController(db, returnService)
   returnController.registerHandlers()
 
   const inventoryController = new InventoryController(
+    db,
     productLocationService,
     stockTransactionService,
     stockAdjustmentService,
@@ -357,5 +365,8 @@ export async function bootstrap(): Promise<void> {
   // Initialize and register Expense Category Controller
   new ExpenseCategoryController(db, queueService)
 
+  // Restore session if available
+  await authService.restoreSession()
+  
   console.log('✓ All 27 services and controllers initialized (sql.js local + cloud sync ready)')
 }

@@ -68,11 +68,11 @@ const router = createHashRouter([
           { path: 'pets', element: <Pets /> },
           { path: 'sales', element: <SalesPage /> },
           {
-            element: <RoleGuard requiredPermissions={['sales.pos']} />,
+            element: <RoleGuard requiredPermissions={['sales.pos.view']} />,
             children: [{ path: 'sales/pos', element: <SalesPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['sales.reports']} />,
+            element: <RoleGuard requiredPermissions={['sales.transaction.view']} />,
             children: [
               { path: 'sales/reports', element: <SalesReportsPage /> },
               { path: 'sales/transaction/:transactionId', element: <TransactionDetailPage /> }
@@ -83,67 +83,67 @@ const router = createHashRouter([
             children: [{ path: 'settings', element: <Settings /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.user.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.user.view']} />,
             children: [{ path: 'master-user', element: <UserPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.customer.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.customer.view']} />,
             children: [{ path: 'master-customer', element: <CustomerPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.product.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.product.view']} />,
             children: [{ path: 'master-product', element: <ProductPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.category.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.category.view']} />,
             children: [{ path: 'master-category', element: <CategoryPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.supplier.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.supplier.view']} />,
             children: [{ path: 'master-supplier', element: <SupplierPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.store.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.store.view']} />,
             children: [{ path: 'master-store', element: <StorePage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.customer-category.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.customer-category.view']} />,
             children: [{ path: 'master-customer-category', element: <CustomerCategoryPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.uom.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.uom.view']} />,
             children: [{ path: 'master-uom', element: <UomPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['pricing.categories']} />,
+            element: <RoleGuard requiredPermissions={['pricing.category.view']} />,
             children: [{ path: 'pricing/categories', element: <PriceCategoryPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['settings.view']} />,
+            element: <RoleGuard requiredPermissions={['master.payment-method.view']} />,
             children: [{ path: 'master-payment-method', element: <PaymentMethodPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['settings.view']} />,
+            element: <RoleGuard requiredPermissions={['master.sales-person.view']} />,
             children: [{ path: 'master-sales-person', element: <SalesPersonPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['master.expense-category.manage']} />,
+            element: <RoleGuard requiredPermissions={['master.expense-category.view']} />,
             children: [{ path: 'master-expense-category', element: <ExpenseCategoryPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['settings.access-control.manage']} />,
+            element: <RoleGuard requiredPermissions={['settings.role.view']} />,
             children: [{ path: 'access-control', element: <AccessControlPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['settings.printer.manage']} />,
+            element: <RoleGuard requiredPermissions={['settings.config.view']} />,
             children: [{ path: 'settings/printer', element: <PrinterSettings /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['settings.points.manage']} />,
+            element: <RoleGuard requiredPermissions={['settings.point.view']} />,
             children: [{ path: 'settings/points', element: <PointSettingsPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['warehouse.manage']} />,
+            element: <RoleGuard requiredPermissions={['inventory.stock.view']} />,
             children: [
               { path: 'warehouse/stocks', element: <WarehouseStocksPage /> },
               { path: 'warehouse/purchasing', element: <WarehousePurchasingPage /> },
@@ -151,7 +151,7 @@ const router = createHashRouter([
             ]
           },
           {
-            element: <RoleGuard requiredPermissions={['pricing.products']} />,
+            element: <RoleGuard requiredPermissions={['pricing.product.view']} />,
             children: [
               { path: 'pricing/products', element: <WarehousePricingListPage /> },
               { path: 'pricing/products/:productId', element: <ProductPricingPage /> }
@@ -161,16 +161,16 @@ const router = createHashRouter([
             element: (
               <RoleGuard
                 requiredPermissions={[
-                  'master.product.manage',
-                  'pricing.products',
-                  'inventory.view'
+                  'master.product.view',
+                  'pricing.product.view',
+                  'inventory.stock.view'
                 ]}
               />
             ),
             children: [{ path: 'products', element: <ProductManagementPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['inventory.manage']} />,
+            element: <RoleGuard requiredPermissions={['inventory.dashboard.view']} />,
             children: [
               { path: 'inventory', element: <InventoryManagementPage /> },
               { path: 'inventory/dashboard', element: <InventoryDashboardPage /> },
@@ -182,37 +182,37 @@ const router = createHashRouter([
             ]
           },
           {
-            element: <RoleGuard requiredPermissions={['purchasing.manage']} />,
+            element: <RoleGuard requiredPermissions={['purchasing.order.view']} />,
             children: [
               { path: 'purchasing/orders', element: <PurchaseOrdersPage /> },
               { path: 'purchasing/order-form', element: <PurchaseOrderFormPage /> }
             ]
           },
           {
-            element: <RoleGuard requiredPermissions={['operations.expenses']} />,
+            element: <RoleGuard requiredPermissions={['operations.expense.view']} />,
             children: [{ path: 'operations/expenses', element: <ExpensesPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['operations.operational_expenses']} />,
+            element: <RoleGuard requiredPermissions={['operations.operational-expense.view']} />,
             children: [{ path: 'operations/operational-expenses', element: <OperationalExpensesPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['operations.damaged_goods']} />,
+            element: <RoleGuard requiredPermissions={['inventory.damaged-goods.view']} />,
             children: [{ path: 'operations/damaged-goods', element: <DamagedGoodsPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['operations.shift_history']} />,
+            element: <RoleGuard requiredPermissions={['operations.shift.view']} />,
             children: [
               { path: 'operations/shifts', element: <ShiftHistoryPage /> },
               { path: 'operations/shifts/:shiftId', element: <ShiftDetailPage /> }
             ]
           },
           {
-            element: <RoleGuard requiredPermissions={['finance.cashflow']} />,
+            element: <RoleGuard requiredPermissions={['finance.cashflow.view']} />,
             children: [{ path: 'finance/cashflow', element: <CashFlowPage /> }]
           },
           {
-            element: <RoleGuard requiredPermissions={['finance.profit-loss']} />,
+            element: <RoleGuard requiredPermissions={['finance.profit-loss.view']} />,
             children: [{ path: 'finance/profit-loss', element: <ProfitLossPage /> }]
           },
           {

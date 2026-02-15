@@ -1,4 +1,5 @@
 import { Database } from 'sql.js'
+import { sessionStore } from '../session'
 
 export interface AuthResult {
   token: string
@@ -76,6 +77,9 @@ export class AuthService {
       store = storeStmt.getAsObject()
     }
     storeStmt.free()
+
+    // Set current user in main process session
+    sessionStore.setUser(userId, roleNames.join(', '))
 
     return {
       token: userId,

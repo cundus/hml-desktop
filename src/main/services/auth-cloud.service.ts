@@ -2,6 +2,8 @@ import { Database } from 'sql.js'
 import { getCloudDb } from './cloud-db.service'
 import { getConnectivity } from './connectivity.service'
 import { AuditLogService } from './audit-log.service'
+import { AppConfigService } from './app-config.service'
+import { sessionStore } from '../session'
 
 export interface AuthResult {
   token: string
@@ -14,7 +16,11 @@ export interface AuthResult {
 }
 
 export class AuthCloudService {
-  constructor(private db: Database, private auditLogService?: AuditLogService) {}
+  constructor(
+    private db: Database,
+    private appConfigService: AppConfigService,
+    private auditLogService?: AuditLogService
+  ) {}
 
   private isOnline(): boolean {
     return getConnectivity().isOnline()
@@ -75,7 +81,6 @@ export class AuthCloudService {
           }
         }
 
-        console.log('[AuthCloud] Login successful via cloud:', userName)
 
         if (this.auditLogService) {
           void this.auditLogService.log({
@@ -89,6 +94,10 @@ export class AuthCloudService {
             metadata: { method: 'cloud', email: identifier }
           })
         }
+
+        // Set current user in main process session
+        sessionStore.setUser(userId, roleNames.join(', '))
+        await this.appConfigService.setCurrentUser(userId)
 
         return {
           token: userId,
@@ -176,7 +185,6 @@ export class AuthCloudService {
       storeStmt.free()
     }
 
-    console.log('[AuthCloud] Login successful via local:', userName)
 
     if (this.auditLogService) {
       void this.auditLogService.log({
@@ -190,6 +198,10 @@ export class AuthCloudService {
         metadata: { method: 'local', email: identifier }
       })
     }
+
+    // Set current user in main process session
+    sessionStore.setUser(userId, roleNames.join(', '))
+    await this.appConfigService.setCurrentUser(userId)
 
     return {
       token: userId,
@@ -243,5 +255,94 @@ export class AuthCloudService {
     }
     
     return isValid
+  }
+
+  async restoreSession(): Promise<AuthResult | null> {
+    try {
+      const userId = await this.appConfigService.getCurrentUser()
+      if (!userId) return null
+
+      // Local DB lookup for speed and offline support
+      const stmt = this.db.prepare('SELECT * FROM user WHERE id = ? AND deleted_at IS NULL')
+      stmt.bind([userId])
+      
+      let user: Record<string, unknown> | null = null
+      if (stmt.step()) {
+        user = stmt.getAsObject()
+      }
+      stmt.free()
+
+      if (!user) {
+        // User might have been deleted or ID is invalid
+        await this.appConfigService.clearCurrentUser()
+        return null
+      }
+
+      const userName = user.name as string
+      const storeId = (user.store_id as string) || null
+
+      // Load roles
+      const roleIds: string[] = []
+      const roleNames: string[] = []
+      const rolesStmt = this.db.prepare(
+        `SELECT ur.role_id, r.name as role_name
+         FROM user_role ur
+         LEFT JOIN role r ON ur.role_id = r.id
+         WHERE ur.user_id = ? AND ur.deleted_at IS NULL`
+      )
+      rolesStmt.bind([userId])
+      while (rolesStmt.step()) {
+        const row = rolesStmt.getAsObject()
+        roleIds.push(row.role_id as string)
+        if (row.role_name) roleNames.push(row.role_name as string)
+      }
+      rolesStmt.free()
+
+      // Load permissions
+      const permSet = new Set<string>()
+      for (const roleId of roleIds) {
+        const rpStmt = this.db.prepare(
+          'SELECT permission_id FROM role_permission WHERE role_id = ? AND deleted_at IS NULL'
+        )
+        rpStmt.bind([roleId])
+        while (rpStmt.step()) {
+          const row = rpStmt.getAsObject()
+          permSet.add(row.permission_id as string)
+        }
+        rpStmt.free()
+      }
+
+      // Get store ID/Name
+      let storeName: string | null = null
+      if (storeId) {
+        const storeStmt = this.db.prepare(
+          'SELECT name FROM store WHERE id = ? AND deleted_at IS NULL'
+        )
+        storeStmt.bind([storeId])
+        if (storeStmt.step()) {
+          const row = storeStmt.getAsObject()
+          storeName = row.name as string
+        }
+        storeStmt.free()
+      }
+
+
+      // Set current user in main process session
+      sessionStore.setUser(userId, roleNames.join(', '))
+
+      return {
+        token: userId,
+        userName,
+        userRole: roleNames.join(', ') || 'User',
+        storeId,
+        storeName,
+        groups: roleIds,
+        permissions: Array.from(permSet)
+      }
+
+    } catch (error) {
+      console.error('[AuthCloud] Failed to restore session:', error)
+      return null
+    }
   }
 }

@@ -1,6 +1,12 @@
 import { Database } from 'sql.js'
-import { saveDb } from './localDb'
 import { randomUUID } from 'crypto'
+import { saveDb } from './localDb'
+
+/**
+ * Constant timestamp for all seed data to ensure deterministic sync.
+ * Set to 2024-01-01 00:00:00 UTC
+ */
+const SEED_TIMESTAMP = 1704067200000
 
 interface SeedPermission {
   id: string
@@ -20,86 +26,222 @@ interface SeedPriceCategory {
 }
 
 const permissionCatalog: SeedPermission[] = [
+  // Dashboard
   { id: 'dashboard.view', name: 'View dashboard' },
-  { id: 'sales.view', name: 'Use sales screen' },
-  { id: 'sales.pos', name: 'Use point of sale' },
-  { id: 'sales.reports', name: 'View sales reports' },
-  { id: 'sales.manage', name: 'Manage sales' },
-  { id: 'sales.profit-detail', name: 'View profit detail', description: 'Access to view itemized profit/loss detail in transactions' },
-  { id: 'inventory.manage', name: 'Manage inventory' },
-  { id: 'inventory.dashboard', name: 'View inventory dashboard' },
-  { id: 'inventory.stocks', name: 'Manage stocks' },
-  { id: 'inventory.stock-opname', name: 'Manage stock opname' },
-  { id: 'inventory.batches', name: 'Manage batches' },
-  { id: 'inventory.transactions', name: 'Manage stock transactions' },
-  { id: 'purchasing.manage', name: 'Manage purchasing' },
-  { id: 'operations.manage', name: 'Manage operations' },
-  { id: 'operations.expenses', name: 'Manage expenses' },
-  { id: 'operations.operational_expenses', name: 'Manage operational expenses', description: 'Access to manage monthly/operational expenses (non-shift)' },
-  { id: 'operations.shift_history', name: 'View shift history' },
-  { id: 'operations.supplies', name: 'Manage supplies purchasing' },
-  { id: 'operations.damaged_goods', name: 'Manage damaged goods' },
-  { id: 'pricing.manage', name: 'Manage pricing' },
-  { id: 'pricing.products', name: 'Manage product pricing' },
-  { id: 'pricing.categories', name: 'Manage pricing categories' },
-  { id: 'finance.view', name: 'View finance module' },
-  { id: 'finance.cashflow', name: 'View cash flow reports' },
-  { id: 'finance.reports', name: 'View financial reports' },
-  { id: 'finance.profit-loss', name: 'View profit & loss reports' },
+
+  // Sales
+  { id: 'sales.pos.view', name: 'View POS', description: 'Access to Point of Sale screen' },
+  { id: 'sales.pos.create', name: 'Create orders (POS)', description: 'Process new sales' },
+  { id: 'sales.transaction.view', name: 'View transactions' },
+  {
+    id: 'sales.transaction.view-profit',
+    name: 'View transaction profit',
+    description: 'See profit/loss details in transactions'
+  },
+  {
+    id: 'sales.transaction.edit',
+    name: 'Edit transactions',
+    description: 'Modify transaction details'
+  },
+  {
+    id: 'sales.transaction.delete',
+    name: 'Cancel transactions',
+    description: 'Void or soft-delete transactions'
+  },
+  { id: 'sales.return.view', name: 'View returns' },
+  { id: 'sales.return.create', name: 'Create returns' },
+
+  // Inventory
+  { id: 'inventory.dashboard.view', name: 'View inventory dashboard' },
+  { id: 'inventory.stock.view', name: 'View stock levels' },
+  {
+    id: 'inventory.stock.adjust',
+    name: 'Adjust stock',
+    description: 'Manually correct stock levels'
+  },
+  { id: 'inventory.opname.view', name: 'View stock opname' },
+  { id: 'inventory.opname.create', name: 'Create stock opname' },
+  {
+    id: 'inventory.opname.process',
+    name: 'Process stock opname',
+    description: 'Finalize and apply stock opname results'
+  },
+  { id: 'inventory.batch.view', name: 'View batches' },
+  { id: 'inventory.batch.edit', name: 'Edit batches' },
+
+  // Purchasing
+  { id: 'purchasing.order.view', name: 'View purchase orders' },
+  { id: 'purchasing.order.create', name: 'Create purchase orders' },
+  { id: 'purchasing.order.edit', name: 'Edit purchase orders' },
+  { id: 'purchasing.order.delete', name: 'Delete purchase orders' },
+
+  // Operations
+  { id: 'operations.expense.view', name: 'View shift expenses' },
+  { id: 'operations.expense.create', name: 'Create shift expenses' },
+  { id: 'operations.expense.delete', name: 'Delete shift expenses' },
+  { id: 'operations.operational-expense.view', name: 'View operational expenses' },
+  { id: 'operations.operational-expense.create', name: 'Create operational expenses' },
+  { id: 'operations.shift.view', name: 'View shift history' },
+
+  // Pricing
+  { id: 'pricing.product.view', name: 'View product prices' },
+  { id: 'pricing.product.edit', name: 'Edit product prices' },
+  { id: 'pricing.category.view', name: 'View price categories' },
+  { id: 'pricing.category.manage', name: 'Manage price categories' },
+
+  // Finance
+  { id: 'finance.cashflow.view', name: 'View cash flow' },
+  { id: 'finance.profit-loss.view', name: 'View profit & loss' },
+
+  // Master Data - Products
+  { id: 'master.product.view', name: 'View products' },
+  { id: 'master.product.create', name: 'Create products' },
+  { id: 'master.product.edit', name: 'Edit products' },
+  { id: 'master.product.delete', name: 'Delete products' },
+  { id: 'master.product.import', name: 'Import products' },
+  { id: 'master.product.export', name: 'Export products' },
+
+  // Master Data - Categories
+  { id: 'master.category.view', name: 'View categories' },
+  { id: 'master.category.create', name: 'Create categories' },
+  { id: 'master.category.edit', name: 'Edit categories' },
+  { id: 'master.category.delete', name: 'Delete categories' },
+
+  // Master Data - Customers
+  { id: 'master.customer.view', name: 'View customers' },
+  { id: 'master.customer.create', name: 'Create customers' },
+  { id: 'master.customer.edit', name: 'Edit customers' },
+  { id: 'master.customer.delete', name: 'Delete customers' },
+
+  // Master Data - Suppliers
+  { id: 'master.supplier.view', name: 'View suppliers' },
+  { id: 'master.supplier.create', name: 'Create suppliers' },
+  { id: 'master.supplier.edit', name: 'Edit suppliers' },
+  { id: 'master.supplier.delete', name: 'Delete suppliers' },
+
+  // Master Data - Stores
+  { id: 'master.store.view', name: 'View stores' },
+  { id: 'master.store.create', name: 'Create stores' },
+  { id: 'master.store.edit', name: 'Edit stores' },
+  { id: 'master.store.delete', name: 'Delete stores' },
+
+  // Master Data - Users
+  { id: 'master.user.view', name: 'View users' },
+  { id: 'master.user.create', name: 'Create users' },
+  { id: 'master.user.edit', name: 'Edit users' },
+  { id: 'master.user.delete', name: 'Delete users' },
+  { id: 'master.user.reset-password', name: 'Reset user password' },
+
+  // Master Data - Others
+  { id: 'master.uom.view', name: 'View UOMs' },
+  { id: 'master.uom.create', name: 'Create UOMs' },
+  { id: 'master.uom.edit', name: 'Edit UOMs' },
+  { id: 'master.uom.delete', name: 'Delete UOMs' },
+  { id: 'master.customer-category.view', name: 'View customer categories' },
+  { id: 'master.customer-category.create', name: 'Create customer categories' },
+  { id: 'master.customer-category.edit', name: 'Edit customer categories' },
+  { id: 'master.customer-category.delete', name: 'Delete customer categories' },
+  { id: 'master.expense-category.view', name: 'View expense categories' },
+  { id: 'master.expense-category.create', name: 'Create expense categories' },
+  { id: 'master.expense-category.edit', name: 'Edit expense categories' },
+  { id: 'master.expense-category.delete', name: 'Delete expense categories' },
+  { id: 'master.payment-method.view', name: 'View payment methods' },
+  { id: 'master.payment-method.manage', name: 'Manage payment methods' },
+  { id: 'master.sales-person.view', name: 'View sales persons' },
+  { id: 'master.sales-person.manage', name: 'Manage sales persons' },
+  { id: 'inventory.damaged-goods.view', name: 'View damaged goods' },
+  { id: 'inventory.damaged-goods.manage', name: 'Manage damaged goods' },
+  { id: 'settings.point.view', name: 'View point settings' },
+  { id: 'settings.point.manage', name: 'Manage point settings' },
+
+  // Settings
   { id: 'settings.view', name: 'View settings' },
-  { id: 'master.branch.manage', name: 'Manage branches' },
-  { id: 'master.user.manage', name: 'Manage users' },
-  { id: 'master.customer.manage', name: 'Manage customers' },
-  { id: 'master.product.manage', name: 'Manage products' },
-  { id: 'master.category.manage', name: 'Manage categories' },
-  { id: 'master.supplier.manage', name: 'Manage suppliers' },
-  { id: 'master.store.manage', name: 'Manage stores' },
-  { id: 'master.customer-category.manage', name: 'Manage customer categories' },
-  { id: 'master.uom.manage', name: 'Manage units of measure' },
-  { id: 'master.expense-category.manage', name: 'Manage expense categories', description: 'Access to manage expense categories master data' },
-  { id: 'settings.access-control.manage', name: 'Manage roles & permissions' },
-  { id: 'settings.app-config.manage', name: 'Manage app configuration' },
-  { id: 'settings.printer.manage', name: 'Manage printer settings' },
-  { id: 'settings.points.manage', name: 'Manage member points settings' },
-  { id: 'audit.view', name: 'View audit logs', description: 'Access to view system audit logs and user activity history' }
+  { id: 'settings.role.view', name: 'View roles' },
+  { id: 'settings.role.manage', name: 'Manage roles' },
+  { id: 'settings.config.view', name: 'View app config' },
+  { id: 'settings.config.edit', name: 'Edit app config' },
+  { id: 'system.audit.view', name: 'View audit logs' }
+]
+
+interface SeedRole {
+  id: string
+  name: string
+  description: string
+  permissionPrefixes: string[]
+}
+
+const roleCatalog: SeedRole[] = [
+  {
+    id: 'role-admin',
+    name: 'Admin',
+    description: 'Administrator with full access to all features',
+    permissionPrefixes: ['*'] // All permissions
+  },
+  {
+    id: 'role-manager',
+    name: 'Manager',
+    description: 'Store manager with access to everything except system settings',
+    permissionPrefixes: [
+      'dashboard',
+      'sales',
+      'inventory',
+      'purchasing',
+      'operations',
+      'pricing',
+      'finance',
+      'master',
+      'settings.view',
+      'settings.role.view'
+    ]
+  },
+  {
+    id: 'role-cashier',
+    name: 'Cashier',
+    description: 'Store cashier with access to POS and returns only',
+    permissionPrefixes: [
+      'sales.pos',
+      'sales.transaction.view',
+      'sales.return',
+      'operations.expense',
+      'dashboard.view'
+    ]
+  }
 ]
 
 /**
  * Reset and reseed permissions - deletes existing permissions and role_permissions, then reseeds.
  * Use this to fix duplicate permissions or permission catalog changes.
  */
+/**
+ * Reset and reseed permissions and roles - deletes existing permissions, role_permissions, and standard roles.
+ * Use this to force a fresh start for access control.
+ */
 export async function resetAndReseedPermissions(db: Database): Promise<void> {
-  const now = Date.now()
+  console.log('[Seed] Resetting access control tables...')
 
-  // Delete existing permissions and role mappings
+  // 1. Clear mapping tables first
   db.run('DELETE FROM role_permission')
+
+  // 2. Clear permissions
   db.run('DELETE FROM permission')
 
-  // Insert fresh permissions
-  for (const perm of permissionCatalog) {
-    db.run(
-      'INSERT INTO permission (id, name, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [perm.id, perm.name, perm.description ?? null, now, now]
-    )
-  }
+  // 3. Clear standard roles (keep custom ones if any)
+  const standardRoleIds = roleCatalog.map((r) => `'${r.id}'`).join(',')
+  db.run(`DELETE FROM role WHERE id IN (${standardRoleIds})`)
 
-  // Re-grant all permissions to admin role
-  const adminRoleId = 'role-admin'
-  for (const perm of permissionCatalog) {
-    const rpId = `role-admin:${perm.id}`
-    db.run(
-      'INSERT INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
-      [rpId, adminRoleId, perm.id, now, now]
-    )
-  }
+  // 4. Re-seed everything
+  await seedPermissions(db)
+  await seedRoles(db)
+  await seedAdmin(db)
 
   saveDb(db)
+  console.log('[Seed] Access control reset complete.')
 }
 
 const priceCategoryCatalog: SeedPriceCategory[] = [{ id: 'RETAIL', name: 'RETAIL' }]
 
 export async function seedPriceCategories(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   for (const cat of priceCategoryCatalog) {
     db.run(
@@ -116,7 +258,7 @@ export async function seedPriceCategories(db: Database): Promise<void> {
  * This is idempotent: uses INSERT OR IGNORE on permission.id.
  */
 export async function seedPermissions(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   for (const perm of permissionCatalog) {
     db.run(
@@ -129,24 +271,48 @@ export async function seedPermissions(db: Database): Promise<void> {
 }
 
 /**
- * Seed a default admin role and user with full permissions.
- * - Role: id 'role-admin', name 'Admin'
- * - User: id 'user-admin', name 'Admin', email 'admin@example.com', password 'admin123'
- * - Grants all permissions from permissionCatalog to role-admin
- * - Assigns role-admin to user-admin
+ * Seed roles and their standard permissions.
+ */
+export async function seedRoles(db: Database): Promise<void> {
+  const now = SEED_TIMESTAMP
+
+  // 1. Seed Roles
+  for (const role of roleCatalog) {
+    db.run(
+      'INSERT OR IGNORE INTO role (id, name, description, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+      [role.id, role.name, role.description, now, now]
+    )
+
+    // 2. Map Permissions based on prefixes
+    for (const perm of permissionCatalog) {
+      const isMatch = role.permissionPrefixes.some(
+        (prefix) => prefix === '*' || perm.id === prefix || perm.id.startsWith(`${prefix}.`)
+      )
+
+      if (isMatch) {
+        const rpId = `${role.id}:${perm.id}`
+        db.run(
+          'INSERT OR IGNORE INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
+          [rpId, role.id, perm.id, now, now]
+        )
+      }
+    }
+  }
+
+  saveDb(db)
+  console.log('✓ Roles and permissions seeded')
+}
+
+/**
+ * Seed a default admin user and assign it the admin role.
+ * User: id 'user-admin', name 'Admin', email 'admin@example.com', password 'admin123'
  * All operations are idempotent.
  */
 export async function seedAdmin(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   const adminRoleId = 'role-admin'
   const adminUserId = 'user-admin'
-
-  // Ensure admin role exists
-  db.run(
-    'INSERT OR IGNORE INTO role (id, name, description, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
-    [adminRoleId, 'Admin', 'Default administrator role with full access', now, now]
-  )
 
   // Ensure admin user exists
   db.run(
@@ -161,35 +327,29 @@ export async function seedAdmin(db: Database): Promise<void> {
     [userRoleId, adminUserId, adminRoleId, now, now]
   )
 
-  // Grant all permissions to admin role
-  for (const perm of permissionCatalog) {
-    const rpId = `role-admin:${perm.id}`
-    db.run(
-      'INSERT OR IGNORE INTO role_permission (id, role_id, permission_id, created_at, updated_at, synced_at, deleted_at, device_id) VALUES (?, ?, ?, ?, ?, NULL, NULL, NULL)',
-      [rpId, adminRoleId, perm.id, now, now]
-    )
-  }
-
   saveDb(db)
 }
 
-/**
- * Default units of measure catalog
- */
+interface SeedUom {
+  id: string
+  code: string
+  name: string
+}
+
 const uomCatalog: SeedUom[] = [
-  { code: 'PCS', name: 'Pieces' },
-  { code: 'SAK', name: 'Sak/Karung' },
-  { code: 'BOX', name: 'Box' },
-  { code: 'DUS', name: 'Dus/Karton' },
-  { code: 'PACK', name: 'Pack' },
-  { code: 'KG', name: 'Kilogram' },
-  { code: 'GR', name: 'Gram' },
-  { code: 'LTR', name: 'Liter' },
-  { code: 'ML', name: 'Mililiter' },
-  { code: 'BTL', name: 'Botol' },
-  { code: 'SET', name: 'Set' },
-  { code: 'ROLL', name: 'Roll' },
-  { code: 'MTR', name: 'Meter' }
+  { id: '00000000-0000-0000-0000-000000000001', code: 'PCS', name: 'Pieces' },
+  { id: '00000000-0000-0000-0000-000000000002', code: 'SAK', name: 'Sak/Karung' },
+  { id: '00000000-0000-0000-0000-000000000003', code: 'BOX', name: 'Box' },
+  { id: '00000000-0000-0000-0000-000000000004', code: 'DUS', name: 'Dus/Karton' },
+  { id: '00000000-0000-0000-0000-000000000005', code: 'PACK', name: 'Pack' },
+  { id: '00000000-0000-0000-0000-000000000006', code: 'KG', name: 'Kilogram' },
+  { id: '00000000-0000-0000-0000-000000000007', code: 'GR', name: 'Gram' },
+  { id: '00000000-0000-0000-0000-000000000008', code: 'LTR', name: 'Liter' },
+  { id: '00000000-0000-0000-0000-000000000009', code: 'ML', name: 'Mililiter' },
+  { id: '00000000-0000-0000-0000-000000000010', code: 'BTL', name: 'Botol' },
+  { id: '00000000-0000-0000-0000-000000000011', code: 'SET', name: 'Set' },
+  { id: '00000000-0000-0000-0000-000000000012', code: 'ROLL', name: 'Roll' },
+  { id: '00000000-0000-0000-0000-000000000013', code: 'MTR', name: 'Meter' }
 ]
 
 /**
@@ -197,13 +357,12 @@ const uomCatalog: SeedUom[] = [
  * This is idempotent: uses INSERT OR IGNORE on uom.code.
  */
 export async function seedUoms(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   for (const uom of uomCatalog) {
-    const id = randomUUID()
     db.run(
       'INSERT OR IGNORE INTO uom (id, code, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-      [id, uom.code, uom.name, now, now]
+      [uom.id, uom.code, uom.name, now, now]
     )
   }
 
@@ -222,7 +381,7 @@ export async function seedUoms(db: Database): Promise<void> {
  * This function is idempotent and safe to run on every startup.
  */
 export async function backfillProductUomsAndStorePrices(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   // Ensure RETAIL category exists
   const retailStmt = db.prepare("SELECT id FROM price_category WHERE id = 'RETAIL' LIMIT 1")
@@ -323,7 +482,7 @@ export async function backfillProductUomsAndStorePrices(db: Database): Promise<v
  * Seed point settings tables and default configuration
  */
 export async function seedPointSettings(db: Database): Promise<void> {
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   // Create point_setting table if not exists
   db.run(`
@@ -473,7 +632,7 @@ export async function seedExpenseCategories(db: Database): Promise<void> {
     )
   `)
 
-  const now = Date.now()
+  const now = SEED_TIMESTAMP
 
   for (const cat of expenseCategorySeed) {
     const existing = db.exec(`SELECT id FROM expense_category WHERE code = '${cat.code}'`)

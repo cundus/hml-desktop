@@ -21,6 +21,7 @@ import CircularProgress from '@mui/material/CircularProgress'
 import AddIcon from '@mui/icons-material/Add'
 import EditIcon from '@mui/icons-material/Edit'
 import DeleteIcon from '@mui/icons-material/Delete'
+import useAuth from '../../../hooks/useAuth'
 
 interface PriceCategory {
   id: string
@@ -37,6 +38,11 @@ export default function PriceCategoryPage(): React.JSX.Element {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<PriceCategory | null>(null)
   const [deletingCategory, setDeletingCategory] = useState<PriceCategory | null>(null)
+  const { hasPermission } = useAuth()
+
+  const canCreate = hasPermission('pricing.category.create')
+  const canEdit = hasPermission('pricing.category.edit')
+  const canDelete = hasPermission('pricing.category.delete')
 
   // Form state
   const [formId, setFormId] = useState('')
@@ -150,9 +156,11 @@ export default function PriceCategoryPage(): React.JSX.Element {
             Kelola kategori harga untuk pelanggan (RETAIL, WHOLESALE, MEMBER, dll.)
           </Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
-          Tambah Kategori
-        </Button>
+        {canCreate && (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreateDialog}>
+            Tambah Kategori
+          </Button>
+        )}
       </Stack>
 
       {loading ? (
@@ -203,17 +211,21 @@ export default function PriceCategoryPage(): React.JSX.Element {
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <IconButton size="small" onClick={() => openEditDialog(cat)}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => openDeleteDialog(cat)}
-                      disabled={cat.isDefault}
-                      color="error"
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
+                    {canEdit && (
+                      <IconButton size="small" onClick={() => openEditDialog(cat)}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                    {canDelete && (
+                      <IconButton
+                        size="small"
+                        onClick={() => openDeleteDialog(cat)}
+                        disabled={cat.isDefault}
+                        color="error"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    )}
                   </TableCell>
                 </TableRow>
               ))

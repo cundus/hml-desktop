@@ -34,6 +34,7 @@ const CONFIG_KEYS = {
   MANAGER_ID: 'manager_id',
   MANAGER_NAME: 'manager_name',
   IS_CONFIGURED: 'is_configured',
+  CURRENT_USER_ID: 'current_user_id',
   // Feature flags
   ENABLE_MULTI_UOM_PRICING: 'enable_multi_uom_pricing'
 }
@@ -41,6 +42,18 @@ const CONFIG_KEYS = {
 export class AppConfigService {
   constructor(private db: Database) {
     this.ensureConfigTable()
+    this.dumpConfig()
+  }
+
+  private dumpConfig(): void {
+    try {
+      const stmt = this.db.prepare('SELECT * FROM app_config')
+      while (stmt.step()) {
+      }
+      stmt.free()
+    } catch (e) {
+      console.warn('[AppConfig] Could not dump config:', e)
+    }
   }
 
   /**
@@ -80,22 +93,20 @@ export class AppConfigService {
    * Set a config value
    */
   async set(key: string, value: string | null): Promise<void> {
-    const existing = await this.get(key)
     const now = Date.now()
 
-    if (existing !== null) {
-      this.db.run('UPDATE app_config SET value = ?, updated_at = ? WHERE key = ?', [
-        value,
-        now,
-        key
-      ])
-    } else {
-      const id = randomUUID()
-      this.db.run(
-        'INSERT INTO app_config (id, key, value, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-        [id, key, value, now, now]
-      )
-    }
+    // Using INSERT OR REPLACE for simplicity and atomicity
+    this.db.run(
+      `INSERT OR REPLACE INTO app_config (id, key, value, created_at, updated_at) 
+       VALUES (
+         COALESCE((SELECT id FROM app_config WHERE key = ?), ?),
+         ?, ?, 
+         COALESCE((SELECT created_at FROM app_config WHERE key = ?), ?),
+         ?
+       )`,
+      [key, randomUUID(), key, value, key, now, now]
+    )
+    
     saveDb(this.db)
   }
 
@@ -177,6 +188,20 @@ export class AppConfigService {
    */
   async isConfigured(): Promise<boolean> {
     return (await this.get(CONFIG_KEYS.IS_CONFIGURED)) === 'true'
+  }
+
+  async setCurrentUser(userId: string): Promise<void> {
+    await this.set(CONFIG_KEYS.CURRENT_USER_ID, userId)
+  }
+
+  async getCurrentUser(): Promise<string | null> {
+    return this.get(CONFIG_KEYS.CURRENT_USER_ID)
+  }
+
+  async clearCurrentUser(): Promise<void> {
+    const key = CONFIG_KEYS.CURRENT_USER_ID
+    this.db.run('DELETE FROM app_config WHERE key = ?', [key])
+    saveDb(this.db)
   }
 
   /**

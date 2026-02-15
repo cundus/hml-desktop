@@ -157,7 +157,7 @@ export default function ProductList({
     {
       field: 'categoryId',
       headerName: 'Kategori',
-      width: 130,
+      flex: 1,
       valueGetter: (_, row) => categoryMap.get(row.categoryId) || '-',
       renderCell: (params: GridRenderCellParams<Product>) => (
         <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
@@ -165,20 +165,20 @@ export default function ProductList({
         </Box>
       )
     },
-    {
-      field: 'cost',
-      headerName: 'Modal',
-      width: 110,
-      renderCell: (params: GridRenderCellParams<Product>) => (
-        <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
-          <Typography>
-            {params.value
-              ? Number(params.value).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 })
-              : '-'}
-          </Typography>
-        </Box>
-      )
-    },
+    // {
+    //   field: 'cost',
+    //   headerName: 'Modal',
+    //   width: 110,
+    //   renderCell: (params: GridRenderCellParams<Product>) => (
+    //     <Box sx={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+    //       <Typography>
+    //         {params.value
+    //           ? Number(params.value).toLocaleString('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 })
+    //           : '-'}
+    //       </Typography>
+    //     </Box>
+    //   )
+    // },
     {
       field: 'weight',
       headerName: 'Berat (g)',

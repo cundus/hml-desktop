@@ -50,6 +50,13 @@
       "when": 1770309811806,
       "tag": "0006_wandering_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1771315753863,
+      "tag": "0007_careful_radioactive_man",
+      "breakpoints": true
     }
   ]
 }

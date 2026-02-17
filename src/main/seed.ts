@@ -73,6 +73,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'purchasing.order.view', name: 'View purchase orders' },
   { id: 'purchasing.order.create', name: 'Create purchase orders' },
   { id: 'purchasing.order.edit', name: 'Edit purchase orders' },
+  { id: 'purchasing.order.edit-cost', name: 'Edit purchase order cost' },
   { id: 'purchasing.order.delete', name: 'Delete purchase orders' },
 
   // Operations

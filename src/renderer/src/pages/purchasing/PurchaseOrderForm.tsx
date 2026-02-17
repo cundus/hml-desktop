@@ -30,6 +30,14 @@ interface Product {
   name: string
   sku: string
   cost: string
+  unit: string
+  weight: string
+}
+
+interface Uom {
+  id: string
+  code: string
+  name: string
 }
 
 interface Supplier {
@@ -50,17 +58,20 @@ interface POItem {
   quantity: number
   cost: number
   subtotal: number
+  unit: string
+  weight: number // Total weight for this item (unit weight * quantity)
 }
 
 export default function PurchaseOrderFormPage(): React.JSX.Element {
   const navigate = useNavigate()
-  const { hasPermission } = useAuth()
+  const { hasPermission, userName } = useAuth()
   const [searchParams] = useSearchParams()
   const poId = searchParams.get('id')
 
   const [products, setProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [stores, setStores] = useState<Store[]>([])
+  const [uoms, setUoms] = useState<Uom[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -79,20 +90,23 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     try {
       setLoading(true)
 
-      const [productsRes, suppliersRes, storesRes] = await Promise.all([
+      const [productsRes, suppliersRes, storesRes, uomsRes] = await Promise.all([
         window.api.db.products.getAll(),
         window.api.db.suppliers.getAll(),
-        window.api.db.stores.getAll()
+        window.api.db.stores.getAll(),
+        window.api.db.uoms.getAll()
       ])
 
-      if (productsRes.success && suppliersRes.success && storesRes.success) {
+      if (productsRes.success && suppliersRes.success && storesRes.success && uomsRes.success) {
         setProducts(productsRes.data ?? [])
         setSuppliers(suppliersRes.data ?? [])
         setStores(storesRes.data ?? [])
+        setUoms(uomsRes.data ?? [])
 
         // Auto-generate code if new PO
         if (!poId) {
-          setCode(`PO-${Date.now()}`)
+          // We will generate the code when store is selected or on load if store is already there
+          // For now, let's keep it empty or default until store is selected
         } else {
           // Load existing PO
           await loadPurchaseOrder(poId, productsRes.data ?? [])
@@ -121,13 +135,16 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
           const loadedItems = po.items.map((item) => {
             const product = productsMap.get(item.productId)
             const cost = parseFloat(item.cost)
+            const unitWeight = parseFloat(product?.weight || '0')
             return {
               productId: item.productId,
               productName: product?.name || 'Unknown',
               sku: product?.sku || '',
               quantity: item.quantity,
               cost,
-              subtotal: item.quantity * cost
+              subtotal: item.quantity * cost,
+              unit: item.unit || product?.unit || 'PCS',
+              weight: item.quantity * unitWeight
             }
           })
           setItems(loadedItems)
@@ -153,17 +170,23 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       newItems[existingIndex].quantity += 1
       newItems[existingIndex].subtotal =
         newItems[existingIndex].quantity * newItems[existingIndex].cost
+      const product = products.find(p => p.id === selectedProduct.id)
+      const unitWeight = parseFloat(product?.weight || '0')
+      newItems[existingIndex].weight = newItems[existingIndex].quantity * unitWeight
       setItems(newItems)
     } else {
       // Add new item
       const cost = parseFloat(selectedProduct.cost)
+      const unitWeight = parseFloat(selectedProduct.weight || '0')
       const newItem: POItem = {
         productId: selectedProduct.id,
         productName: selectedProduct.name,
         sku: selectedProduct.sku,
         quantity: 1,
         cost,
-        subtotal: cost
+        subtotal: cost,
+        unit: selectedProduct.unit || 'PCS',
+        weight: unitWeight
       }
       setItems([...items, newItem])
     }
@@ -180,6 +203,15 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     const newItems = [...items]
     newItems[index].quantity = quantity
     newItems[index].subtotal = quantity * newItems[index].cost
+    const product = products.find(p => p.id === newItems[index].productId)
+    const unitWeight = parseFloat(product?.weight || '0')
+    newItems[index].weight = quantity * unitWeight
+    setItems(newItems)
+  }
+
+  const updateUnit = (index: number, unit: string): void => {
+    const newItems = [...items]
+    newItems[index].unit = unit
     setItems(newItems)
   }
 
@@ -189,6 +221,24 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
   const calculateTotal = (): number => {
     return items.reduce((sum, item) => sum + item.subtotal, 0)
+  }
+
+  const calculateTotalWeight = (): number => {
+    return items.reduce((sum, item) => sum + item.weight, 0)
+  }
+
+  const generatePOCode = (storeId: string): void => {
+    if (poId) return // Don't regenerate for existing PO
+
+    const store = stores.find((s) => s.id === storeId)
+    if (!store) return
+
+    const now = new Date()
+    const dateStr = now.toISOString().split('T')[0].replace(/-/g, '')
+    const userPart = (userName || 'ADMIN').toUpperCase().replace(/\s+/g, '_')
+    const storePart = store.name.toUpperCase().replace(/\s+/g, '_')
+
+    setCode(`${userPart}-${dateStr}-${storePart}`)
   }
 
   const handleSave = async (saveStatus: PurchaseOrderStatus): Promise<void> => {
@@ -215,7 +265,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         items: items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          cost: item.cost.toFixed(2)
+          cost: item.cost.toFixed(2),
+          unit: item.unit
         }))
       }
 
@@ -322,7 +373,11 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             select
             label="Toko"
             value={storeId}
-            onChange={(e) => setStoreId(e.target.value)}
+            onChange={(e) => {
+              const newStoreId = e.target.value
+              setStoreId(newStoreId)
+              generatePOCode(newStoreId)
+            }}
             fullWidth
             required
             disabled={!!poId}
@@ -381,7 +436,9 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             <TableRow>
               <TableCell>Produk</TableCell>
               <TableCell align="right">Jumlah</TableCell>
-              <TableCell align="right">Biaya</TableCell>
+              <TableCell align="right">Satuan</TableCell>
+              <TableCell align="right">Harga Beli</TableCell>
+              <TableCell align="right">Berat (kg)</TableCell>
               <TableCell align="right">Subtotal</TableCell>
               <TableCell align="right">Aksi</TableCell>
             </TableRow>
@@ -408,6 +465,26 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell align="right">
                   <TextField
+                    select
+                    value={item.unit}
+                    onChange={(e) => updateUnit(index, e.target.value)}
+                    size="small"
+                    disabled={status === 'RECEIVED'}
+                    sx={{ width: 100 }}
+                  >
+                    {uoms.map((uom) => (
+                      <MenuItem key={uom.id} value={uom.code}>
+                        {uom.code}
+                      </MenuItem>
+                    ))}
+                    {/* Ensure current unit is visible even if not in master */}
+                    {!uoms.find((u) => u.code === item.unit) && (
+                      <MenuItem value={item.unit}>{item.unit}</MenuItem>
+                    )}
+                  </TextField>
+                </TableCell>
+                <TableCell align="right">
+                  <TextField
                     type="number"
                     value={item.cost}
                     onChange={(e) => {
@@ -419,10 +496,11 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     }}
                     size="small"
                     inputProps={{ min: 0 }}
-                    disabled={status === 'RECEIVED'}
+                    disabled={status === 'RECEIVED' || !hasPermission('purchasing.order.edit-cost')}
                     sx={{ width: 100 }}
                   />
                 </TableCell>
+                <TableCell align="right">{item.weight.toFixed(2)}</TableCell>
                 <TableCell align="right">{item.subtotal.toLocaleString('id-ID')}</TableCell>
                 <TableCell align="right">
                   <IconButton
@@ -437,7 +515,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             ))}
             {items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={7} align="center">
                   Belum ada item
                 </TableCell>
               </TableRow>
@@ -447,11 +525,19 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
         <Divider sx={{ my: 2 }} />
 
-        <Stack direction="row" justifyContent="flex-end" spacing={2}>
-          <Typography variant="h6">Total:</Typography>
-          <Typography variant="h6" color="primary">
-            {calculateTotal().toFixed(2)}
-          </Typography>
+        <Stack spacing={1} alignItems="flex-end" mt={2}>
+          <Stack direction="row" spacing={2}>
+            <Typography variant="body1">Total Berat:</Typography>
+            <Typography variant="body1" fontWeight="bold">
+              {calculateTotalWeight().toFixed(2)} kg
+            </Typography>
+          </Stack>
+          <Stack direction="row" spacing={2}>
+            <Typography variant="h6">Total:</Typography>
+            <Typography variant="h6" color="primary">
+              {calculateTotal().toFixed(2)}
+            </Typography>
+          </Stack>
         </Stack>
 
         <Stack direction="row" spacing={2} mt={3} justifyContent="flex-end">

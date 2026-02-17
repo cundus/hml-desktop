@@ -10,6 +10,7 @@ export interface PurchaseOrderItem {
   productId: string
   quantity: number
   cost: string
+  unit: string
   createdAt: Date
   updatedAt: Date
 }
@@ -59,6 +60,7 @@ export const purchaseOrderApi = {
       productId: string
       quantity: number
       cost: string
+      unit: string
     }[]
   }) => ipcRenderer.invoke('db:purchaseOrders:create', data) as Promise<ApiResponse<PurchaseOrder>>,
 

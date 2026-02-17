@@ -46,6 +46,7 @@ export interface Product extends BaseEntity {
   description: string | null
   unit: string
   cost: string
+  weight: string
   categoryId: string | null
   isActive: boolean
   deviceId: string | null

@@ -91,7 +91,6 @@ export function requirePermission(
 
     // 2. Standard session check
     const userId = sessionStore.getUserId()
-    console.log(`[AuthGuard] requirePermission for ${permission}: current userId is ${userId} (Instance: ${sessionStore.getInstanceId()})`)
     
     if (!userId) {
       throw new Error('Unauthorized: No active session')

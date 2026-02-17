@@ -27,6 +27,7 @@ export interface PurchaseOrderItem {
   productId: string
   quantity: number
   cost: string
+  unit: string
   createdAt: Date
   updatedAt: Date
 }
@@ -44,6 +45,7 @@ export interface CreatePurchaseOrderItemDto {
   productId: string
   quantity: number
   cost: string
+  unit: string
 }
 
 export interface UpdatePurchaseOrderDto {
@@ -249,8 +251,8 @@ export class PurchaseOrderCloudService {
         for (const item of data.items) {
           const itemId = randomUUID()
           await pool.query(
-            'INSERT INTO purchase_order_item (id, po_id, product_id, quantity, cost, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [itemId, id, item.productId, item.quantity, item.cost, nowObj, nowObj]
+            'INSERT INTO purchase_order_item (id, po_id, product_id, quantity, cost, unit, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            [itemId, id, item.productId, item.quantity, item.cost, item.unit, nowObj, nowObj]
           )
         }
 
@@ -264,6 +266,7 @@ export class PurchaseOrderCloudService {
             productId: item.productId,
             quantity: item.quantity,
             cost: item.cost,
+            unit: item.unit,
             createdAt: nowObj,
             updatedAt: nowObj
         }))
@@ -300,6 +303,7 @@ export class PurchaseOrderCloudService {
         productId: item.productId,
         quantity: item.quantity,
         cost: item.cost,
+        unit: item.unit,
         createdAt: nowObj,
         updatedAt: nowObj
     }))
@@ -354,8 +358,8 @@ export class PurchaseOrderCloudService {
           for (const item of data.items) {
             const itemId = randomUUID()
             await pool.query(
-              'INSERT INTO purchase_order_item (id, po_id, product_id, quantity, cost, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-              [itemId, id, item.productId, item.quantity, item.cost, nowObj, nowObj]
+              'INSERT INTO purchase_order_item (id, po_id, product_id, quantity, cost, unit, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+              [itemId, id, item.productId, item.quantity, item.cost, item.unit, nowObj, nowObj]
             )
           }
         }
@@ -376,6 +380,7 @@ export class PurchaseOrderCloudService {
                 productId: item.productId,
                 quantity: item.quantity,
                 cost: item.cost,
+                unit: item.unit,
                 createdAt: nowObj,
                 updatedAt: nowObj
             }))
@@ -475,6 +480,7 @@ export class PurchaseOrderCloudService {
       productId: row.product_id,
       quantity: row.quantity,
       cost: row.cost,
+      unit: row.unit,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at)
     }

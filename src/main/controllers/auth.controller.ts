@@ -8,6 +8,27 @@ export class AuthController {
   registerHandlers(): void {
     ipcMain.handle('auth:login', this.login.bind(this))
     ipcMain.handle('auth:verifyPin', this.verifyPin.bind(this))
+    ipcMain.handle('auth:authorize', this.authorize.bind(this))
+  }
+
+  private async authorize(
+    _event: IpcMainInvokeEvent,
+    pin: string,
+    permission: string
+  ): Promise<ApiResponse<{ success: boolean; userName?: string }>> {
+    try {
+      const result = await this.authService.authorize(pin, permission)
+      return {
+        success: true,
+        data: result
+      }
+    } catch (error) {
+      console.error('Error authorizing PIN:', error)
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Authorization failed'
+      }
+    }
   }
 
   private async login(

@@ -29,6 +29,15 @@ import {
 } from '@mui/icons-material'
 import { ProductStockDetail } from 'src/preload/api/inventory'
 import { format } from 'date-fns'
+import ReferenceLink from '../../components/ReferenceLink'
+
+const formatCurrency = (value: number): string => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(value)
+}
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -139,28 +148,28 @@ export default function ProductStockDetailPage(): React.ReactElement {
 
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={2}>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
                 Total Stok Fisik
               </Typography>
-              <Typography variant="h3" color="primary">
+              <Typography variant="h4" color="primary" sx={{ fontWeight: 'bold' }}>
                 {data.stock.total}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                {data.product.unit}
+                {data.product.unit} di gudang
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={2}>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
                 Stok Tersedia
               </Typography>
-              <Typography variant="h3" color="success.main">
+              <Typography variant="h4" color="success.main" sx={{ fontWeight: 'bold' }}>
                 {data.stock.available}
               </Typography>
               <Typography variant="caption" color="text.secondary">
@@ -169,17 +178,32 @@ export default function ProductStockDetailPage(): React.ReactElement {
             </CardContent>
           </Card>
         </Grid>
-        <Grid size={{ xs: 12, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <Card elevation={2}>
             <CardContent>
               <Typography color="text.secondary" gutterBottom>
                 Stok Dipesan / Reserved
               </Typography>
-              <Typography variant="h3" color="warning.main">
+              <Typography variant="h4" color="warning.main" sx={{ fontWeight: 'bold' }}>
                 {data.stock.reserved}
               </Typography>
               <Typography variant="caption" color="text.secondary">
-                Menunggu Proses
+                Booking
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+          <Card elevation={2} sx={{ borderLeft: '5px solid #2e7d32' }}>
+            <CardContent>
+              <Typography color="text.secondary" gutterBottom>
+                Total Nilai Aset
+              </Typography>
+              <Typography variant="h4" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                {formatCurrency(data.stock.totalAssetValue || 0)}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Harga Modal Tengah
               </Typography>
             </CardContent>
           </Card>
@@ -296,7 +320,7 @@ export default function ProductStockDetailPage(): React.ReactElement {
                         }
                       />
                     </TableCell>
-                    <TableCell>{txn.reference || '-'}</TableCell>
+                    <TableCell><ReferenceLink reference={txn.reference} /></TableCell>
                     <TableCell
                       align="right"
                       sx={{

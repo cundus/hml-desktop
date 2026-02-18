@@ -110,4 +110,64 @@ export class AuthService {
 
     return userPin === pin
   }
+
+  async authorize(pin: string, permission: string): Promise<{ success: boolean; userName?: string }> {
+    // Find any user that matches this PIN and has the required permission
+    const stmt = this.db.prepare(
+      'SELECT id, name FROM user WHERE pin = ? AND deleted_at IS NULL'
+    )
+    stmt.bind([pin])
+
+    const matchingUsers: { id: string; name: string }[] = []
+    while (stmt.step()) {
+      const row = stmt.getAsObject()
+      matchingUsers.push({ id: row.id as string, name: row.name as string })
+    }
+    stmt.free()
+
+    if (matchingUsers.length === 0) {
+      return { success: false }
+    }
+
+    // For each matching user, check if they have the permission
+    for (const user of matchingUsers) {
+      // Load roles for the user
+      const rolesStmt = this.db.prepare(
+        'SELECT role_id FROM user_role WHERE user_id = ? AND deleted_at IS NULL'
+      )
+      rolesStmt.bind([user.id])
+      const roleIds: string[] = []
+      while (rolesStmt.step()) {
+        roleIds.push(rolesStmt.getAsObject().role_id as string)
+      }
+      rolesStmt.free()
+
+      // Check permissions
+      for (const roleId of roleIds) {
+        const rpStmt = this.db.prepare(
+          'SELECT 1 FROM role_permission WHERE role_id = ? AND permission_id = ? AND deleted_at IS NULL'
+        )
+        rpStmt.bind([roleId, permission])
+        const hasPerm = rpStmt.step()
+        rpStmt.free()
+
+        if (hasPerm) {
+          return { success: true, userName: user.name }
+        }
+      }
+
+      // Special case: if user is SUPERADMIN (if that role exists by name)
+      const superAdminStmt = this.db.prepare(
+        "SELECT 1 FROM user_role ur JOIN role r ON ur.role_id = r.id WHERE ur.user_id = ? AND r.name = 'SUPERADMIN' AND ur.deleted_at IS NULL"
+      )
+      superAdminStmt.bind([user.id])
+      const isSuper = superAdminStmt.step()
+      superAdminStmt.free()
+      if (isSuper) {
+        return { success: true, userName: user.name }
+      }
+    }
+
+    return { success: false }
+  }
 }

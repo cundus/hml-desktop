@@ -50,6 +50,7 @@ interface TransactionItem {
   uomCode?: string
   price: string
   weight?: number
+  conversionFactor?: number
 }
 
 interface Transaction {
@@ -244,12 +245,16 @@ export default function TransactionDetailPage(): React.JSX.Element {
 
       const enrichedItems = (txn.items ?? []).map((item) => {
         const product = prods.find((p) => p.id === item.productId)
+        const conversion = (item.displayQuantity && item.displayQuantity > 0) 
+          ? (item.quantity / item.displayQuantity) 
+          : 1
         return {
           ...item,
           productName: product?.name ?? 'Unknown',
           productSku: product?.sku ?? '-',
           displayQuantity: item.displayQuantity ?? item.quantity,
-          weight: item.weight || Number(product?.weight ?? 0)
+          weight: item.weight || Number(product?.weight ?? 0),
+          conversionFactor: conversion
         }
       })
 
@@ -368,45 +373,15 @@ export default function TransactionDetailPage(): React.JSX.Element {
         paymentMethod: editPaymentMethod,
         customerId: editCustomerId,
         items: editItems.map((item) => {
-          // Calculate conversion factor to get back base quantity
-          // If displayQuantity is present, use it to calculate base quantity ratio
-          // Original: Qty=12, Display=1 (Pack), Ratio=12.
-          // New: Display=2 (Pack). Base = 2 * 12 = 24.
+          // If we have conversionFactor, use it. Otherwise fallback to item.quantity (assumed base)
+          const baseQuantity = item.conversionFactor 
+            ? item.quantity * item.conversionFactor 
+            : item.quantity
 
-          // If we don't have the conversion factor readily available without fetching,
-          // we should rely on the ratio:
-          // Conversion = OriginalBase / OriginalDisplay
-          // NewBase = NewDisplay * Conversion
-
-          let baseQuantity = item.quantity
-
-          // Only if we have original reference
-          const original = transaction.items?.find((i) => i.id === item.id)
-          if (original && original.productId === item.productId && original.displayQuantity) {
-            const conversion = original.quantity / original.displayQuantity
-            // item.quantity in edit state is actually holding the DISPLAY quantity value because we bound it to input
-            // WAIT, look at handleItemChange:
-            // newItems[index] = { ...newItems[index], quantity: value as number }
-            // So item.quantity IS the user input (Display Quantity).
-
-            baseQuantity = item.quantity * conversion
-
-            // Update the payload
-            return {
-              id: item.id,
-              productId: item.productId,
-              quantity: baseQuantity,
-              displayQuantity: item.quantity, // User input
-              uomCode: item.uomCode,
-              price: item.price
-            }
-          }
-
-          // New items or no UoM fallback
           return {
-            id: item.id,
+            id: item.id.startsWith('new-') ? undefined : item.id,
             productId: item.productId,
-            quantity: item.quantity,
+            quantity: baseQuantity,
             displayQuantity: item.quantity,
             uomCode: item.uomCode,
             price: item.price
@@ -521,8 +496,11 @@ export default function TransactionDetailPage(): React.JSX.Element {
         productId: product.id,
         productName: product.name,
         productSku: product.sku,
-        quantity,
-        price: unitPrice.toString()
+        quantity, // This is unit quantity from modal
+        displayQuantity: quantity,
+        price: unitPrice.toString(),
+        conversionFactor: result.selectedUom.conversionFactor,
+        uomCode: result.selectedUom.code
       }
 
       return items

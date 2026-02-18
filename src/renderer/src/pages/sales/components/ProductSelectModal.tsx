@@ -16,6 +16,7 @@ import AddIcon from '@mui/icons-material/Add'
 import RemoveIcon from '@mui/icons-material/Remove'
 import Kbd from '../../../components/Kbd'
 import { formatCurrency } from '../../../utils/currency'
+import StockAuthorizationDialog from './StockAuthorizationDialog'
 
 export interface ProductForSelection {
   id: string
@@ -78,7 +79,8 @@ export default function ProductSelectModal({
   const [baseStock, setBaseStock] = useState<number>(0) // Stock in base units
   const [manualPrice, setManualPrice] = useState<number>(0) // For Manual price category
   const quantityInputRef = useRef<HTMLInputElement>(null)
-  const manualPriceInputRef = useRef<HTMLInputElement>(null)
+  const [manualPriceInputRef, setManualPriceInputRef] = useState<HTMLInputElement | null>(null)
+  const [authDialogOpen, setAuthDialogOpen] = useState(false)
 
   // Load UOMs and set up price categories when product changes
   useEffect(() => {
@@ -325,7 +327,7 @@ export default function ProductSelectModal({
     }
   }, [open, selectedUom, selectedPrice])
 
-  const handleConfirm = useCallback((): void => {
+  const executeConfirm = useCallback((): void => {
     if (!product || !selectedUom || !selectedPrice || quantity < 1) return
 
     // Use manualPrice if MANUAL category is selected
@@ -333,14 +335,14 @@ export default function ProductSelectModal({
 
     // Validate manual price
     if (selectedPrice.id === 'MANUAL' && unitPrice <= 0) {
-      manualPriceInputRef.current?.focus()
+      manualPriceInputRef?.focus()
       return
     }
 
     const totalPrice = unitPrice * quantity
 
     if (totalPrice <= 0) {
-      manualPriceInputRef.current?.focus()
+      manualPriceInputRef?.focus()
       return
     }
 
@@ -356,7 +358,19 @@ export default function ProductSelectModal({
       unitPrice,
       totalPrice
     })
-  }, [product, selectedUom, selectedPrice, quantity, manualPrice, onConfirm])
+  }, [product, selectedUom, selectedPrice, quantity, manualPrice, onConfirm, manualPriceInputRef])
+
+  const handleConfirm = useCallback((): void => {
+    // INV-002: Check if stock is sufficient
+    const stockInSelectedUom = selectedUom ? Math.floor(baseStock / selectedUom.conversionFactor) : 0
+    const needsAuth = baseStock <= 0 || quantity > stockInSelectedUom
+
+    if (needsAuth) {
+      setAuthDialogOpen(true)
+    } else {
+      executeConfirm()
+    }
+  }, [baseStock, quantity, selectedUom, executeConfirm])
 
   // Handle keyboard navigation - scoped to dialog only
   const handleKeyDown = useCallback(
@@ -530,7 +544,7 @@ export default function ProductSelectModal({
                 Masukkan Harga Manual
               </Typography>
               <TextField
-                inputRef={manualPriceInputRef}
+                inputRef={setManualPriceInputRef}
                 type="number"
                 value={manualPrice || ''}
                 onChange={(e) => setManualPrice(Number(e.target.value) || 0)}
@@ -668,6 +682,12 @@ export default function ProductSelectModal({
           Tambah ke Keranjang
         </Button>
       </DialogActions>
+
+      <StockAuthorizationDialog
+        open={authDialogOpen}
+        onAuthorized={() => executeConfirm()}
+        onClose={() => setAuthDialogOpen(false)}
+      />
     </Dialog>
   )
 }

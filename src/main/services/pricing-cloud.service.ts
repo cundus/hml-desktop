@@ -339,7 +339,7 @@ export class PricingCloudService {
                   pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
              FROM product_uom pu
              JOIN uom u ON u.id = pu.uom_id
-            WHERE pu.product_id = $1`,
+            WHERE pu.product_id = $1 AND pu.deleted_at IS NULL`,
           [productId]
         )
         return result.rows.map((row) => ({
@@ -363,7 +363,7 @@ export class PricingCloudService {
               pu.cost, pu.cost_override, u.code AS uom_code, u.name AS uom_name
          FROM product_uom pu
          JOIN uom u ON u.id = pu.uom_id
-        WHERE pu.product_id = ?`
+        WHERE pu.product_id = ? AND pu.deleted_at IS NULL`
     )
     stmt.bind([productId])
     const results: ProductUom[] = []

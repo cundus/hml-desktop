@@ -297,6 +297,7 @@ export interface ProductStockDetail {
     total: number
     reserved: number
     available: number
+    totalAssetValue?: number
   }
   batches: Array<{
     batchId: string | null

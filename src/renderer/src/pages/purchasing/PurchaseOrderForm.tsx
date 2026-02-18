@@ -34,10 +34,16 @@ interface Product {
   weight: string
 }
 
-interface Uom {
+interface ProductUom {
   id: string
-  code: string
-  name: string
+  productId: string
+  uomId: string
+  uomCode: string
+  uomName: string
+  conversionFactor: number
+  isBaseUnit: boolean
+  cost: string | null
+  costOverride: boolean
 }
 
 interface Supplier {
@@ -59,7 +65,8 @@ interface POItem {
   cost: number
   subtotal: number
   unit: string
-  weight: number // Total weight for this item (unit weight * quantity)
+  weight: number // Total weight for this item (unit weight * quantity) in grams
+  conversionFactor: number
 }
 
 export default function PurchaseOrderFormPage(): React.JSX.Element {
@@ -71,7 +78,6 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   const [products, setProducts] = useState<Product[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [stores, setStores] = useState<Store[]>([])
-  const [uoms, setUoms] = useState<Uom[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -81,6 +87,18 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   const [status, setStatus] = useState<PurchaseOrderStatus>('DRAFT')
   const [items, setItems] = useState<POItem[]>([])
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
+  const [productUomsMap, setProductUomsMap] = useState<Map<string, ProductUom[]>>(new Map())
+
+  const formatDisplayNumber = (n: number): string => {
+    return n.toLocaleString('id-ID', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2
+    })
+  }
+
+  const formatSaveNumber = (n: number): string => {
+    return parseFloat(n.toFixed(2)).toString()
+  }
 
   useEffect(() => {
     loadData()
@@ -90,18 +108,16 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     try {
       setLoading(true)
 
-      const [productsRes, suppliersRes, storesRes, uomsRes] = await Promise.all([
+      const [productsRes, suppliersRes, storesRes] = await Promise.all([
         window.api.db.products.getAll(),
         window.api.db.suppliers.getAll(),
-        window.api.db.stores.getAll(),
-        window.api.db.uoms.getAll()
+        window.api.db.stores.getAll()
       ])
 
-      if (productsRes.success && suppliersRes.success && storesRes.success && uomsRes.success) {
+      if (productsRes.success && suppliersRes.success && storesRes.success) {
         setProducts(productsRes.data ?? [])
         setSuppliers(suppliersRes.data ?? [])
         setStores(storesRes.data ?? [])
-        setUoms(uomsRes.data ?? [])
 
         // Auto-generate code if new PO
         if (!poId) {
@@ -131,11 +147,27 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
 
         // Load items
         if (po.items) {
+          const productUomsResults = await Promise.all(
+            po.items.map((item) => window.api.db.pricing.getProductUomsByProduct(item.productId))
+          )
+          const newUomsMap = new Map<string, ProductUom[]>()
+          productUomsResults.forEach((res, idx) => {
+            if (res.success && res.data) {
+              newUomsMap.set(po.items[idx].productId, res.data)
+            }
+          })
+          setProductUomsMap(newUomsMap)
+
           const productsMap = new Map(currentProducts.map((p) => [p.id, p]))
           const loadedItems = po.items.map((item) => {
             const product = productsMap.get(item.productId)
             const cost = parseFloat(item.cost)
-            const unitWeight = parseFloat(product?.weight || '0')
+            const productUoms = newUomsMap.get(item.productId) ?? []
+            const selectedUom = productUoms.find((u) => u.uomCode === item.unit)
+            const conversionFactor = selectedUom?.conversionFactor ?? 1
+            const baseWeight = parseFloat(product?.weight || '0')
+            const unitWeight = baseWeight * conversionFactor
+
             return {
               productId: item.productId,
               productName: product?.name || 'Unknown',
@@ -144,7 +176,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
               cost,
               subtotal: item.quantity * cost,
               unit: item.unit || product?.unit || 'PCS',
-              weight: item.quantity * unitWeight
+              weight: item.quantity * unitWeight,
+              conversionFactor
             }
           })
           setItems(loadedItems)
@@ -156,10 +189,11 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
   }
 
   const addItem = (): void => {
-    if (!selectedProduct) {
-      globalAlert.warning('Silakan pilih produk')
-      return
-    }
+    if (!selectedProduct) return
+
+    const productUoms = productUomsMap.get(selectedProduct.id) ?? []
+    const selectedUom = productUoms.find((u) => u.isBaseUnit) || productUoms[0]
+    const conversionFactor = selectedUom?.conversionFactor ?? 1
 
     // Check if product already in list
     const existingIndex = items.findIndex((item) => item.productId === selectedProduct.id)
@@ -170,14 +204,22 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
       newItems[existingIndex].quantity += 1
       newItems[existingIndex].subtotal =
         newItems[existingIndex].quantity * newItems[existingIndex].cost
-      const product = products.find(p => p.id === selectedProduct.id)
-      const unitWeight = parseFloat(product?.weight || '0')
+      const product = products.find((p) => p.id === selectedProduct.id)
+      const baseWeight = parseFloat(product?.weight || '0')
+      const unitWeight = baseWeight * newItems[existingIndex].conversionFactor
       newItems[existingIndex].weight = newItems[existingIndex].quantity * unitWeight
       setItems(newItems)
     } else {
       // Add new item
-      const cost = parseFloat(selectedProduct.cost)
-      const unitWeight = parseFloat(selectedProduct.weight || '0')
+      const baseCost = parseFloat(selectedProduct.cost)
+      const cost =
+        selectedUom?.costOverride && selectedUom.cost
+          ? parseFloat(selectedUom.cost)
+          : baseCost * conversionFactor
+
+      const baseWeight = parseFloat(selectedProduct.weight || '0')
+      const unitWeight = baseWeight * conversionFactor
+
       const newItem: POItem = {
         productId: selectedProduct.id,
         productName: selectedProduct.name,
@@ -185,8 +227,9 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         quantity: 1,
         cost,
         subtotal: cost,
-        unit: selectedProduct.unit || 'PCS',
-        weight: unitWeight
+        unit: selectedUom?.uomCode || selectedProduct.unit || 'PCS',
+        weight: unitWeight,
+        conversionFactor
       }
       setItems([...items, newItem])
     }
@@ -203,15 +246,39 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
     const newItems = [...items]
     newItems[index].quantity = quantity
     newItems[index].subtotal = quantity * newItems[index].cost
-    const product = products.find(p => p.id === newItems[index].productId)
-    const unitWeight = parseFloat(product?.weight || '0')
+    const product = products.find((p) => p.id === newItems[index].productId)
+    const baseWeight = parseFloat(product?.weight || '0')
+    const unitWeight = baseWeight * newItems[index].conversionFactor
     newItems[index].weight = quantity * unitWeight
     setItems(newItems)
   }
 
-  const updateUnit = (index: number, unit: string): void => {
+  const updateUnit = (index: number, uomCode: string): void => {
     const newItems = [...items]
-    newItems[index].unit = unit
+    const item = newItems[index]
+    const productUoms = productUomsMap.get(item.productId) ?? []
+    const selectedUom = productUoms.find((u) => u.uomCode === uomCode)
+    const product = products.find((p) => p.id === item.productId)
+
+    if (selectedUom) {
+      const conversionFactor = selectedUom.conversionFactor
+      const baseCost = parseFloat(product?.cost || '0')
+      const newCost =
+        selectedUom.costOverride && selectedUom.cost
+          ? parseFloat(selectedUom.cost)
+          : baseCost * conversionFactor
+
+      const baseWeight = parseFloat(product?.weight || '0')
+      const unitWeight = baseWeight * conversionFactor
+
+      item.unit = uomCode
+      item.cost = newCost
+      item.subtotal = item.quantity * newCost
+      item.weight = item.quantity * unitWeight
+      item.conversionFactor = conversionFactor
+    } else {
+      item.unit = uomCode
+    }
     setItems(newItems)
   }
 
@@ -261,11 +328,11 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
         supplierId,
         storeId,
         status: saveStatus,
-        total: total.toFixed(2),
+        total: formatSaveNumber(total),
         items: items.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
-          cost: item.cost.toFixed(2),
+          cost: formatSaveNumber(item.cost),
           unit: item.unit
         }))
       }
@@ -417,15 +484,32 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
             getOptionLabel={(option) => `${option.name} (${option.sku})`}
             value={selectedProduct}
             onChange={(_, newValue) => setSelectedProduct(newValue)}
-            renderInput={(params) => <TextField {...params} label="Cari Produk..." />}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={!storeId ? 'Pilih Toko Terlebih Dahulu...' : 'Cari Produk...'}
+                error={!storeId && !!selectedProduct}
+                helperText={!storeId ? 'Toko harus dipilih sebelum menambahkan produk' : ''}
+              />
+            )}
             sx={{ flex: 1 }}
-            disabled={status === 'RECEIVED'}
+            disabled={status === 'RECEIVED' || !storeId}
           />
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={addItem}
-            disabled={!selectedProduct || status === 'RECEIVED'}
+            onClick={async () => {
+              if (selectedProduct) {
+                const res = await window.api.db.pricing.getProductUomsByProduct(selectedProduct.id)
+                if (res.success && res.data) {
+                  const newMap = new Map(productUomsMap)
+                  newMap.set(selectedProduct.id, res.data)
+                  setProductUomsMap(newMap)
+                }
+              }
+              addItem()
+            }}
+            disabled={!selectedProduct || status === 'RECEIVED' || !storeId}
           >
             Tambah Item
           </Button>
@@ -438,7 +522,7 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
               <TableCell align="right">Jumlah</TableCell>
               <TableCell align="right">Satuan</TableCell>
               <TableCell align="right">Harga Beli</TableCell>
-              <TableCell align="right">Berat (kg)</TableCell>
+              <TableCell align="right">Berat (gr)</TableCell>
               <TableCell align="right">Subtotal</TableCell>
               <TableCell align="right">Aksi</TableCell>
             </TableRow>
@@ -472,15 +556,19 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     disabled={status === 'RECEIVED'}
                     sx={{ width: 100 }}
                   >
-                    {uoms.map((uom) => (
-                      <MenuItem key={uom.id} value={uom.code}>
-                        {uom.code}
-                      </MenuItem>
-                    ))}
-                    {/* Ensure current unit is visible even if not in master */}
-                    {!uoms.find((u) => u.code === item.unit) && (
-                      <MenuItem value={item.unit}>{item.unit}</MenuItem>
-                    )}
+                    {(() => {
+                      const uoms = productUomsMap.get(item.productId) || []
+                      const uniqueUoms = Array.from(new Map(uoms.map((u) => [u.uomCode, u])).values())
+                      return uniqueUoms.map((uom) => (
+                        <MenuItem key={uom.id} value={uom.uomCode}>
+                          {uom.uomCode}
+                        </MenuItem>
+                      ))
+                    })()}
+                    {/* Ensure current unit is visible even if not in product UOMs */}
+                    {!(productUomsMap.get(item.productId) || []).find(
+                      (u) => u.uomCode === item.unit
+                    ) && <MenuItem value={item.unit}>{item.unit}</MenuItem>}
                   </TextField>
                 </TableCell>
                 <TableCell align="right">
@@ -500,8 +588,8 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
                     sx={{ width: 100 }}
                   />
                 </TableCell>
-                <TableCell align="right">{item.weight.toFixed(2)}</TableCell>
-                <TableCell align="right">{item.subtotal.toLocaleString('id-ID')}</TableCell>
+                <TableCell align="right">{formatDisplayNumber(item.weight)}</TableCell>
+                <TableCell align="right">{formatDisplayNumber(item.subtotal)}</TableCell>
                 <TableCell align="right">
                   <IconButton
                     size="small"
@@ -529,13 +617,13 @@ export default function PurchaseOrderFormPage(): React.JSX.Element {
           <Stack direction="row" spacing={2}>
             <Typography variant="body1">Total Berat:</Typography>
             <Typography variant="body1" fontWeight="bold">
-              {calculateTotalWeight().toFixed(2)} kg
+              {formatDisplayNumber(calculateTotalWeight())} gr ({formatDisplayNumber(calculateTotalWeight() / 1000)} kg)
             </Typography>
           </Stack>
           <Stack direction="row" spacing={2}>
             <Typography variant="h6">Total:</Typography>
             <Typography variant="h6" color="primary">
-              {calculateTotal().toFixed(2)}
+              {formatDisplayNumber(calculateTotal())}
             </Typography>
           </Stack>
         </Stack>

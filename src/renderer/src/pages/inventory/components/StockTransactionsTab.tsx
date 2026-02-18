@@ -24,6 +24,7 @@ import {
   ArrowDownward as OutIcon
 } from '@mui/icons-material'
 import { StockTransaction } from 'src/preload/api/inventory'
+import ReferenceLink from '../../../components/ReferenceLink'
 
 interface StockTransactionsTabProps {
   data: (StockTransaction & { productName: string; storeName: string })[]
@@ -200,7 +201,7 @@ export default function StockTransactionsTab({
                     {formatQuantity(row.type, row.quantity)}
                   </Typography>
                 </TableCell>
-                <TableCell>{row.reference || '-'}</TableCell>
+                <TableCell><ReferenceLink reference={row.reference} /></TableCell>
                 <TableCell>{row.performedBy || '-'}</TableCell>
               </TableRow>
             ))}

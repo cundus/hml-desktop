@@ -138,7 +138,12 @@ export const authApi = {
     ipcRenderer.invoke('auth:login', identifier, password) as Promise<ApiResponse<LoginResult>>,
 
   verifyPin: (userId: string, pin: string) =>
-    ipcRenderer.invoke('auth:verifyPin', userId, pin) as Promise<ApiResponse<boolean>>
+    ipcRenderer.invoke('auth:verifyPin', userId, pin) as Promise<ApiResponse<boolean>>,
+
+  authorize: (pin: string, permission: string) =>
+    ipcRenderer.invoke('auth:authorize', pin, permission) as Promise<
+      ApiResponse<{ success: boolean; userName?: string }>
+    >
 }
 
 // Product API

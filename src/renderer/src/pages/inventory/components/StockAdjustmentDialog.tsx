@@ -51,6 +51,8 @@ export default function StockAdjustmentDialog({
   })
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const [currentStock, setCurrentStock] = useState<number | null>(null)
+  const [stockLoading, setStockLoading] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -72,6 +74,29 @@ export default function StockAdjustmentDialog({
       setFormData((prev) => ({ ...prev, uomId: '' }))
     }
   }, [formData.productId])
+
+  // Load current stock when product or store changes
+  useEffect(() => {
+    if (formData.productId && formData.storeId) {
+      loadCurrentStock(formData.productId, formData.storeId)
+    } else {
+      setCurrentStock(null)
+    }
+  }, [formData.productId, formData.storeId])
+
+  const loadCurrentStock = async (productId: string, storeId: string): Promise<void> => {
+    try {
+      setStockLoading(true)
+      const res = await window.api.db.inventory.getProductStockDetails(productId, storeId)
+      if (res.success && res.data) {
+        setCurrentStock(res.data.stock.available)
+      }
+    } catch (err) {
+      console.error('Failed to load current stock', err)
+    } finally {
+      setStockLoading(false)
+    }
+  }
 
   const loadUoms = async (productId: string): Promise<void> => {
     try {
@@ -134,8 +159,8 @@ export default function StockAdjustmentDialog({
       errors.difference = 'Adjustment amount is required'
     } else {
       const diff = parseFloat(formData.difference) // Allow decimals for input
-      if (isNaN(diff) || diff === 0) {
-        errors.difference = 'Please enter a valid non-zero number'
+      if (isNaN(diff)) {
+        errors.difference = 'Please enter a valid number'
       }
     }
 
@@ -299,19 +324,38 @@ export default function StockAdjustmentDialog({
            </FormControl>
           )}
 
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Jumlah Penyesuaian"
-            type="number"
-            value={formData.difference}
-            onChange={(e) => setFormData({ ...formData, difference: e.target.value })}
-            error={!!fieldErrors.difference}
-            helperText={
-              fieldErrors.difference ||
-              'Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok'
-            }
-          />
+          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            <TextField
+              fullWidth
+              label="Jumlah Penyesuaian"
+              type="number"
+              value={formData.difference}
+              onChange={(e) => setFormData({ ...formData, difference: e.target.value })}
+              error={!!fieldErrors.difference}
+              helperText={
+                fieldErrors.difference ||
+                'Gunakan angka positif untuk menambah stok, negatif untuk mengurangi stok'
+              }
+            />
+            {currentStock !== null && (
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                onClick={() => setFormData({ ...formData, difference: String(-currentStock / (selectedUom?.conversionFactor || 1)) })}
+                sx={{ minWidth: '100px', height: '56px', mb: '23px' }}
+              >
+                Set ke 0
+              </Button>
+            )}
+          </Box>
+
+          {currentStock !== null && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: -1, mb: 1 }}>
+              Stok saat ini: <strong>{currentStock} {selectedProduct?.unit}</strong>
+              {stockLoading && <CircularProgress size={12} sx={{ ml: 1 }} />}
+            </Typography>
+          )}
           
           {selectedUom && selectedUom.conversionFactor > 1 && formData.difference && (
              <Typography variant="body2" color="primary" sx={{ mt: 1, mb: 1, fontWeight: 'medium' }}>

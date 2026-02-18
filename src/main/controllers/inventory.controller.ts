@@ -282,6 +282,12 @@ export class InventoryController {
       const allTransactions = await this.stockTransactionService.findByProductId(productId)
       const storeTransactions = allTransactions.filter((t) => t.storeId === storeId).slice(0, 50) // Limit to last 50 transactions
 
+      // 6. Calculate Asset Value
+      const totalAssetValue = activeBatches.reduce(
+        (sum, b) => sum + (Number(b.quantity) * Number(b.cost || 0)),
+        0
+      )
+
       return {
         success: true,
         data: {
@@ -298,7 +304,8 @@ export class InventoryController {
           stock: {
             total: adjustedTotal,
             reserved: reservedStock,
-            available: adjustedTotal - reservedStock
+            available: adjustedTotal - reservedStock,
+            totalAssetValue
           },
           batches: activeBatches,
           history: storeTransactions

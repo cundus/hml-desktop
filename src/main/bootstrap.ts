@@ -88,6 +88,8 @@ import { AuditLogController } from './controllers/audit-log.controller'
 import { DamagedGoodsService } from './services/damaged-goods.service'
 import { DamagedGoodsController } from './controllers/damaged-goods.controller'
 import { ExpenseCategoryController } from './controllers/expense-category.controller'
+import { OpenBillService } from './services/open-bill.service'
+import { OpenBillController } from './controllers/open-bill.controller'
 
 /**
  * Bootstrap the application by initializing services and controllers
@@ -208,6 +210,9 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize payment method service
   const paymentMethodService = new PaymentMethodService(db)
+
+  // Initialize open bill service
+  const openBillService = new OpenBillService(db)
 
   // Initialize sales person service
   const salesPersonService = new SalesPersonService(db)
@@ -364,6 +369,10 @@ export async function bootstrap(): Promise<void> {
 
   // Initialize and register Expense Category Controller
   new ExpenseCategoryController(db, queueService)
+
+  // Initialize and register Open Bill Controller
+  const openBillController = new OpenBillController(openBillService)
+  openBillController.registerHandlers()
 
   // Restore session if available
   await authService.restoreSession()

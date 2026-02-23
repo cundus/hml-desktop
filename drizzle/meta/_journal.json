@@ -57,6 +57,13 @@
       "when": 1771315753863,
       "tag": "0007_careful_radioactive_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1771872687496,
+      "tag": "0008_jittery_colleen_wing",
+      "breakpoints": true
     }
   ]
 }

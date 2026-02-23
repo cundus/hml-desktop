@@ -84,6 +84,7 @@ import { pointsApi } from './points'
 import { returns as returnsApi } from './returns'
 import { damagedGoodsApi } from './damaged-goods'
 import { expenseCategoriesApi } from './expense-categories'
+import { openBillApi } from './open-bill'
 
 // Receipt printing API
 const receiptApi = {
@@ -202,5 +203,8 @@ export const db = {
   damagedGoods: damagedGoodsApi,
 
   // Expense Categories (kategori pengeluaran)
-  expenseCategories: expenseCategoriesApi
+  expenseCategories: expenseCategoriesApi,
+
+  // Open Bills (hold/defer transactions)
+  openBills: openBillApi
 }

@@ -42,6 +42,7 @@ export type CartPanelProps = {
   onRemove: (id: string) => void
   onChangeDiscount: (value: number) => void
   onCheckout: () => void
+  onSaveOpenBill?: () => void
   disabled?: boolean
   discountInputRef?: React.RefObject<CurrencyInputRef | null>
   // Point redemption props
@@ -60,6 +61,7 @@ export default function CartPanel({
   onRemove,
   onChangeDiscount,
   onCheckout,
+  onSaveOpenBill,
   disabled,
   discountInputRef,
   customerPoints = 0,
@@ -279,6 +281,19 @@ export default function CartPanel({
         >
           Selesaikan Transaksi (<Kbd keys={['Ctrl', '+', 'Enter']} />)
         </Button>
+
+        {onSaveOpenBill && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            fullWidth
+            sx={{ mt: 1 }}
+            onClick={onSaveOpenBill}
+            disabled={disabled || items.length === 0}
+          >
+            Simpan Open Bill (<Kbd keys={['F7']} />)
+          </Button>
+        )}
       </Box>
     </Box>
   )

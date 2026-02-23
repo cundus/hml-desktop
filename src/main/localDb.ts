@@ -820,6 +820,51 @@ async function createTables(database: Database): Promise<void> {
     )
   `)
 
+  // Open Bill table - holds paused/deferred cart state
+  database.run(`
+    CREATE TABLE IF NOT EXISTS open_bill (
+      id TEXT PRIMARY KEY,
+      label TEXT,
+      store_id TEXT NOT NULL,
+      shift_id TEXT NOT NULL,
+      customer_id TEXT,
+      sales_id TEXT,
+      sales_name TEXT,
+      subtotal TEXT NOT NULL DEFAULT '0',
+      discount TEXT NOT NULL DEFAULT '0',
+      total TEXT NOT NULL DEFAULT '0',
+      notes TEXT,
+      created_by TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      deleted_at INTEGER
+    )
+  `)
+
+  // Open Bill Item table - items in a held/paused cart
+  database.run(`
+    CREATE TABLE IF NOT EXISTS open_bill_item (
+      id TEXT PRIMARY KEY,
+      open_bill_id TEXT NOT NULL,
+      product_id TEXT NOT NULL,
+      cart_item_id TEXT NOT NULL,
+      quantity INTEGER NOT NULL,
+      display_quantity REAL,
+      uom_code TEXT,
+      uom_id TEXT,
+      price_category_id TEXT,
+      price_category_name TEXT,
+      conversion_factor REAL NOT NULL DEFAULT 1,
+      base_quantity REAL NOT NULL,
+      product_name TEXT,
+      product_sku TEXT,
+      unit_price TEXT NOT NULL,
+      weight TEXT DEFAULT '0',
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY (open_bill_id) REFERENCES open_bill(id)
+    )
+  `)
+
   // Sales Person master data table (for tracking sales commissions)
   database.run(`
     CREATE TABLE IF NOT EXISTS sales_person (

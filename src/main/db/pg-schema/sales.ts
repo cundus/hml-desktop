@@ -139,3 +139,45 @@ export const deliveryOrders = pgTable('delivery_order', {
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow()
 })
+
+// Open Bill - holds paused/deferred cart state
+export const openBills = pgTable('open_bill', {
+  id: text('id').primaryKey(),
+  label: text('label'),
+  storeId: text('store_id').notNull(),
+  shiftId: text('shift_id').notNull(),
+  customerId: text('customer_id'),
+  salesId: text('sales_id'),
+  salesName: text('sales_name'),
+  subtotal: numeric('subtotal').notNull().default('0'),
+  discount: numeric('discount').notNull().default('0'),
+  total: numeric('total').notNull().default('0'),
+  notes: text('notes'),
+  createdBy: text('created_by'),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: false })
+})
+
+// Open Bill Items - items in a held/paused cart
+export const openBillItems = pgTable('open_bill_item', {
+  id: text('id').primaryKey(),
+  openBillId: text('open_bill_id').notNull(),
+  productId: text('product_id').notNull(),
+  cartItemId: text('cart_item_id').notNull(),
+  quantity: integer('quantity').notNull(),
+  displayQuantity: numeric('display_quantity'),
+  uomCode: text('uom_code'),
+  uomId: text('uom_id'),
+  priceCategoryId: text('price_category_id'),
+  priceCategoryName: text('price_category_name'),
+  conversionFactor: numeric('conversion_factor').notNull().default('1'),
+  baseQuantity: numeric('base_quantity').notNull(),
+  productName: text('product_name'),
+  productSku: text('product_sku'),
+  unitPrice: numeric('unit_price').notNull(),
+  weight: numeric('weight').default('0'),
+
+  createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow()
+})

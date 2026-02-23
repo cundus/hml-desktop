@@ -38,6 +38,7 @@ import { useFeatureFlags } from '../../hooks/useFeatureFlags'
 import useBranchConfig from '../../hooks/useBranchConfig'
 import { formatCurrency } from '@renderer/utils/currency'
 import Kbd from '../../components/Kbd'
+import OpenBillDialog, { type OpenBillSummary } from './components/OpenBillDialog'
 
 export default function SalesPage(): React.JSX.Element {
   const { token, userName } = useAuth()
@@ -579,6 +580,200 @@ export default function SalesPage(): React.JSX.Element {
     ]
   )
 
+  // ── Open Bill handling ────────────────────────────────────────
+  const [openBillDialogOpen, setOpenBillDialogOpen] = useState(false)
+  const [openBillDialogMode, setOpenBillDialogMode] = useState<'save' | 'list'>('save')
+  const [openBills, setOpenBills] = useState<OpenBillSummary[]>([])
+  const [openBillCount, setOpenBillCount] = useState(0)
+  const [openBillLoading, setOpenBillLoading] = useState(false)
+
+  // Load open bill count when shift changes
+  useEffect(() => {
+    const loadOpenBillCount = async (): Promise<void> => {
+      if (!currentShift?.id) {
+        setOpenBillCount(0)
+        return
+      }
+      try {
+        const res = await window.api.db.openBills.countByShiftId(currentShift.id)
+        if (res.success) {
+          setOpenBillCount(res.data ?? 0)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void loadOpenBillCount()
+  }, [currentShift?.id])
+
+  const loadOpenBills = async (): Promise<void> => {
+    if (!currentShift?.id) return
+    setOpenBillLoading(true)
+    try {
+      const res = await window.api.db.openBills.getByShiftId(currentShift.id)
+      if (res.success && res.data) {
+        const summaries: OpenBillSummary[] = await Promise.all(
+          res.data.map(async (bill) => {
+            // Fetch items to get count
+            const detail = await window.api.db.openBills.getById(bill.id)
+            return {
+              id: bill.id,
+              label: bill.label,
+              subtotal: bill.subtotal,
+              discount: bill.discount,
+              total: bill.total,
+              customerId: bill.customerId,
+              salesName: bill.salesName,
+              createdBy: bill.createdBy,
+              createdAt: bill.createdAt,
+              itemCount: detail.data?.items?.length ?? 0
+            }
+          })
+        )
+        setOpenBills(summaries)
+        setOpenBillCount(summaries.length)
+      }
+    } catch (err) {
+      console.error('Failed to load open bills:', err)
+    } finally {
+      setOpenBillLoading(false)
+    }
+  }
+
+  const handleSaveOpenBill = async (label: string, notes?: string): Promise<void> => {
+    if (cartItems.length === 0 || !currentShift?.id) return
+    const targetStoreId = currentShift?.storeId ?? defaultStoreId
+    if (!targetStoreId) return
+
+    const items = cartItems.map((item) => ({
+      productId: item.productId ?? item.id,
+      cartItemId: item.id,
+      quantity: item.quantity,
+      displayQuantity: item.quantity,
+      uomCode: item.uomCode ?? item.unit,
+      uomId: item.uomId ?? undefined,
+      priceCategoryId: item.priceCategoryId ?? undefined,
+      priceCategoryName: item.priceCategoryName ?? undefined,
+      conversionFactor: item.conversionFactor ?? 1,
+      baseQuantity: item.baseQuantity ?? item.quantity,
+      productName: item.name,
+      productSku: item.sku,
+      unitPrice: item.price.toString(),
+      weight: item.weight ?? '0'
+    }))
+
+    const res = await window.api.db.openBills.create({
+      label: label || undefined,
+      storeId: targetStoreId,
+      shiftId: currentShift.id,
+      customerId: selectedCustomerId ?? undefined,
+      salesId: selectedSalesId || undefined,
+      salesName: selectedSalesId
+        ? salesPersons.find((sp) => sp.id === selectedSalesId)?.name
+        : undefined,
+      subtotal: subtotal.toString(),
+      discount: discount.toString(),
+      total: total.toString(),
+      notes,
+      createdBy: userName ?? undefined,
+      items
+    })
+
+    if (res.success) {
+      // Clear cart but keep reservations (they'll persist until shift close or recall+checkout)
+      setCartItems([])
+      setDiscount(0)
+      setPointsToRedeem(0)
+      setSelectedCustomerId(null)
+      setOpenBillCount((prev) => prev + 1)
+      setSnackbar({
+        open: true,
+        message: `Open bill "${label || 'Tanpa label'}" berhasil disimpan`,
+        severity: 'success'
+      })
+    } else {
+      setSnackbar({
+        open: true,
+        message: res.error || 'Gagal menyimpan open bill',
+        severity: 'error'
+      })
+    }
+  }
+
+  const handleRecallOpenBill = async (billId: string): Promise<void> => {
+    const res = await window.api.db.openBills.getById(billId)
+    if (!res.success || !res.data?.items) {
+      setSnackbar({ open: true, message: 'Gagal memuat open bill', severity: 'error' })
+      return
+    }
+
+    const bill = res.data
+
+    // If there are items in the cart, release their reservations first
+    if (cartItems.length > 0) {
+      await releaseAllReservedItems()
+    }
+
+    // Restore cart items from open bill
+    const restoredItems: CartItem[] = (bill.items ?? []).map((item) => ({
+      id: item.cartItemId,
+      productId: item.productId,
+      name: item.productName ?? '',
+      sku: item.productSku ?? '',
+      category: '',
+      unit: item.uomCode ?? 'PCS',
+      cost: '0',
+      weight: item.weight ?? '0',
+      price: parseFloat(item.unitPrice),
+      quantity: item.quantity,
+      displayQuantity: item.displayQuantity ?? item.quantity,
+      uomId: item.uomId ?? null,
+      uomCode: item.uomCode ?? undefined,
+      priceCategoryId: item.priceCategoryId ?? undefined,
+      priceCategoryName: item.priceCategoryName ?? undefined,
+      conversionFactor: item.conversionFactor,
+      baseQuantity: item.baseQuantity,
+      total: parseFloat(item.unitPrice) * item.quantity
+    }))
+
+    setCartItems(restoredItems)
+    setDiscount(parseFloat(bill.discount) || 0)
+    setSelectedCustomerId(bill.customerId ?? null)
+
+    if (bill.salesId) {
+      setSelectedSalesId(bill.salesId)
+    }
+
+    // Delete the open bill (it's now in the cart)
+    await window.api.db.openBills.delete(billId)
+    setOpenBillCount((prev) => Math.max(0, prev - 1))
+    setOpenBillDialogOpen(false)
+
+    setSnackbar({
+      open: true,
+      message: `Open bill "${bill.label || 'Tanpa label'}" berhasil di-recall`,
+      severity: 'success'
+    })
+  }
+
+  const handleDeleteOpenBill = async (billId: string): Promise<void> => {
+    await window.api.db.openBills.delete(billId)
+    setOpenBills((prev) => prev.filter((b) => b.id !== billId))
+    setOpenBillCount((prev) => Math.max(0, prev - 1))
+  }
+
+  const openSaveOpenBillDialog = (): void => {
+    if (cartItems.length === 0) return
+    setOpenBillDialogMode('save')
+    setOpenBillDialogOpen(true)
+  }
+
+  const openListOpenBillDialog = (): void => {
+    setOpenBillDialogMode('list')
+    setOpenBillDialogOpen(true)
+    void loadOpenBills()
+  }
+
   // Expense handling
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false)
   const [expenseLoading, setExpenseLoading] = useState(false)
@@ -639,6 +834,18 @@ export default function SalesPage(): React.JSX.Element {
       if (event.key === 'F6' || (event.ctrlKey && event.key.toLowerCase() === 'e')) {
         event.preventDefault()
         setExpenseDialogOpen(true)
+        return
+      }
+
+      if (event.key === 'F7') {
+        event.preventDefault()
+        openSaveOpenBillDialog()
+        return
+      }
+
+      if (event.key === 'F8') {
+        event.preventDefault()
+        openListOpenBillDialog()
         return
       }
 
@@ -786,6 +993,14 @@ export default function SalesPage(): React.JSX.Element {
               size="small"
               variant="outlined"
             />
+            <Button
+              variant="outlined"
+              size="small"
+              color="secondary"
+              onClick={openListOpenBillDialog}
+            >
+              Open Bill{openBillCount > 0 ? ` (${openBillCount})` : ''}
+            </Button>
             <Button variant="outlined" size="small" color="error" onClick={() => setExpenseDialogOpen(true)}>
               Pengeluaran
             </Button>
@@ -941,6 +1156,7 @@ export default function SalesPage(): React.JSX.Element {
             onRemove={handleRemoveItem}
             onChangeDiscount={handleChangeDiscount}
             onCheckout={handleCheckout}
+            onSaveOpenBill={openSaveOpenBillDialog}
             discountInputRef={discountInputRef}
             customerPoints={customerPoints}
             pointsToRedeem={pointsToRedeem}
@@ -1002,6 +1218,12 @@ export default function SalesPage(): React.JSX.Element {
           onClose={() => setCloseShiftDialogOpen(false)}
           onConfirm={async (data) => {
             await releaseAllReservedItems()
+            // Auto-delete all open bills for this shift
+            if (currentShift?.id) {
+              await window.api.db.openBills.deleteByShiftId(currentShift.id)
+              setOpenBillCount(0)
+              setOpenBills([])
+            }
             await closeShift(data)
           }}
           initialCash={currentShift?.initialCash ?? '0'}
@@ -1022,6 +1244,18 @@ export default function SalesPage(): React.JSX.Element {
           onClose={() => setExpenseDialogOpen(false)}
           onSubmit={handleExpenseSubmit}
           loading={expenseLoading}
+        />
+
+        <OpenBillDialog
+          open={openBillDialogOpen}
+          mode={openBillDialogMode}
+          onClose={() => setOpenBillDialogOpen(false)}
+          onSave={handleSaveOpenBill}
+          onRecall={handleRecallOpenBill}
+          onDelete={handleDeleteOpenBill}
+          bills={openBills}
+          loading={openBillLoading}
+          cartItemCount={cartItems.length}
         />
       </Box>
     </Box>

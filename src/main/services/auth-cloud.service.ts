@@ -393,7 +393,7 @@ export class AuthCloudService {
 
       // Special case: if user is SUPERADMIN
       const superAdminStmt = this.db.prepare(
-        "SELECT 1 FROM user_role ur JOIN role r ON ur.role_id = r.id WHERE ur.user_id = ? AND r.name = 'SUPERADMIN' AND ur.deleted_at IS NULL"
+        "SELECT 1 FROM user_role ur JOIN role r ON ur.role_id = r.id WHERE ur.user_id = ? AND (r.name = 'SUPERADMIN' OR r.id = 'role-admin') AND ur.deleted_at IS NULL"
       )
       superAdminStmt.bind([user.id])
       const isSuper = superAdminStmt.step()

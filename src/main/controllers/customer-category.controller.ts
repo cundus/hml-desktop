@@ -3,7 +3,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { CustomerCategoryCloudService } from '../services/customer-category-cloud.service'
 import { CreateCustomerCategoryDto, UpdateCustomerCategoryDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class CustomerCategoryController {
@@ -16,8 +16,8 @@ export class CustomerCategoryController {
    * Register all IPC handlers for customer category operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:customerCategories:getAll', requirePermission(this.db, 'master.customer-category.view', this.getAll.bind(this)))
-    ipcMain.handle('db:customerCategories:getById', requirePermission(this.db, 'master.customer-category.view', this.getById.bind(this)))
+    ipcMain.handle('db:customerCategories:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:customerCategories:getById', requireAuth(this.db, this.getById.bind(this)))
     ipcMain.handle('db:customerCategories:create', requirePermission(this.db, 'master.customer-category.create', this.create.bind(this)))
     ipcMain.handle('db:customerCategories:update', requirePermission(this.db, 'master.customer-category.edit', this.update.bind(this)))
     ipcMain.handle('db:customerCategories:softDelete', requirePermission(this.db, 'master.customer-category.delete', this.softDelete.bind(this)))

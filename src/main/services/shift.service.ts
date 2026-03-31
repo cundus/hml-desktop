@@ -104,7 +104,7 @@ export class ShiftService {
         if (result.rows.length > 0) {
           return this.mapRowToShift(result.rows[0])
         }
-        return null
+        // If not found in cloud, fall back to local (possibly pending sync)
       } catch (error) {
         console.error('[ShiftService] getCurrentShift cloud error, falling back to local:', error)
       }
@@ -186,7 +186,7 @@ export class ShiftService {
         if (result.rows.length > 0) {
           return this.mapRowToShift(result.rows[0])
         }
-        return null
+        // If not found in cloud, fall back to local (e.g. newly created, pending sync)
       } catch (error) {
         console.error('[ShiftService] findById cloud error, falling back to local:', error)
       }

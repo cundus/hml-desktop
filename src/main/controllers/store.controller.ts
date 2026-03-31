@@ -3,7 +3,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { StoreCloudService } from '../services/store-cloud.service'
 import { CreateStoreDto, UpdateStoreDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class StoreController {
@@ -18,12 +18,12 @@ export class StoreController {
   registerHandlers(): void {
     ipcMain.handle(
       'db:stores:getAll',
-      requirePermission(this.db, 'master.store.view', this.getAll.bind(this), {
+      requireAuth(this.db, this.getAll.bind(this), {
         allowDuringSetup: true
       })
     )
-    ipcMain.handle('db:stores:getById', requirePermission(this.db, 'master.store.view', this.getById.bind(this), { allowDuringSetup: true }))
-    ipcMain.handle('db:stores:getByCode', requirePermission(this.db, 'master.store.view', this.getByCode.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:getById', requireAuth(this.db, this.getById.bind(this), { allowDuringSetup: true }))
+    ipcMain.handle('db:stores:getByCode', requireAuth(this.db, this.getByCode.bind(this), { allowDuringSetup: true }))
     ipcMain.handle('db:stores:create', requirePermission(this.db, 'master.store.create', this.create.bind(this), { allowDuringSetup: true }))
     ipcMain.handle('db:stores:update', requirePermission(this.db, 'master.store.edit', this.update.bind(this), { allowDuringSetup: true }))
     ipcMain.handle('db:stores:softDelete', requirePermission(this.db, 'master.store.delete', this.softDelete.bind(this), { allowDuringSetup: true }))

@@ -2,7 +2,7 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { UomCloudService, CreateUomDto, UpdateUomDto } from '../services/uom-cloud.service'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class UomController {
@@ -15,9 +15,9 @@ export class UomController {
    * Register all IPC handlers for UOM operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:uoms:getAll', requirePermission(this.db, 'master.uom.view', this.getAll.bind(this)))
-    ipcMain.handle('db:uoms:getById', requirePermission(this.db, 'master.uom.view', this.getById.bind(this)))
-    ipcMain.handle('db:uoms:getByCode', requirePermission(this.db, 'master.uom.view', this.getByCode.bind(this)))
+    ipcMain.handle('db:uoms:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:uoms:getById', requireAuth(this.db, this.getById.bind(this)))
+    ipcMain.handle('db:uoms:getByCode', requireAuth(this.db, this.getByCode.bind(this)))
     ipcMain.handle('db:uoms:create', requirePermission(this.db, 'master.uom.create', this.create.bind(this)))
     ipcMain.handle('db:uoms:update', requirePermission(this.db, 'master.uom.edit', this.update.bind(this)))
     ipcMain.handle('db:uoms:softDelete', requirePermission(this.db, 'master.uom.delete', this.softDelete.bind(this)))

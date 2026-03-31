@@ -2,7 +2,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import type { Database } from 'sql.js'
 import { ExpenseCategoryCloudService, CreateExpenseCategoryDto, UpdateExpenseCategoryDto } from '../services/expense-category-cloud.service'
 import { QueueService } from '../services/queue.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 
 interface ApiResponse<T = unknown> {
   success: boolean
@@ -19,9 +19,9 @@ export class ExpenseCategoryController {
   }
 
   private registerHandlers(): void {
-    ipcMain.handle('db:expenseCategories:getAll', requirePermission(this.localDb, 'master.expense-category.view', this.getAll.bind(this)))
-    ipcMain.handle('db:expenseCategories:getByType', requirePermission(this.localDb, 'master.expense-category.view', this.getByType.bind(this)))
-    ipcMain.handle('db:expenseCategories:findById', requirePermission(this.localDb, 'master.expense-category.view', this.findById.bind(this)))
+    ipcMain.handle('db:expenseCategories:getAll', requireAuth(this.localDb, this.getAll.bind(this)))
+    ipcMain.handle('db:expenseCategories:getByType', requireAuth(this.localDb, this.getByType.bind(this)))
+    ipcMain.handle('db:expenseCategories:findById', requireAuth(this.localDb, this.findById.bind(this)))
     ipcMain.handle('db:expenseCategories:create', requirePermission(this.localDb, 'master.expense-category.create', this.create.bind(this)))
     ipcMain.handle('db:expenseCategories:update', requirePermission(this.localDb, 'master.expense-category.edit', this.update.bind(this)))
     ipcMain.handle('db:expenseCategories:delete', requirePermission(this.localDb, 'master.expense-category.delete', this.delete.bind(this)))

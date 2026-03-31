@@ -5,7 +5,7 @@ import { QueueProcessorService } from '../services/queue-processor.service'
 import { AppConfigService } from '../services/app-config.service'
 import { ApiResponse } from '../types/response'
 import { getPeriodicSync } from '../services/periodic-sync.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 interface SyncStatus {
@@ -41,37 +41,37 @@ export class CloudController {
     // Connection and Full/Initial Sync are sensitive
     ipcMain.handle(
       'sync:connect',
-      requirePermission(this.db, 'settings.config.edit', this.connectToCloud.bind(this), {
+      requireAuth(this.db, this.connectToCloud.bind(this), {
         allowDuringSetup: true
       })
     )
     ipcMain.handle(
       'sync:disconnect',
-      requirePermission(this.db, 'settings.config.edit', this.disconnect.bind(this), {
+      requireAuth(this.db, this.disconnect.bind(this), {
         allowDuringSetup: true
       })
     )
     ipcMain.handle(
       'sync:full',
-      requirePermission(this.db, 'settings.config.edit', this.processQueue.bind(this), {
+      requireAuth(this.db, this.processQueue.bind(this), {
         allowDuringSetup: true
       })
     )
     ipcMain.handle(
       'sync:pull',
-      requirePermission(this.db, 'settings.config.edit', this.pullFromCloud.bind(this), {
+      requireAuth(this.db, this.pullFromCloud.bind(this), {
         allowDuringSetup: true
       })
     )
     ipcMain.handle(
       'sync:push',
-      requirePermission(this.db, 'settings.config.edit', this.processQueue.bind(this), {
+      requireAuth(this.db, this.processQueue.bind(this), {
         allowDuringSetup: true
       })
     )
     ipcMain.handle(
       'sync:initial',
-      requirePermission(this.db, 'settings.config.edit', this.initialSync.bind(this), {
+      requireAuth(this.db, this.initialSync.bind(this), {
         allowDuringSetup: true
       })
     )
@@ -79,7 +79,7 @@ export class CloudController {
     // Status is viewable by anyone with config view
     ipcMain.handle(
       'sync:status',
-      requirePermission(this.db, 'settings.config.view', this.getStatus.bind(this), {
+      requireAuth(this.db, this.getStatus.bind(this), {
         allowDuringSetup: true
       })
     )

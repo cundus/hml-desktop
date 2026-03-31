@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { PricingCloudService } from '../services/pricing-cloud.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
 
@@ -11,19 +11,19 @@ export class PricingController {
   ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('db:pricing:resolvePrice', requirePermission(this.db, 'pricing.product.view', this.resolvePrice.bind(this)))
-    ipcMain.handle('db:pricing:getAvailableCategoryPrices', requirePermission(this.db, 'pricing.product.view', this.getAvailableCategoryPrices.bind(this)))
-    ipcMain.handle('db:pricing:getPriceCategories', requirePermission(this.db, 'pricing.category.view', this.getPriceCategories.bind(this)))
-    ipcMain.handle('db:pricing:getProductUomsByProduct', requirePermission(this.db, 'pricing.product.view', this.getProductUomsByProduct.bind(this)))
-    ipcMain.handle('db:pricing:getProductUomsForStore', requirePermission(this.db, 'pricing.product.view', this.getProductUomsForStore.bind(this)))
-    ipcMain.handle('db:pricing:getAllProductUoms', requirePermission(this.db, 'pricing.product.view', this.getAllProductUoms.bind(this)))
-    ipcMain.handle('db:pricing:getCategoryPrices', requirePermission(this.db, 'pricing.product.view', this.getCategoryPrices.bind(this)))
+    ipcMain.handle('db:pricing:resolvePrice', requireAuth(this.db, this.resolvePrice.bind(this)))
+    ipcMain.handle('db:pricing:getAvailableCategoryPrices', requireAuth(this.db, this.getAvailableCategoryPrices.bind(this)))
+    ipcMain.handle('db:pricing:getPriceCategories', requireAuth(this.db, this.getPriceCategories.bind(this)))
+    ipcMain.handle('db:pricing:getProductUomsByProduct', requireAuth(this.db, this.getProductUomsByProduct.bind(this)))
+    ipcMain.handle('db:pricing:getProductUomsForStore', requireAuth(this.db, this.getProductUomsForStore.bind(this)))
+    ipcMain.handle('db:pricing:getAllProductUoms', requireAuth(this.db, this.getAllProductUoms.bind(this)))
+    ipcMain.handle('db:pricing:getCategoryPrices', requireAuth(this.db, this.getCategoryPrices.bind(this)))
     ipcMain.handle('db:pricing:upsertCategoryPrice', requirePermission(this.db, 'pricing.product.edit', this.upsertCategoryPrice.bind(this)))
     ipcMain.handle('db:pricing:upsertStorePrice', requirePermission(this.db, 'pricing.product.edit', this.upsertStorePrice.bind(this)))
     ipcMain.handle('db:pricing:createProductUom', requirePermission(this.db, 'pricing.product.edit', this.createProductUom.bind(this)))
     ipcMain.handle('db:pricing:deleteProductUom', requirePermission(this.db, 'pricing.product.edit', this.deleteProductUom.bind(this)))
-    ipcMain.handle('db:pricing:getAllBaseRetailPrices', requirePermission(this.db, 'pricing.product.view', this.getAllBaseRetailPrices.bind(this)))
-    ipcMain.handle('db:pricing:getEffectiveCost', requirePermission(this.db, 'pricing.product.view', this.getEffectiveCost.bind(this)))
+    ipcMain.handle('db:pricing:getAllBaseRetailPrices', requireAuth(this.db, this.getAllBaseRetailPrices.bind(this)))
+    ipcMain.handle('db:pricing:getEffectiveCost', requireAuth(this.db, this.getEffectiveCost.bind(this)))
     ipcMain.handle('db:pricing:updateProductUomCost', requirePermission(this.db, 'pricing.product.edit', this.updateProductUomCost.bind(this)))
     ipcMain.handle('db:pricing:copyProductPricesFromStore', requirePermission(this.db, 'pricing.product.edit', this.copyProductPricesFromStore.bind(this)))
   }

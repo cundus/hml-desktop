@@ -9,7 +9,7 @@ import { ProductLocationCloudService } from '../services/product-location-cloud.
 import { StockTransactionCloudService } from '../services/stock-transaction-cloud.service'
 import { CreateProductDto, UpdateProductDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 // Excel column configuration for products
@@ -42,10 +42,10 @@ export class ProductController {
    * Register all IPC handlers for product operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:products:getAll', requirePermission(this.db, 'master.product.view', this.getAll.bind(this)))
-    ipcMain.handle('db:products:getActive', requirePermission(this.db, 'master.product.view', this.getActive.bind(this)))
-    ipcMain.handle('db:products:getById', requirePermission(this.db, 'master.product.view', this.getById.bind(this)))
-    ipcMain.handle('db:products:search', requirePermission(this.db, 'master.product.view', this.search.bind(this)))
+    ipcMain.handle('db:products:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:products:getActive', requireAuth(this.db, this.getActive.bind(this)))
+    ipcMain.handle('db:products:getById', requireAuth(this.db, this.getById.bind(this)))
+    ipcMain.handle('db:products:search', requireAuth(this.db, this.search.bind(this)))
     ipcMain.handle('db:products:create', requirePermission(this.db, 'master.product.create', this.create.bind(this)))
     ipcMain.handle('db:products:update', requirePermission(this.db, 'master.product.edit', this.update.bind(this)))
     ipcMain.handle('db:products:delete', requirePermission(this.db, 'master.product.delete', this.delete.bind(this)))

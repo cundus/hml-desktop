@@ -107,3 +107,49 @@ export function requirePermission(
     return handler(event, ...args)
   }
 }
+
+/**
+ * Higher-order function to wrap an IPC handler with an authentication check ONLY.
+ * This skips checking specific role permissions, allowing any logged-in user to proceed.
+ * 
+ * @param db - The local database instance
+ * @param handler - The actual IPC handler function
+ * @param options - Optional configuration (e.g., allowDuringSetup)
+ */
+export function requireAuth(
+  db: Database,
+  handler: (event: Electron.IpcMainInvokeEvent, ...args: any[]) => Promise<any>,
+  options: { allowDuringSetup?: boolean } = {}
+) {
+  return async (event: Electron.IpcMainInvokeEvent, ...args: any[]) => {
+    // 1. Bypass check if allowed during setup AND app is not yet configured
+    if (options.allowDuringSetup) {
+      try {
+        const stmt = db.prepare("SELECT value FROM app_config WHERE key = 'is_configured'")
+        let isConfigured = false
+        if (stmt.step()) {
+          const row = stmt.getAsObject()
+          isConfigured = row.value === 'true'
+        }
+        stmt.free()
+
+        if (!isConfigured) {
+          // Allow access during initial setup flow
+          return handler(event, ...args)
+        }
+      } catch (err) {
+        // Table might not exist yet during very first bootstrap
+        return handler(event, ...args)
+      }
+    }
+
+    // 2. Standard session check
+    const userId = sessionStore.getUserId()
+    
+    if (!userId) {
+      throw new Error('Unauthorized: No active session')
+    }
+    
+    return handler(event, ...args)
+  }
+}

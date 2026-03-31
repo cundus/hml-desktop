@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { PaymentMethodService } from '../services/payment-method.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
 
@@ -13,9 +13,9 @@ export class PaymentMethodController {
   }
 
   private registerHandlers(): void {
-    ipcMain.handle('paymentMethods:getAll', requirePermission(this.db, 'master.payment-method.view', this.getAll.bind(this)))
-    ipcMain.handle('paymentMethods:getActive', requirePermission(this.db, 'master.payment-method.view', this.getActive.bind(this)))
-    ipcMain.handle('paymentMethods:getById', requirePermission(this.db, 'master.payment-method.view', this.getById.bind(this)))
+    ipcMain.handle('paymentMethods:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('paymentMethods:getActive', requireAuth(this.db, this.getActive.bind(this)))
+    ipcMain.handle('paymentMethods:getById', requireAuth(this.db, this.getById.bind(this)))
     ipcMain.handle('paymentMethods:create', requirePermission(this.db, 'master.payment-method.manage', this.create.bind(this)))
     ipcMain.handle('paymentMethods:update', requirePermission(this.db, 'master.payment-method.manage', this.update.bind(this)))
     ipcMain.handle('paymentMethods:delete', requirePermission(this.db, 'master.payment-method.manage', this.delete.bind(this)))

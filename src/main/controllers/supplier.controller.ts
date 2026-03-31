@@ -3,7 +3,7 @@ import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { SupplierCloudService } from '../services/supplier-cloud.service'
 import { CreateSupplierDto, UpdateSupplierDto } from '../types/dto'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class SupplierController {
@@ -16,8 +16,8 @@ export class SupplierController {
    * Register all IPC handlers for supplier operations
    */
   registerHandlers(): void {
-    ipcMain.handle('db:suppliers:getAll', requirePermission(this.db, 'master.supplier.view', this.getAll.bind(this)))
-    ipcMain.handle('db:suppliers:getById', requirePermission(this.db, 'master.supplier.view', this.getById.bind(this)))
+    ipcMain.handle('db:suppliers:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:suppliers:getById', requireAuth(this.db, this.getById.bind(this)))
     ipcMain.handle('db:suppliers:create', requirePermission(this.db, 'master.supplier.create', this.create.bind(this)))
     ipcMain.handle('db:suppliers:update', requirePermission(this.db, 'master.supplier.edit', this.update.bind(this)))
     ipcMain.handle('db:suppliers:softDelete', requirePermission(this.db, 'master.supplier.delete', this.softDelete.bind(this)))

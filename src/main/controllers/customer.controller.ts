@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { CustomerCloudService } from '../services/customer-cloud.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
 
@@ -11,10 +11,10 @@ export class CustomerController {
   ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('db:customers:getAll', requirePermission(this.db, 'master.customer.view', this.getAll.bind(this)))
-    ipcMain.handle('db:customers:getById', requirePermission(this.db, 'master.customer.view', this.getById.bind(this)))
-    ipcMain.handle('db:customers:search', requirePermission(this.db, 'master.customer.view', this.search.bind(this)))
-    ipcMain.handle('db:customers:getByCategory', requirePermission(this.db, 'master.customer.view', this.getByCategory.bind(this)))
+    ipcMain.handle('db:customers:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:customers:getById', requireAuth(this.db, this.getById.bind(this)))
+    ipcMain.handle('db:customers:search', requireAuth(this.db, this.search.bind(this)))
+    ipcMain.handle('db:customers:getByCategory', requireAuth(this.db, this.getByCategory.bind(this)))
     ipcMain.handle('db:customers:create', requirePermission(this.db, 'master.customer.create', this.create.bind(this)))
     ipcMain.handle('db:customers:update', requirePermission(this.db, 'master.customer.edit', this.update.bind(this)))
     ipcMain.handle('db:customers:delete', requirePermission(this.db, 'master.customer.delete', this.delete.bind(this)))

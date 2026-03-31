@@ -168,10 +168,19 @@ export default function PurchaseOrdersPage(): React.JSX.Element {
     if (!selectedPO) return
 
     try {
-      const response = await window.api.db.purchaseOrders.update(selectedPO.id, {
-        status,
-        total: selectedPO.total
-      })
+      let response
+      if (status === 'RECEIVED') {
+        const confirmed = await globalAlert.confirm(
+          'Tandai pesanan pembelian ini sebagai diterima? Ini akan memperbarui inventori.'
+        )
+        if (!confirmed) return
+        response = await window.api.db.purchaseOrders.receive(selectedPO.id)
+      } else {
+        response = await window.api.db.purchaseOrders.update(selectedPO.id, {
+          status,
+          total: selectedPO.total
+        })
+      }
 
       if (response.success) {
         await loadData()

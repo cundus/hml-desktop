@@ -178,7 +178,8 @@ export async function bootstrap(): Promise<void> {
   const purchaseOrderService = new PurchaseOrderCloudService(
     queueService,
     stockTransactionService,
-    productLocationService
+    productLocationService,
+    pricingService
   )
 
   // Initialize expense service
@@ -358,7 +359,8 @@ export async function bootstrap(): Promise<void> {
     stockAdjustmentService,
     productService,
     storeService,
-    purchaseOrderService
+    purchaseOrderService,
+    pricingService
   )
   inventoryController.registerHandlers()
 

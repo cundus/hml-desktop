@@ -11,6 +11,7 @@ import { PurchaseOrderCloudService } from '../services/purchase-order-cloud.serv
 import { ApiResponse } from '../types/response'
 import { requirePermission } from '../utils/auth-guard'
 import { Database } from 'sql.js'
+import { PricingCloudService } from '../services/pricing-cloud.service'
 
 export class InventoryController {
   constructor(
@@ -20,7 +21,8 @@ export class InventoryController {
     private stockAdjustmentService: StockAdjustmentCloudService,
     private productService: ProductCloudService,
     private storeService: StoreCloudService,
-    private purchaseOrderService: PurchaseOrderCloudService
+    private purchaseOrderService: PurchaseOrderCloudService,
+    private pricingService: PricingCloudService
   ) {}
 
   registerHandlers(): void {
@@ -44,6 +46,12 @@ export class InventoryController {
 
       const stockOverview: unknown[] = []
 
+      const allProductUoms = await this.pricingService.getAllProductUoms()
+      const getConversionFactor = (productId: string, uomCode: string) => {
+        const uom = allProductUoms.find(u => u.productId === productId && u.uomCode === uomCode)
+        return uom?.conversionFactor ?? 1
+      }
+
       for (const store of stores) {
         const locations = await this.productLocationService.findByStoreId(store)
         const orderedPOs = await this.purchaseOrderService.findByStoreId(store)
@@ -52,8 +60,11 @@ export class InventoryController {
         for (const po of orderedPOs) {
           if (po.status === 'ORDERED' && po.items) {
             for (const item of po.items) {
+              const conversionFactor = getConversionFactor(item.productId, item.unit)
+              const finalQuantity = item.quantity * conversionFactor
+
               const current = orderedQuantityMap.get(item.productId) || 0
-              orderedQuantityMap.set(item.productId, current + item.quantity)
+              orderedQuantityMap.set(item.productId, current + finalQuantity)
             }
           }
         }

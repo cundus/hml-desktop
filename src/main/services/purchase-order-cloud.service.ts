@@ -4,6 +4,7 @@ import { getConnectivity } from './connectivity.service'
 import { QueueService } from './queue.service'
 import { StockTransactionCloudService } from './stock-transaction-cloud.service'
 import { ProductLocationCloudService } from './product-location-cloud.service'
+import { PricingCloudService } from './pricing-cloud.service'
 
 export type PurchaseOrderStatus = 'DRAFT' | 'ORDERED' | 'RECEIVED' | 'CANCELLED'
 
@@ -57,7 +58,8 @@ export class PurchaseOrderCloudService {
   constructor(
     private queueService: QueueService,
     private stockTransactionService: StockTransactionCloudService,
-    private productLocationService: ProductLocationCloudService
+    private productLocationService: ProductLocationCloudService,
+    private pricingService: PricingCloudService
   ) {}
 
   private isOnline(): boolean {
@@ -412,19 +414,24 @@ export class PurchaseOrderCloudService {
 
     // Execute Stock Logic (Batches)
     for (const item of po.items || []) {
+      const uoms = await this.pricingService.getProductUomsByProduct(item.productId)
+      const uom = uoms.find((u) => u.uomCode === item.unit)
+      const conversionFactor = uom?.conversionFactor ?? 1
+      const finalQuantity = item.quantity * conversionFactor
+
       const batchCode = `BATCH-${po.code}-${item.productId.substring(0, 5)}`
       await this.stockTransactionService.create({
         productId: item.productId,
         storeId: po.storeId,
         type: 'INBOUND',
-        quantity: item.quantity,
+        quantity: finalQuantity,
         reference: po.code,
         supplierId: po.supplierId,
         performedBy: 'SYSTEM',
         batchCode: batchCode,
         cost: item.cost
       })
-      await this.productLocationService.adjustQuantity(item.productId, po.storeId, item.quantity)
+      await this.productLocationService.adjustQuantity(item.productId, po.storeId, finalQuantity)
     }
 
     // Update Status

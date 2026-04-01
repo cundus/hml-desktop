@@ -47,9 +47,9 @@ export default function PaymentMethodPage(): React.JSX.Element {
   const [editing, setEditing] = useState<PaymentMethod | null>(null)
   const { hasPermission } = useAuth()
 
-  const canCreate = hasPermission('master.payment-method.create')
-  const canEdit = hasPermission('master.payment-method.edit')
-  const canDelete = hasPermission('master.payment-method.delete')
+  const canCreate = hasPermission('master.payment-method.manage')
+  const canEdit = hasPermission('master.payment-method.manage')
+  const canDelete = hasPermission('master.payment-method.manage')
 
   const {
     register,

@@ -114,7 +114,7 @@ export default function CartPanel({
             {items.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>
-                  <Typography variant="body2" noWrap sx={{ maxWidth: 150 }}>
+                  <Typography variant="body2" sx={{ maxWidth: 250 }}>
                     {item.name}
                   </Typography>
                 </TableCell>

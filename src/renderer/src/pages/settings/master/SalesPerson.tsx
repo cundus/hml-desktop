@@ -47,9 +47,9 @@ export default function SalesPersonPage(): React.JSX.Element {
   const [editing, setEditing] = useState<SalesPerson | null>(null)
   const { hasPermission } = useAuth()
 
-  const canCreate = hasPermission('master.sales-person.create')
-  const canEdit = hasPermission('master.sales-person.edit')
-  const canDelete = hasPermission('master.sales-person.delete')
+  const canCreate = hasPermission('master.sales-person.manage')
+  const canEdit = hasPermission('master.sales-person.manage')
+  const canDelete = hasPermission('master.sales-person.manage')
 
   const {
     register,

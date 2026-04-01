@@ -466,6 +466,7 @@ async function createTables(database: Database): Promise<void> {
       total TEXT NOT NULL,
       description TEXT,
       created_by TEXT,
+      expense_date INTEGER,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       synced_at INTEGER,
@@ -524,6 +525,13 @@ async function createTables(database: Database): Promise<void> {
       }
       try {
         database.run(`ALTER TABLE expenses ADD COLUMN deleted_at INTEGER`)
+      } catch {
+        // Column already exists
+      }
+      try {
+        database.run(`ALTER TABLE expenses ADD COLUMN expense_date INTEGER`)
+        // Backfill: set expense_date = created_at for existing records
+        database.run(`UPDATE expenses SET expense_date = created_at WHERE expense_date IS NULL`)
       } catch {
         // Column already exists
       }
@@ -1011,6 +1019,7 @@ async function runMigrations(database: Database): Promise<void> {
           total TEXT NOT NULL,
           description TEXT,
           created_by TEXT,
+          expense_date INTEGER,
           created_at INTEGER NOT NULL,
           updated_at INTEGER NOT NULL,
           synced_at INTEGER,
@@ -1025,7 +1034,7 @@ async function runMigrations(database: Database): Promise<void> {
       // And potentially: description, created_by, synced_at, deleted_at
       // Use logic to robustly copy.
       
-      const columns = ['id', 'shift_id', 'item', 'quantity', 'price', 'total', 'description', 'created_by', 'created_at', 'updated_at', 'synced_at', 'deleted_at']
+      const columns = ['id', 'shift_id', 'item', 'quantity', 'price', 'total', 'description', 'created_by', 'expense_date', 'created_at', 'updated_at', 'synced_at', 'deleted_at']
       const oldColumns: string[] = []
       
       const oldTableInfo = database.prepare("PRAGMA table_info(expenses_old)")

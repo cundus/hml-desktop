@@ -63,6 +63,7 @@ interface Expense {
   total: string
   description: string | null
   createdBy: string | null
+  expenseDate: string
   createdAt: Date
   categoryName?: string
   storeName?: string
@@ -74,7 +75,8 @@ const expenseSchema = z.object({
   item: z.string().min(1, 'Item wajib diisi'),
   quantity: z.number().min(1, 'Jumlah minimal 1'),
   price: z.number().min(0, 'Harga harus positif'),
-  description: z.string().optional()
+  description: z.string().optional(),
+  expenseDate: z.string().min(1, 'Tanggal pengeluaran wajib diisi')
 })
 
 type ExpenseFormValues = z.infer<typeof expenseSchema>
@@ -94,7 +96,7 @@ const MONTHS = [
   'Desember'
 ]
 
-type SortField = 'createdAt' | 'categoryId' | 'storeId' | 'item' | 'quantity' | 'price' | 'total'
+type SortField = 'expenseDate' | 'categoryId' | 'storeId' | 'item' | 'quantity' | 'price' | 'total'
 
 export default function OperationalExpensesPage(): React.JSX.Element {
   const { userId } = useAuth()
@@ -112,7 +114,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
   const [filterCategoryId, setFilterCategoryId] = useState<string>('')
 
   // Sorting state
-  const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [sortField, setSortField] = useState<SortField>('expenseDate')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
 
   // Pagination state
@@ -127,7 +129,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
     formState: { errors, isSubmitting }
   } = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { categoryId: '', storeId: '', item: '', quantity: 1, price: 0, description: '' }
+    defaultValues: { categoryId: '', storeId: '', item: '', quantity: 1, price: 0, description: '', expenseDate: new Date().toISOString().split('T')[0] }
   })
 
   const years = useMemo(() => {
@@ -196,7 +198,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null)
-    reset({ categoryId: '', storeId: '', item: '', quantity: 1, price: 0, description: '' })
+    reset({ categoryId: '', storeId: '', item: '', quantity: 1, price: 0, description: '', expenseDate: new Date().toISOString().split('T')[0] })
     setDialogOpen(true)
   }
 
@@ -208,7 +210,8 @@ export default function OperationalExpensesPage(): React.JSX.Element {
       item: expense.item,
       quantity: expense.quantity,
       price: Number(expense.price),
-      description: expense.description ?? ''
+      description: expense.description ?? '',
+      expenseDate: expense.expenseDate ? new Date(expense.expenseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
     })
     setDialogOpen(true)
   }
@@ -225,7 +228,8 @@ export default function OperationalExpensesPage(): React.JSX.Element {
         item: values.item,
         quantity: values.quantity,
         price: values.price.toString(),
-        createdBy: userId ?? undefined
+        createdBy: userId ?? undefined,
+        expenseDate: values.expenseDate
       }
 
       let response
@@ -280,7 +284,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
     return store?.name ?? '-'
   }
 
-  const formatDate = (date: Date): string => {
+  const formatDate = (date: Date | string): string => {
     const d = new Date(date)
     return `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`
   }
@@ -307,9 +311,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
       let valB: string | number
 
       switch (sortField) {
-        case 'createdAt':
-          valA = new Date(a.createdAt).getTime()
-          valB = new Date(b.createdAt).getTime()
+        case 'expenseDate':
+          valA = new Date(a.expenseDate).getTime()
+          valB = new Date(b.expenseDate).getTime()
           break
         case 'categoryId':
           valA = getCategoryName(a.categoryId).toLowerCase()
@@ -492,9 +496,9 @@ export default function OperationalExpensesPage(): React.JSX.Element {
                 <TableRow>
                   <TableCell>
                     <TableSortLabel
-                      active={sortField === 'createdAt'}
-                      direction={sortField === 'createdAt' ? sortDirection : 'asc'}
-                      onClick={() => handleSort('createdAt')}
+                      active={sortField === 'expenseDate'}
+                      direction={sortField === 'expenseDate' ? sortDirection : 'asc'}
+                      onClick={() => handleSort('expenseDate')}
                     >
                       Tanggal
                     </TableSortLabel>
@@ -559,7 +563,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
               <TableBody>
                 {paginatedExpenses.map((expense) => (
                   <TableRow key={expense.id}>
-                    <TableCell>{formatDate(expense.createdAt)}</TableCell>
+                    <TableCell>{formatDate(expense.expenseDate)}</TableCell>
                     <TableCell>
                       <Chip
                         label={getCategoryName(expense.categoryId)}
@@ -693,6 +697,16 @@ export default function OperationalExpensesPage(): React.JSX.Element {
               multiline
               rows={2}
             />
+            <TextField
+              {...register('expenseDate')}
+              label="Tanggal Pengeluaran"
+              type="date"
+              fullWidth
+              margin="normal"
+              error={!!errors.expenseDate}
+              helperText={errors.expenseDate?.message}
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
           </DialogContent>
           <DialogActions>
             <Button onClick={closeDialog}>Batal</Button>
@@ -736,7 +750,7 @@ export default function OperationalExpensesPage(): React.JSX.Element {
             {sortedExpenses.map((expense, idx) => (
               <TableRow key={expense.id}>
                 <TableCell>{idx + 1}</TableCell>
-                <TableCell>{formatDate(expense.createdAt)}</TableCell>
+                <TableCell>{formatDate(expense.expenseDate)}</TableCell>
                 <TableCell>{getCategoryName(expense.categoryId)}</TableCell>
                 <TableCell>{getStoreName(expense.storeId)}</TableCell>
                 <TableCell>{expense.item}</TableCell>

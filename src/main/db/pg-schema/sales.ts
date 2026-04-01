@@ -80,6 +80,7 @@ export const expenses = pgTable('expenses', {
   total: numeric('total').notNull(),
   description: text('description'),
   createdBy: text('created_by'),
+  expenseDate: timestamp('expense_date', { withTimezone: false }).notNull().defaultNow(),
 
   createdAt: timestamp('created_at', { withTimezone: false }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: false }).notNull().defaultNow(),

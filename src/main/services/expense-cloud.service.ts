@@ -14,6 +14,7 @@ export interface Expense {
   total: string
   description: string | null
   createdBy: string | null
+  expenseDate: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -27,6 +28,7 @@ export interface CreateExpenseDto {
   price: string
   description?: string
   createdBy?: string
+  expenseDate?: string
 }
 
 export interface ExpenseSummary {
@@ -48,6 +50,7 @@ export class ExpenseCloudService {
     const now = new Date()
     const quantity = data.quantity ?? 1
     const total = (parseFloat(data.price) * quantity).toString()
+    const expenseDate = data.expenseDate ? new Date(data.expenseDate) : now
 
     const expense: Expense = {
       id,
@@ -60,6 +63,7 @@ export class ExpenseCloudService {
       total,
       description: data.description ?? null,
       createdBy: data.createdBy ?? null,
+      expenseDate,
       createdAt: now,
       updatedAt: now
     }
@@ -67,7 +71,7 @@ export class ExpenseCloudService {
     try {
       const pool = getCloudDb().getPool()
       await pool.query(
-        'INSERT INTO expenses (id, shift_id, category_id, store_id, item, quantity, price, total, description, created_by, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
+        'INSERT INTO expenses (id, shift_id, category_id, store_id, item, quantity, price, total, description, created_by, expense_date, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
         [
           id,
           data.shiftId ?? null,
@@ -79,6 +83,7 @@ export class ExpenseCloudService {
           total,
           data.description ?? null,
           data.createdBy ?? null,
+          expenseDate,
           now,
           now
         ]
@@ -147,7 +152,7 @@ export class ExpenseCloudService {
     try {
       const pool = getCloudDb().getPool()
       const result = await pool.query(
-        'SELECT * FROM expenses WHERE created_at >= $1 AND created_at <= $2 ORDER BY created_at DESC',
+        'SELECT * FROM expenses WHERE expense_date >= $1 AND expense_date <= $2 ORDER BY expense_date DESC',
         [startDate, endDate]
       )
       return result.rows.map((row) => this.mapCloudRow(row))
@@ -189,7 +194,7 @@ export class ExpenseCloudService {
     try {
       const pool = getCloudDb().getPool()
       const result = await pool.query(
-        'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS NUMERIC)), 0) as total FROM expenses WHERE created_at >= $1 AND created_at <= $2',
+        'SELECT COUNT(*) as count, COALESCE(SUM(CAST(total AS NUMERIC)), 0) as total FROM expenses WHERE expense_date >= $1 AND expense_date <= $2',
         [startDate, endDate]
       )
       if (result.rows.length > 0) {
@@ -217,6 +222,7 @@ export class ExpenseCloudService {
     const quantity = data.quantity ?? existing.quantity
     const price = data.price ?? existing.price
     const total = (parseFloat(price) * quantity).toString()
+    const expenseDate = data.expenseDate ? new Date(data.expenseDate) : existing.expenseDate
 
     const updated: Expense = {
       ...existing,
@@ -227,13 +233,14 @@ export class ExpenseCloudService {
       price,
       total,
       description: data.description ?? existing.description,
+      expenseDate,
       updatedAt: now
     }
 
     try {
       const pool = getCloudDb().getPool()
       await pool.query(
-        'UPDATE expenses SET category_id = $1, store_id = $2, item = $3, quantity = $4, price = $5, total = $6, description = $7, updated_at = $8 WHERE id = $9',
+        'UPDATE expenses SET category_id = $1, store_id = $2, item = $3, quantity = $4, price = $5, total = $6, description = $7, expense_date = $8, updated_at = $9 WHERE id = $10',
         [
           updated.categoryId,
           updated.storeId,
@@ -242,6 +249,7 @@ export class ExpenseCloudService {
           updated.price,
           updated.total,
           updated.description,
+          expenseDate,
           now,
           id
         ]
@@ -279,6 +287,7 @@ export class ExpenseCloudService {
       total: row.total as string,
       description: row.description as string | null,
       createdBy: row.created_by as string | null,
+      expenseDate: new Date(row.expense_date as string || row.created_at as string),
       createdAt: new Date(row.created_at as string),
       updatedAt: new Date(row.updated_at as string)
     }

@@ -12,6 +12,7 @@ export interface Expense extends BaseEntity {
   total: string
   description: string | null
   createdBy: string | null
+  expenseDate: string
   categoryName?: string
   storeName?: string
 }
@@ -25,6 +26,7 @@ export interface CreateExpenseDto {
   price: string
   description?: string
   createdBy?: string
+  expenseDate?: string
 }
 
 export interface ExpenseSummary {

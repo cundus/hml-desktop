@@ -1,5 +1,5 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { PaymentMethodService } from '../services/payment-method.service'
+import { PaymentMethodCloudService } from '../services/payment-method-cloud.service'
 import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
@@ -7,7 +7,7 @@ import { ApiResponse } from '../types/response'
 export class PaymentMethodController {
   constructor(
     private db: Database,
-    private paymentMethodService: PaymentMethodService
+    private paymentMethodService: PaymentMethodCloudService
   ) {
     this.registerHandlers()
   }

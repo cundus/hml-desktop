@@ -45,9 +45,9 @@ import { AppConfigService } from './services/app-config.service'
 import { ShiftService } from './services/shift.service'
 import { PriceCategoryController } from './controllers/price-category.controller'
 import { PrinterConfigService } from './services/printer-config.service'
-import { PaymentMethodService } from './services/payment-method.service'
+import { PaymentMethodCloudService } from './services/payment-method-cloud.service'
 import { PaymentMethodController } from './controllers/payment-method.controller'
-import { SalesPersonService } from './services/sales-person.service'
+import { SalesPersonCloudService } from './services/sales-person-cloud.service'
 import { QueueService } from './services/queue.service'
 import { getCloudDb } from './services/cloud-db.service'
 import { getConnectivity } from './services/connectivity.service'
@@ -210,13 +210,13 @@ export async function bootstrap(): Promise<void> {
   const deliveryOrderService = new DeliveryOrderService(db)
 
   // Initialize payment method service
-  const paymentMethodService = new PaymentMethodService(db)
+  const paymentMethodService = new PaymentMethodCloudService(db, queueService)
 
   // Initialize open bill service
   const openBillService = new OpenBillService(db)
 
   // Initialize sales person service
-  const salesPersonService = new SalesPersonService(db)
+  const salesPersonService = new SalesPersonCloudService(db, queueService)
 
   // Auto-connect to cloud if PG_DATABASE_URL is set OR if cloudDbUrl is stored in app config
   let pgUrl = process.env.PG_DATABASE_URL || process.env.DATABASE_URL

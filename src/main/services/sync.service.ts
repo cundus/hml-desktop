@@ -22,6 +22,14 @@ const ENTITY_CONFIG: Record<
     columns: ['id', 'name', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
     hasDeviceId: false
   },
+  payment_method: {
+    columns: ['id', 'name', 'is_active', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
+  sales_person: {
+    columns: ['id', 'name', 'is_active', 'created_at', 'updated_at', 'synced_at', 'deleted_at'],
+    hasDeviceId: false
+  },
   supplier: {
     columns: [
       'id',
@@ -456,6 +464,7 @@ const PRIORITY_GROUPS: Record<SyncType, string[]> = {
     'supplier',
     'category',
     'payment_method',
+    'sales_person',
     'batch'
   ],
   all: Object.keys(ENTITY_CONFIG)

@@ -1,5 +1,5 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
-import { SalesPersonService } from '../services/sales-person.service'
+import { SalesPersonCloudService } from '../services/sales-person-cloud.service'
 import { requirePermission } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
@@ -7,7 +7,7 @@ import { ApiResponse } from '../types/response'
 export class SalesPersonController {
   constructor(
     private db: Database,
-    private salesPersonService: SalesPersonService
+    private salesPersonService: SalesPersonCloudService
   ) {}
 
   registerHandlers(): void {
@@ -66,8 +66,8 @@ export class SalesPersonController {
 
   private async delete(_event: IpcMainInvokeEvent, id: string): Promise<ApiResponse> {
     try {
-      const success = await this.salesPersonService.softDelete(id)
-      return { success, data: success }
+      const deleted = await this.salesPersonService.softDelete(id)
+      return { success: true, data: deleted }
     } catch (error) {
       return { success: false, error: (error as Error).message }
     }

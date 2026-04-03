@@ -1,4 +1,5 @@
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import RedeemIcon from '@mui/icons-material/Redeem'
 import StarIcon from '@mui/icons-material/Star'
 import Box from '@mui/material/Box'
@@ -40,6 +41,7 @@ export type CartPanelProps = {
   discount: number // Now represents nominal amount (Rupiah), not percentage
   total: number
   onRemove: (id: string) => void
+  onEdit?: (item: CartItem) => void
   onChangeDiscount: (value: number) => void
   onCheckout: () => void
   onSaveOpenBill?: () => void
@@ -59,6 +61,7 @@ export default function CartPanel({
   discount,
   total,
   onRemove,
+  onEdit,
   onChangeDiscount,
   onCheckout,
   onSaveOpenBill,
@@ -107,7 +110,7 @@ export default function CartPanel({
               <TableCell align="center">Satuan</TableCell>
               <TableCell align="right">Harga</TableCell>
               <TableCell align="right">Subtotal</TableCell>
-              <TableCell align="center" width={50}></TableCell>
+              <TableCell align="center" width={80}></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -150,9 +153,20 @@ export default function CartPanel({
                   </Typography>
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton size="small" onClick={() => onRemove(item.id)} color="error">
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
+                  <Stack direction="row" spacing={0} justifyContent="center">
+                    {onEdit && (
+                      <Tooltip title="Edit item">
+                        <IconButton size="small" onClick={() => onEdit(item)} color="primary">
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Hapus item">
+                      <IconButton size="small" onClick={() => onRemove(item.id)} color="error">
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Stack>
                 </TableCell>
               </TableRow>
             ))}

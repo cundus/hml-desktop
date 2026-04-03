@@ -58,6 +58,7 @@ export default function SalesPage(): React.JSX.Element {
   const [productDialogOpen, setProductDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
   const [productSelectModalOpen, setProductSelectModalOpen] = useState(false)
+  const [editingCartItem, setEditingCartItem] = useState<CartItem | null>(null)
   const [paymentMethodDialogOpen, setPaymentMethodDialogOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [, setCheckoutLoading] = useState(false)
@@ -279,62 +280,128 @@ export default function SalesPage(): React.JSX.Element {
     setProductSelectModalOpen(true)
   }
 
-  // Handle confirmed selection from modal
+  // Handle confirmed selection from modal (add or edit)
   const handleProductSelectConfirm = async (result: ProductSelectResult): Promise<void> => {
     const { product, selectedUom, selectedPrice, quantity, unitPrice } = result
 
     // Create a unique cart line ID based on product + UOM + price category
-    const cartItemId = `${product.id}-${selectedUom.code}-${selectedPrice.id}`
+    const newCartItemId = `${product.id}-${selectedUom.code}-${selectedPrice.id}`
     const conversionFactor = selectedUom.conversionFactor || 1
     const baseQuantity = quantity * conversionFactor
-
-    // Reserve stock for this quantity
     const storeId = currentShift?.storeId ?? defaultStoreId
-    if (storeId) {
-      try {
-        await window.api.db.inventory.reserveStock(product.id, storeId, baseQuantity)
-      } catch (error) {
-        console.error('Failed to reserve stock:', error)
-      }
-    }
 
-    setCartItems((prev) => {
-      const existing = prev.find((item) => item.id === cartItemId)
-      if (existing) {
-        const newQuantity = existing.quantity + quantity
-        const conv = existing.conversionFactor ?? conversionFactor
-        const newBaseQuantity = newQuantity * conv
-        const price = existing.price
-        return prev.map((item) =>
-          item.id === cartItemId
-            ? {
-                ...item,
-                quantity: newQuantity,
-                baseQuantity: newBaseQuantity,
-                total: newQuantity * price
-              }
-            : item
-        )
-      } else {
-        return [
-          ...prev,
-          {
-            ...product,
-            id: cartItemId,
-            productId: product.id,
-            uomId: selectedUom.uomId ?? null,
-            uomCode: selectedUom.code,
-            priceCategoryId: selectedPrice.id,
-            priceCategoryName: selectedPrice.name,
-            conversionFactor,
-            quantity,
-            baseQuantity,
-            price: unitPrice,
-            total: unitPrice * quantity
-          } as CartItem
-        ]
+    if (editingCartItem) {
+      // ── EDIT MODE ──
+      const oldBaseQuantity = editingCartItem.baseQuantity ?? 0
+      const oldCartItemId = editingCartItem.id
+
+      // Adjust stock reservation based on quantity difference
+      if (storeId && editingCartItem.productId) {
+        const diff = baseQuantity - oldBaseQuantity
+        try {
+          if (diff > 0) {
+            await window.api.db.inventory.reserveStock(editingCartItem.productId, storeId, diff)
+          } else if (diff < 0) {
+            await window.api.db.inventory.releaseStock(editingCartItem.productId, storeId, Math.abs(diff))
+          }
+        } catch (error) {
+          console.error('Failed to adjust stock reservation:', error)
+        }
       }
-    })
+
+      setCartItems((prev) => {
+        // Check if the new cart ID already exists (different item with same product+uom+price)
+        const duplicateItem = prev.find((item) => item.id === newCartItemId && item.id !== oldCartItemId)
+
+        if (duplicateItem) {
+          // Merge: combine quantity into the existing item, remove the edited item
+          const mergedQuantity = duplicateItem.quantity + quantity
+          const conv = duplicateItem.conversionFactor ?? conversionFactor
+          const mergedBaseQuantity = mergedQuantity * conv
+          return prev
+            .filter((item) => item.id !== oldCartItemId)
+            .map((item) =>
+              item.id === newCartItemId
+                ? {
+                    ...item,
+                    quantity: mergedQuantity,
+                    baseQuantity: mergedBaseQuantity,
+                    total: mergedQuantity * item.price
+                  }
+                : item
+            )
+        } else {
+          // Update the edited item in place
+          return prev.map((item) =>
+            item.id === oldCartItemId
+              ? {
+                  ...item,
+                  id: newCartItemId,
+                  uomId: selectedUom.uomId ?? null,
+                  uomCode: selectedUom.code,
+                  priceCategoryId: selectedPrice.id,
+                  priceCategoryName: selectedPrice.name,
+                  conversionFactor,
+                  quantity,
+                  baseQuantity,
+                  price: unitPrice,
+                  total: unitPrice * quantity
+                }
+              : item
+          )
+        }
+      })
+
+      setEditingCartItem(null)
+    } else {
+      // ── ADD MODE ──
+      // Reserve stock for this quantity
+      if (storeId) {
+        try {
+          await window.api.db.inventory.reserveStock(product.id, storeId, baseQuantity)
+        } catch (error) {
+          console.error('Failed to reserve stock:', error)
+        }
+      }
+
+      setCartItems((prev) => {
+        const existing = prev.find((item) => item.id === newCartItemId)
+        if (existing) {
+          const newQuantity = existing.quantity + quantity
+          const conv = existing.conversionFactor ?? conversionFactor
+          const newBaseQuantity = newQuantity * conv
+          const price = existing.price
+          return prev.map((item) =>
+            item.id === newCartItemId
+              ? {
+                  ...item,
+                  quantity: newQuantity,
+                  baseQuantity: newBaseQuantity,
+                  total: newQuantity * price
+                }
+              : item
+          )
+        } else {
+          return [
+            ...prev,
+            {
+              ...product,
+              id: newCartItemId,
+              productId: product.id,
+              uomId: selectedUom.uomId ?? null,
+              uomCode: selectedUom.code,
+              priceCategoryId: selectedPrice.id,
+              priceCategoryName: selectedPrice.name,
+              conversionFactor,
+              quantity,
+              baseQuantity,
+              price: unitPrice,
+              total: unitPrice * quantity
+            } as CartItem
+          ]
+        }
+      })
+    }
 
     setProductSelectModalOpen(false)
     setSelectedProduct(null)
@@ -344,6 +411,15 @@ export default function SalesPage(): React.JSX.Element {
   const handleAddToCart = (product: Product): void => {
     // Open modal instead of direct add
     handleProductClick(product)
+  }
+
+  // Edit an existing cart item — opens ProductSelectModal in edit mode
+  const handleEditCartItem = (item: CartItem): void => {
+    const product = products.find((p) => p.id === (item.productId ?? item.id))
+    if (!product) return
+    setEditingCartItem(item)
+    setSelectedProduct(product)
+    setProductSelectModalOpen(true)
   }
 
 
@@ -1154,6 +1230,7 @@ export default function SalesPage(): React.JSX.Element {
             discount={discount}
             total={total}
             onRemove={handleRemoveItem}
+            onEdit={handleEditCartItem}
             onChangeDiscount={handleChangeDiscount}
             onCheckout={handleCheckout}
             onSaveOpenBill={openSaveOpenBillDialog}
@@ -1186,9 +1263,14 @@ export default function SalesPage(): React.JSX.Element {
           product={selectedProduct as ProductForSelection | null}
           storeId={currentShift?.storeId ?? defaultStoreId}
           enableMultiUomPricing={featureFlags.enableMultiUomPricing}
+          editMode={!!editingCartItem}
+          initialQuantity={editingCartItem?.quantity}
+          initialUomCode={editingCartItem?.uomCode}
+          initialPriceCategoryId={editingCartItem?.priceCategoryId}
           onClose={() => {
             setProductSelectModalOpen(false)
             setSelectedProduct(null)
+            setEditingCartItem(null)
           }}
           onConfirm={handleProductSelectConfirm}
         />

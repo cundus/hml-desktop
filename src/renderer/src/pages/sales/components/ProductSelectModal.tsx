@@ -59,6 +59,10 @@ interface ProductSelectModalProps {
   product: ProductForSelection | null
   storeId: string | null
   enableMultiUomPricing?: boolean // Feature flag - defaults to true
+  editMode?: boolean
+  initialQuantity?: number
+  initialUomCode?: string
+  initialPriceCategoryId?: string
   onClose: () => void
   onConfirm: (result: ProductSelectResult) => void
 }
@@ -68,6 +72,10 @@ export default function ProductSelectModal({
   product,
   storeId,
   enableMultiUomPricing = true,
+  editMode = false,
+  initialQuantity,
+  initialUomCode,
+  initialPriceCategoryId,
   onClose,
   onConfirm
 }: ProductSelectModalProps): React.JSX.Element {
@@ -227,8 +235,31 @@ export default function ProductSelectModal({
     }
 
     void loadData()
-    setQuantity(1)
+    setQuantity(editMode && initialQuantity ? initialQuantity : 1)
   }, [product, open, storeId])
+
+  // When in edit mode, set initial UOM and price category after options are loaded
+  useEffect(() => {
+    if (!editMode || !open) return
+
+    if (initialUomCode && uomOptions.length > 0) {
+      const match = uomOptions.find((u) => u.code === initialUomCode)
+      if (match && selectedUom?.code !== match.code) {
+        setSelectedUom(match)
+      }
+    }
+  }, [editMode, open, initialUomCode, uomOptions])
+
+  useEffect(() => {
+    if (!editMode || !open) return
+
+    if (initialPriceCategoryId && priceCategories.length > 0) {
+      const match = priceCategories.find((c) => c.id === initialPriceCategoryId)
+      if (match && selectedPrice?.id !== match.id) {
+        setSelectedPrice(match)
+      }
+    }
+  }, [editMode, open, initialPriceCategoryId, priceCategories])
 
   // Load price categories when UOM changes
   const loadPriceCategories = async (
@@ -469,7 +500,7 @@ export default function ProductSelectModal({
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth onKeyDown={handleKeyDown}>
       <DialogTitle>
         <Typography variant="h6" component="span">
-          {product.name}
+          {product.name} {editMode && <Typography component="span" variant="caption" color="warning.main">(Edit)</Typography>}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           {product.sku} • {product.category}
@@ -679,7 +710,7 @@ export default function ProductSelectModal({
           onClick={handleConfirm}
           disabled={!selectedUom || !selectedPrice || quantity < 1 }
         >
-          Tambah ke Keranjang
+          {editMode ? 'Simpan Perubahan' : 'Tambah ke Keranjang'}
         </Button>
       </DialogActions>
 

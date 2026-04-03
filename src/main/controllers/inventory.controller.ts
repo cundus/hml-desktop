@@ -9,7 +9,7 @@ import { ProductCloudService } from '../services/product-cloud.service'
 import { StoreCloudService } from '../services/store-cloud.service'
 import { PurchaseOrderCloudService } from '../services/purchase-order-cloud.service'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { PricingCloudService } from '../services/pricing-cloud.service'
 
@@ -33,8 +33,8 @@ export class InventoryController {
     ipcMain.handle('inventory:low-stock', requirePermission(this.db, 'inventory.stock.view', this.getLowStock.bind(this)))
     ipcMain.handle('inventory:bulk-create-adjustments', requirePermission(this.db, 'inventory.stock.adjust', this.bulkCreateAdjustments.bind(this)))
     ipcMain.handle('inventory:product-details', requirePermission(this.db, 'inventory.stock.view', this.getProductStockDetails.bind(this)))
-    ipcMain.handle('inventory:reserve-stock', requirePermission(this.db, 'sales.pos.create', this.reserveStock.bind(this)))
-    ipcMain.handle('inventory:release-stock', requirePermission(this.db, 'sales.pos.create', this.releaseStock.bind(this)))
+    ipcMain.handle('inventory:reserve-stock', requireAuth(this.db, this.reserveStock.bind(this)))
+    ipcMain.handle('inventory:release-stock', requireAuth(this.db, this.releaseStock.bind(this)))
   }
 
   private async getStockOverview(

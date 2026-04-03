@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { TransactionService } from '../services/transaction.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class TransactionController {
@@ -16,9 +16,9 @@ export class TransactionController {
     ipcMain.handle('db:transactions:getByStoreId', requirePermission(this.db, 'sales.transaction.view', this.getByStoreId.bind(this)))
     ipcMain.handle('db:transactions:getByCustomerId', requirePermission(this.db, 'sales.transaction.view', this.getByCustomerId.bind(this)))
     ipcMain.handle('db:transactions:getByUserId', requirePermission(this.db, 'sales.transaction.view', this.getByUserId.bind(this)))
-    ipcMain.handle('db:transactions:create', requirePermission(this.db, 'sales.pos.create', this.create.bind(this)))
+    ipcMain.handle('db:transactions:create', requireAuth(this.db, this.create.bind(this)))
     ipcMain.handle('db:transactions:update', requirePermission(this.db, 'sales.transaction.edit', this.update.bind(this)))
-    ipcMain.handle('db:transactions:updateReceiptPrinted', requirePermission(this.db, 'sales.transaction.view', this.updateReceiptPrinted.bind(this)))
+    ipcMain.handle('db:transactions:updateReceiptPrinted', requireAuth(this.db, this.updateReceiptPrinted.bind(this)))
     ipcMain.handle('db:transactions:getByDateRange', requirePermission(this.db, 'sales.transaction.view', this.getByDateRange.bind(this)))
     ipcMain.handle('db:transactions:getSalesSummary', requirePermission(this.db, 'sales.transaction.view', this.getSalesSummary.bind(this)))
     ipcMain.handle('db:transactions:delete', requirePermission(this.db, 'sales.transaction.delete', this.delete.bind(this)))

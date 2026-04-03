@@ -1,6 +1,6 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { SalesPersonCloudService } from '../services/sales-person-cloud.service'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 import { ApiResponse } from '../types/response'
 
@@ -11,9 +11,9 @@ export class SalesPersonController {
   ) {}
 
   registerHandlers(): void {
-    ipcMain.handle('db:salesPersons:getAll', requirePermission(this.db, 'master.sales-person.view', this.getAll.bind(this)))
-    ipcMain.handle('db:salesPersons:getActive', requirePermission(this.db, 'master.sales-person.view', this.getActive.bind(this)))
-    ipcMain.handle('db:salesPersons:getById', requirePermission(this.db, 'master.sales-person.view', this.getById.bind(this)))
+    ipcMain.handle('db:salesPersons:getAll', requireAuth(this.db, this.getAll.bind(this)))
+    ipcMain.handle('db:salesPersons:getActive', requireAuth(this.db, this.getActive.bind(this)))
+    ipcMain.handle('db:salesPersons:getById', requireAuth(this.db, this.getById.bind(this)))
     ipcMain.handle('db:salesPersons:create', requirePermission(this.db, 'master.sales-person.manage', this.create.bind(this)))
     ipcMain.handle('db:salesPersons:update', requirePermission(this.db, 'master.sales-person.manage', this.update.bind(this)))
     ipcMain.handle('db:salesPersons:delete', requirePermission(this.db, 'master.sales-person.manage', this.delete.bind(this)))

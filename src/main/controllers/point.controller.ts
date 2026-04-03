@@ -1,7 +1,7 @@
 import { ipcMain, IpcMainInvokeEvent } from 'electron'
 import { PointCloudService, PointSetting, PointHistory } from '../services/point.service'
 import { ApiResponse } from '../types/response'
-import { requirePermission } from '../utils/auth-guard'
+import { requirePermission, requireAuth } from '../utils/auth-guard'
 import { Database } from 'sql.js'
 
 export class PointController {
@@ -12,20 +12,20 @@ export class PointController {
 
   registerHandlers(): void {
     // Settings
-    ipcMain.handle('points:getSettings', requirePermission(this.db, 'settings.point.view', this.getSettings.bind(this)))
+    ipcMain.handle('points:getSettings', requireAuth(this.db, this.getSettings.bind(this)))
     ipcMain.handle('points:updateSettings', requirePermission(this.db, 'settings.point.manage', this.updateSettings.bind(this)))
 
     // Customer points
-    ipcMain.handle('points:getCustomerPoints', requirePermission(this.db, 'master.customer.view', this.getCustomerPoints.bind(this)))
-    ipcMain.handle('points:addPoints', requirePermission(this.db, 'sales.pos.create', this.addPoints.bind(this)))
-    ipcMain.handle('points:redeemPoints', requirePermission(this.db, 'sales.pos.create', this.redeemPoints.bind(this)))
+    ipcMain.handle('points:getCustomerPoints', requireAuth(this.db, this.getCustomerPoints.bind(this)))
+    ipcMain.handle('points:addPoints', requireAuth(this.db, this.addPoints.bind(this)))
+    ipcMain.handle('points:redeemPoints', requireAuth(this.db, this.redeemPoints.bind(this)))
 
     // History
-    ipcMain.handle('points:getHistory', requirePermission(this.db, 'master.customer.view', this.getHistory.bind(this)))
+    ipcMain.handle('points:getHistory', requireAuth(this.db, this.getHistory.bind(this)))
 
     // Calculations
-    ipcMain.handle('points:calculateEarned', requirePermission(this.db, 'sales.pos.create', this.calculateEarned.bind(this)))
-    ipcMain.handle('points:calculateRedemption', requirePermission(this.db, 'sales.pos.create', this.calculateRedemption.bind(this)))
+    ipcMain.handle('points:calculateEarned', requireAuth(this.db, this.calculateEarned.bind(this)))
+    ipcMain.handle('points:calculateRedemption', requireAuth(this.db, this.calculateRedemption.bind(this)))
   }
 
   // ==================== SETTINGS ====================

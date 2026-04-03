@@ -7,5 +7,5 @@ out
 
 /src/main/prisma
 
-.env
 
+config.bat

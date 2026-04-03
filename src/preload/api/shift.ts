@@ -20,7 +20,7 @@ export interface ShiftHistory {
   id: string
   shiftId: string
   userId: string
-  action: 'OPEN' | 'CLOSE' | 'TAKEOVER' | 'BREAK'
+  action: 'OPEN' | 'CLOSE' | 'TAKEOVER' | 'BREAK' | 'FORCE_CLOSE'
   notes: string | null
   createdAt: Date
   deviceId: string | null
@@ -36,6 +36,10 @@ export interface OpenShiftDto {
 export interface CloseShiftDto {
   closingCash: string
   notes?: string
+}
+
+export interface ForceCloseShiftDto {
+  notes: string
 }
 
 export interface ShiftFilters {
@@ -97,5 +101,10 @@ export const shiftApi = {
     ipcRenderer.invoke('db:shifts:getHistory', shiftId) as Promise<ApiResponse<ShiftHistory[]>>,
 
   getSummary: (shiftId: string) =>
-    ipcRenderer.invoke('db:shifts:getSummary', shiftId) as Promise<ApiResponse<ShiftSummary | null>>
+    ipcRenderer.invoke('db:shifts:getSummary', shiftId) as Promise<ApiResponse<ShiftSummary | null>>,
+
+  forceClose: (shiftId: string, closedByUserId: string, data: ForceCloseShiftDto) =>
+    ipcRenderer.invoke('db:shifts:forceClose', shiftId, closedByUserId, data) as Promise<
+      ApiResponse<CashierShift>
+    >
 }

@@ -18,7 +18,10 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import PrintIcon from '@mui/icons-material/Print'
+import LockIcon from '@mui/icons-material/Lock'
 import { formatCurrency } from '@renderer/utils/currency'
+import useAuth from '../../../hooks/useAuth'
+import ForceCloseShiftDialog from '../../../components/shift/ForceCloseShiftDialog'
 
 interface CashierShift {
   id: string
@@ -73,36 +76,47 @@ interface ShiftSummary {
 export default function ShiftDetailPage(): React.JSX.Element {
   const { shiftId } = useParams<{ shiftId: string }>()
   const navigate = useNavigate()
+  const { hasPermission, userId } = useAuth()
+  const canForceClose = hasPermission('operations.shift.force-close')
 
   const [summary, setSummary] = useState<ShiftSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
+  const [forceCloseDialogOpen, setForceCloseDialogOpen] = useState(false)
+
+  const loadShiftDetail = async (): Promise<void> => {
     if (!shiftId) return
-
-    const loadShiftDetail = async (): Promise<void> => {
-      try {
-        setLoading(true)
-        setError(null)
-
-        // Load shift summary (includes transactions and expenses)
-        const summaryRes = await window.api.db.shifts.getSummary(shiftId)
-        if (summaryRes.success && summaryRes.data) {
-          setSummary(summaryRes.data as ShiftSummary)
-        } else {
-          setError(summaryRes.error || 'Gagal memuat data shift')
-        }
-      } catch (err) {
-        console.error('Failed to load shift detail:', err)
-        setError('Terjadi kesalahan saat memuat data')
-      } finally {
-        setLoading(false)
+    try {
+      setLoading(true)
+      setError(null)
+      const summaryRes = await window.api.db.shifts.getSummary(shiftId)
+      if (summaryRes.success && summaryRes.data) {
+        setSummary(summaryRes.data as ShiftSummary)
+      } else {
+        setError(summaryRes.error || 'Gagal memuat data shift')
       }
+    } catch (err) {
+      console.error('Failed to load shift detail:', err)
+      setError('Terjadi kesalahan saat memuat data')
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     void loadShiftDetail()
   }, [shiftId])
+
+  const handleForceCloseConfirm = async (id: string, notes: string): Promise<void> => {
+    if (!id) return
+    const res = await window.api.db.shifts.forceClose(id, userId || '', { notes })
+    if (!res.success) {
+      throw new Error(res.error || 'Gagal menutup paksa shift')
+    }
+    setForceCloseDialogOpen(false)
+    void loadShiftDetail()
+  }
 
   const formatDate = (date: Date | string): string => {
     return new Date(date).toLocaleString('id-ID', {
@@ -183,11 +197,23 @@ export default function ShiftDetailPage(): React.JSX.Element {
             size="small"
           />
         </Stack>
-        {shift.status === 'CLOSED' && (
-          <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrintReport}>
-            Cetak Laporan
-          </Button>
-        )}
+        <Stack direction="row" spacing={2}>
+          {shift.status === 'OPEN' && canForceClose && (
+            <Button
+              variant="contained"
+              color="error"
+              startIcon={<LockIcon />}
+              onClick={() => setForceCloseDialogOpen(true)}
+            >
+              Tutup Paksa
+            </Button>
+          )}
+          {shift.status === 'CLOSED' && (
+            <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrintReport}>
+              Cetak Laporan
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
       {/* Summary Cards */}
@@ -406,6 +432,14 @@ export default function ShiftDetailPage(): React.JSX.Element {
           <Typography variant="body1">{shift.notes}</Typography>
         </Paper>
       )}
+
+      {/* Dialogs */}
+      <ForceCloseShiftDialog
+        open={forceCloseDialogOpen}
+        shift={shift}
+        onClose={() => setForceCloseDialogOpen(false)}
+        onConfirm={handleForceCloseConfirm}
+      />
     </Box>
   )
 }

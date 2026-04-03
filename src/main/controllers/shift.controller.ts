@@ -1,7 +1,9 @@
 import { ipcMain } from 'electron'
-import { ShiftService, OpenShiftDto, CloseShiftDto } from '../services/shift.service'
+import { Database } from 'sql.js'
+import { ShiftService, OpenShiftDto, CloseShiftDto, ForceCloseShiftDto } from '../services/shift.service'
+import { requirePermission } from '../utils/auth-guard'
 
-export function registerShiftHandlers(service: ShiftService): void {
+export function registerShiftHandlers(db: Database, service: ShiftService): void {
   ipcMain.handle('db:shifts:getCurrentShift', async (_, userId: string) => {
     try {
       const data = await service.getCurrentShift(userId)
@@ -100,4 +102,16 @@ export function registerShiftHandlers(service: ShiftService): void {
       return { success: false, error: (error as Error).message }
     }
   })
+
+  ipcMain.handle(
+    'db:shifts:forceClose',
+    requirePermission(db, 'operations.shift.force-close', async (_, shiftId: string, closedByUserId: string, data: ForceCloseShiftDto) => {
+      try {
+        const result = await service.forceCloseShift(shiftId, closedByUserId, data)
+        return { success: true, data: result }
+      } catch (error) {
+        return { success: false, error: (error as Error).message }
+      }
+    })
+  )
 }

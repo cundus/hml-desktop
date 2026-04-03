@@ -17,6 +17,7 @@ export type AuditAction =
   | 'STOCK_ADJUSTMENT'
   | 'SHIFT_OPEN'
   | 'SHIFT_CLOSE'
+  | 'SHIFT_FORCE_CLOSE'
   | 'PAYMENT'
   | 'REFUND'
   | 'VOID'

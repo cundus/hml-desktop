@@ -83,6 +83,7 @@ const permissionCatalog: SeedPermission[] = [
   { id: 'operations.operational-expense.view', name: 'View operational expenses' },
   { id: 'operations.operational-expense.create', name: 'Create operational expenses' },
   { id: 'operations.shift.view', name: 'View shift history' },
+  { id: 'operations.shift.force-close', name: 'Force close shift', description: 'Force open shift closed by another user' },
 
   // Pricing
   { id: 'pricing.product.view', name: 'View product prices' },

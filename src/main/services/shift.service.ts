@@ -32,7 +32,7 @@ export interface ShiftHistory {
   id: string
   shiftId: string
   userId: string
-  action: 'OPEN' | 'CLOSE' | 'TAKEOVER' | 'BREAK'
+  action: 'OPEN' | 'CLOSE' | 'TAKEOVER' | 'BREAK' | 'FORCE_CLOSE'
   notes: string | null
   createdAt: Date
   deviceId: string | null
@@ -49,6 +49,10 @@ export interface OpenShiftDto {
 export interface CloseShiftDto {
   closingCash: string
   notes?: string
+}
+
+export interface ForceCloseShiftDto {
+  notes: string
 }
 
 export interface ShiftSummary {
@@ -425,6 +429,75 @@ export class ShiftService {
         newValues: { closingCash: data.closingCash, expectedCash, difference: difference.toString() },
         oldValues: { initialCash: shift.initialCash },
         metadata: { status: 'CLOSED', notes: data.notes }
+      })
+    }
+    return updatedShift
+  }
+
+  /**
+   * Force close a shift (usually by admin/manager)
+   */
+  async forceCloseShift(shiftId: string, closedByUserId: string, data: ForceCloseShiftDto): Promise<CashierShift> {
+    const shift = await this.findById(shiftId)
+    if (!shift) {
+      throw new Error('Shift not found')
+    }
+    if (shift.status === 'CLOSED') {
+      throw new Error('Shift is already closed')
+    }
+
+    // Calculate expected cash (initial + sales total)
+    const expectedCash = await this.calculateExpectedCash(shiftId, shift.initialCash)
+    const difference = '0' // Since it's forced closed, we assume expected cash is the closing cash until verified manually later if needed.
+    const closingCash = expectedCash
+
+    const now = Date.now()
+
+    this.db.run(
+      `UPDATE cashier_shift SET
+       status = 'CLOSED',
+       closing_cash = ?,
+       expected_cash = ?,
+       difference = ?,
+       notes = ?,
+       closed_at = ?,
+       updated_at = ?
+       WHERE id = ?`,
+      [closingCash, expectedCash, difference, data.notes, now, now, shiftId]
+    )
+    
+    // Queue for sync
+    await this.queueService.add('UPDATE', 'cashier_shift', {
+        id: shiftId,
+        status: 'CLOSED',
+        closing_cash: closingCash,
+        expected_cash: expectedCash,
+        difference: difference,
+        notes: data.notes,
+        closed_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString()
+    })
+
+    // Add to shift history, indicating who forcefully closed it
+    this.addShiftHistory(shiftId, closedByUserId, 'FORCE_CLOSE', data.notes)
+
+    saveDb(this.db)
+
+    const updatedShift = await this.findById(shiftId)
+    if (!updatedShift) {
+      throw new Error('Failed to update shift')
+    }
+
+    if (this.auditLogService) {
+      void this.auditLogService.log({
+        action: 'SHIFT_FORCE_CLOSE',
+        entityType: 'shift',
+        entityId: shiftId,
+        userId: closedByUserId,
+        storeId: shift.storeId,
+        newValues: { closingCash, expectedCash, difference, status: 'CLOSED' },
+        oldValues: { initialCash: shift.initialCash, status: 'OPEN' },
+        metadata: { notes: data.notes, closedBy: closedByUserId, originalCashier: shift.userId }
       })
     }
     return updatedShift

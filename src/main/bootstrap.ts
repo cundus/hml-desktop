@@ -323,7 +323,7 @@ export async function bootstrap(): Promise<void> {
   uomController.registerHandlers()
   receiptController.registerHandlers()
   expenseController.registerHandlers()
-  registerShiftHandlers(shiftService)
+  registerShiftHandlers(db, shiftService)
   registerAppConfigHandlers(appConfigService)
   registerPrinterConfigController(printerConfigService)
   registerDeliveryOrderController(deliveryOrderService)

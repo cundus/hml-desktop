@@ -19,10 +19,14 @@ import TextField from '@mui/material/TextField'
 import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
 import Alert from '@mui/material/Alert'
+import Tooltip from '@mui/material/Tooltip'
 import VisibilityIcon from '@mui/icons-material/Visibility'
 import RefreshIcon from '@mui/icons-material/Refresh'
 import FilterListIcon from '@mui/icons-material/FilterList'
+import LockIcon from '@mui/icons-material/Lock'
 import { formatCurrency } from '@renderer/utils/currency'
+import useAuth from '../../../hooks/useAuth'
+import ForceCloseShiftDialog from '../../../components/shift/ForceCloseShiftDialog'
 
 interface CashierShift {
   id: string
@@ -41,9 +45,15 @@ interface CashierShift {
 
 export default function ShiftHistoryPage(): React.JSX.Element {
   const navigate = useNavigate()
+  const { hasPermission, userId } = useAuth()
+  const canForceClose = hasPermission('operations.shift.force-close')
+
   const [shifts, setShifts] = useState<CashierShift[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [forceCloseDialogOpen, setForceCloseDialogOpen] = useState(false)
+  const [selectedShiftToClose, setSelectedShiftToClose] = useState<CashierShift | null>(null)
 
   // Filters
   const [filterOpen, setFilterOpen] = useState(false)
@@ -130,6 +140,22 @@ export default function ShiftHistoryPage(): React.JSX.Element {
 
   const handleViewDetail = (shift: CashierShift): void => {
     navigate(`/operations/shifts/${shift.id}`)
+  }
+
+  const handleForceCloseClick = (e: React.MouseEvent, shift: CashierShift): void => {
+    e.stopPropagation()
+    setSelectedShiftToClose(shift)
+    setForceCloseDialogOpen(true)
+  }
+
+  const handleForceCloseConfirm = async (shiftId: string, notes: string): Promise<void> => {
+    const res = await window.api.db.shifts.forceClose(shiftId, userId || '', { notes })
+    if (!res.success) {
+      throw new Error(res.error || 'Gagal menutup paksa shift')
+    }
+    setForceCloseDialogOpen(false)
+    setSelectedShiftToClose(null)
+    void loadShifts()
   }
 
   const formatDate = (date: Date | string): string => {
@@ -301,16 +327,30 @@ export default function ShiftHistoryPage(): React.JSX.Element {
                       )}
                     </TableCell>
                     <TableCell align="center">
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleViewDetail(shift)
-                        }}
-                        title="Lihat Detail"
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
+                      <Stack direction="row" spacing={1} justifyContent="center">
+                        <Tooltip title="Lihat Detail">
+                          <IconButton
+                            size="small"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleViewDetail(shift)
+                            }}
+                          >
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        {shift.status === 'OPEN' && canForceClose && (
+                          <Tooltip title="Tutup Paksa Shift">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={(e) => handleForceCloseClick(e, shift)}
+                            >
+                              <LockIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
                     </TableCell>
                   </TableRow>
                 ))
@@ -319,6 +359,14 @@ export default function ShiftHistoryPage(): React.JSX.Element {
           </Table>
         </TableContainer>
       )}
+
+      {/* Dialogs */}
+      <ForceCloseShiftDialog
+        open={forceCloseDialogOpen}
+        shift={selectedShiftToClose}
+        onClose={() => setForceCloseDialogOpen(false)}
+        onConfirm={handleForceCloseConfirm}
+      />
     </Box>
   )
 }
